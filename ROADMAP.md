@@ -18,31 +18,31 @@ A lightweight, text-and-UI-driven God Simulator built natively in Android with p
 
 ---
 
-## Phase 2: Divine Interventions
+## Phase 2: Divine Interventions ✅ COMPLETED
 
 > Player agency: a sealed-class action system lets the player inject miracles directly into the simulation tick.
 
 **Domain Layer (`/domain`)**
-- [ ] Define `DivineAction` sealed class in `domain/model/DivineAction.kt` with subtypes:
+- [x] Define `DivineAction` sealed class in `domain/model/DivineAction.kt` with subtypes:
   - `CastRain` — replenishes food supply
   - `SendPlague` — reduces population by a fixed percentage
   - `InspireDevout` — boosts tribe devotion
   - `CauseFamine` — drains food supply sharply
   - `BlessHarvest` — large, one-time food stockpile bonus
-- [ ] Each subtype carries a `favorCost: Int` property (spending `divineFavor` as a resource)
-- [ ] Extend `GameLoop.tick()` signature: `tick(currentState: WorldState, action: DivineAction? = null): WorldState`
-- [ ] Implement action-resolution logic inside `tick()` before the normal food/population step
-- [ ] Clamp `divineFavor` to [0, 100] after action cost is deducted
-- [ ] Unit tests: one test per `DivineAction` subtype covering stat deltas and favor deduction
+- [x] Each subtype carries a `favorCost: Int` property (spending `divineFavor` as a resource)
+- [x] Extend `GameLoop.tick()` signature: `tick(currentState: WorldState, action: DivineAction? = null): WorldState`
+- [x] Implement action-resolution logic inside `tick()` before the normal food/population step
+- [x] Clamp `divineFavor` to [0, 100] after action cost is deducted
+- [x] Unit tests: one test per `DivineAction` subtype covering stat deltas and favor deduction
 
 **Feature/ViewModel Layer (`/feature`)**
-- [ ] Add `applyDivineAction(action: DivineAction)` to `GameViewModel` — sets a pending action consumed on the next tick
-- [ ] Pass action down from `GameViewModel.triggerTick()` into `GameLoop.tick()`
+- [x] Add `applyDivineAction(action: DivineAction)` to `GameViewModel` — sets a pending action consumed on the next tick
+- [x] Pass action down from `GameViewModel.triggerTick()` into `GameLoop.tick()`
 
 **UI Layer (`/feature/dashboard`)**
-- [ ] Add a row of action buttons to `DashboardScreen` (one per `DivineAction` subtype)
-- [ ] Each button calls a stateless `onActionPressed: (DivineAction) -> Unit` callback — no state in the Composable
-- [ ] Disable buttons when `divineFavor` is insufficient (derived from `worldState`)
+- [x] Add a row of action buttons to `DashboardScreen` (one per `DivineAction` subtype)
+- [x] Each button calls a stateless `onActionPressed: (DivineAction) -> Unit` callback — no state in the Composable
+- [x] Disable buttons when `divineFavor` is insufficient (derived from `worldState`)
 
 ---
 
