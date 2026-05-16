@@ -15,12 +15,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.github.maskedkunisquat.projectecho.domain.model.DivineAction
 import com.github.maskedkunisquat.projectecho.domain.model.WorldState
 
 @Composable
 fun DashboardScreen(
     worldState: WorldState,
     onTickPressed: () -> Unit,
+    onActionPressed: (DivineAction) -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -40,6 +42,13 @@ fun DashboardScreen(
         StatRow(label = "Devotion", value = worldState.tribe.devotion.toString())
         StatRow(label = "Food Supply", value = worldState.tribe.foodSupply.toString())
 
+        HorizontalDivider()
+
+        ActionPanel(
+            divineFavor = worldState.divineFavor,
+            onActionPressed = onActionPressed,
+        )
+
         Spacer(modifier = Modifier.weight(1f))
 
         Button(
@@ -47,6 +56,72 @@ fun DashboardScreen(
             modifier = Modifier.align(Alignment.CenterHorizontally)
         ) {
             Text("Manual Tick")
+        }
+    }
+}
+
+@Composable
+private fun ActionPanel(
+    divineFavor: Int,
+    onActionPressed: (DivineAction) -> Unit,
+) {
+    val actions = listOf(
+        DivineAction.CastRain to "Cast Rain",
+        DivineAction.BlessHarvest to "Bless Harvest",
+        DivineAction.InspireDevout to "Inspire Devout",
+        DivineAction.CauseFamine to "Cause Famine",
+        DivineAction.SendPlague to "Send Plague",
+    )
+
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(text = "Divine Interventions", style = MaterialTheme.typography.titleMedium)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            actions.take(3).forEach { (action, label) ->
+                ActionButton(
+                    label = label,
+                    cost = action.favorCost,
+                    enabled = divineFavor >= action.favorCost,
+                    onClick = { onActionPressed(action) },
+                    modifier = Modifier.weight(1f),
+                )
+            }
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            actions.drop(3).forEach { (action, label) ->
+                ActionButton(
+                    label = label,
+                    cost = action.favorCost,
+                    enabled = divineFavor >= action.favorCost,
+                    onClick = { onActionPressed(action) },
+                    modifier = Modifier.weight(1f),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ActionButton(
+    label: String,
+    cost: Int,
+    enabled: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Button(
+        onClick = onClick,
+        enabled = enabled,
+        modifier = modifier,
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(text = label, style = MaterialTheme.typography.labelMedium)
+            Text(text = "($cost favor)", style = MaterialTheme.typography.labelSmall)
         }
     }
 }

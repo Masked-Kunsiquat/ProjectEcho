@@ -28,6 +28,7 @@ class MainActivity : ComponentActivity() {
                     DashboardScreen(
                         worldState = worldState,
                         onTickPressed = { viewModel.triggerTick() },
+                        onActionPressed = { viewModel.applyDivineAction(it) },
                         modifier = Modifier.padding(innerPadding)
                     )
                 }
