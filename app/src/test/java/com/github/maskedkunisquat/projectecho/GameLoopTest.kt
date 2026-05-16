@@ -34,9 +34,10 @@ class GameLoopTest {
         val result = tick(state)
 
         assertEquals(1L, result.worldTimeTick)
-        assertEquals(100, result.tribe.foodSupply)   // 200 - 100
-        assertEquals(102, result.tribe.population)   // (100 * 1.02).roundToInt()
-        assertEquals(51, result.tribe.devotion)      // 50 + 1
+        assertEquals(10, result.divineFavor)             // unchanged by no-action tick
+        assertEquals(100, result.tribe.foodSupply)       // 200 - 100
+        assertEquals(102, result.tribe.population)       // (100 * 1.02).roundToInt()
+        assertEquals(51, result.tribe.devotion)          // 50 + 1
     }
 
     @Test
@@ -46,52 +47,47 @@ class GameLoopTest {
         val result = tick(state)
 
         assertEquals(1L, result.worldTimeTick)
-        assertEquals(0, result.tribe.foodSupply)     // clamped to 0
-        assertEquals(95, result.tribe.population)    // (100 * 0.95).roundToInt()
-        assertEquals(15, result.tribe.devotion)      // 20 - 5
+        assertEquals(10, result.divineFavor)             // unchanged by no-action tick
+        assertEquals(0, result.tribe.foodSupply)         // clamped to 0
+        assertEquals(95, result.tribe.population)        // (100 * 0.95).roundToInt()
+        assertEquals(15, result.tribe.devotion)          // 20 - 5
     }
 
     // --- Phase 2: Divine Interventions ---
 
     @Test
     fun `CastRain - replenishes food and deducts favor`() {
-        // population=50, foodSupply=100, favor=20
-        // action: +50 food, -10 favor → foodSupply=150, favor=10
-        // normal tick: 150-50=100 food remaining (thriving)
         val state = stableState(population = 50, foodSupply = 100, divineFavor = 20)
 
         val result = tick(state, DivineAction.CastRain)
 
-        assertEquals(10, result.divineFavor)         // 20 - 10
-        assertEquals(100, result.tribe.foodSupply)   // (100+50) - 50
-        assertEquals(51, result.tribe.population)    // (50 * 1.02).roundToInt()
+        assertEquals(1L, result.worldTimeTick)
+        assertEquals(10, result.divineFavor)             // 20 - 10
+        assertEquals(100, result.tribe.foodSupply)       // (100+50) - 50
+        assertEquals(51, result.tribe.population)        // (50 * 1.02).roundToInt()
     }
 
     @Test
     fun `SendPlague - reduces population and deducts favor`() {
-        // population=100, foodSupply=300, favor=20
-        // action: pop * 0.8 = 80, favor=5
-        // normal tick: 300-80=220 food (thriving), pop = (80*1.02)=82
         val state = stableState(population = 100, foodSupply = 300, divineFavor = 20)
 
         val result = tick(state, DivineAction.SendPlague)
 
-        assertEquals(5, result.divineFavor)          // 20 - 15
-        assertEquals(82, result.tribe.population)    // (80 * 1.02).roundToInt()
-        assertEquals(220, result.tribe.foodSupply)   // 300 - 80
+        assertEquals(1L, result.worldTimeTick)
+        assertEquals(5, result.divineFavor)              // 20 - 15
+        assertEquals(82, result.tribe.population)        // (80 * 1.02).roundToInt()
+        assertEquals(220, result.tribe.foodSupply)       // 300 - 80
     }
 
     @Test
     fun `InspireDevout - boosts devotion and deducts favor`() {
-        // devotion=50, favor=20
-        // action: devotion=65, favor=12
-        // normal tick: thriving → devotion=66
         val state = stableState(devotion = 50, divineFavor = 20)
 
         val result = tick(state, DivineAction.InspireDevout)
 
-        assertEquals(12, result.divineFavor)         // 20 - 8
-        assertEquals(66, result.tribe.devotion)      // 50 + 15 (action) + 1 (thriving tick)
+        assertEquals(1L, result.worldTimeTick)
+        assertEquals(12, result.divineFavor)             // 20 - 8
+        assertEquals(66, result.tribe.devotion)          // 50 + 15 (action) + 1 (thriving tick)
     }
 
     @Test
@@ -100,20 +96,19 @@ class GameLoopTest {
 
         val result = tick(state, DivineAction.InspireDevout)
 
-        assertEquals(100, result.tribe.devotion)     // min(100, 90+15)=100, then +1 clamped to 100
+        assertEquals(1L, result.worldTimeTick)
+        assertEquals(100, result.tribe.devotion)         // min(100, 90+15)=100, then +1 clamped to 100
     }
 
     @Test
     fun `CauseFamine - drains food and deducts favor`() {
-        // foodSupply=200, favor=20
-        // action: food=120, favor=15
-        // normal tick: 120-50=70 (thriving)
         val state = stableState(population = 50, foodSupply = 200, divineFavor = 20)
 
         val result = tick(state, DivineAction.CauseFamine)
 
-        assertEquals(15, result.divineFavor)         // 20 - 5
-        assertEquals(70, result.tribe.foodSupply)    // (200-80) - 50
+        assertEquals(1L, result.worldTimeTick)
+        assertEquals(15, result.divineFavor)             // 20 - 5
+        assertEquals(70, result.tribe.foodSupply)        // (200-80) - 50
     }
 
     @Test
@@ -122,29 +117,39 @@ class GameLoopTest {
 
         val result = tick(state, DivineAction.CauseFamine)
 
-        // action: max(0, 30-80)=0; normal tick: 0-50<0 → starvation
-        assertEquals(0, result.tribe.foodSupply)
+        assertEquals(1L, result.worldTimeTick)
+        assertEquals(0, result.tribe.foodSupply)         // max(0, 30-80)=0; starvation tick keeps it 0
     }
 
     @Test
     fun `BlessHarvest - large food bonus and deducts favor`() {
-        // foodSupply=100, favor=30
-        // action: food=300, favor=10
-        // normal tick: 300-50=250 (thriving)
         val state = stableState(population = 50, foodSupply = 100, divineFavor = 30)
 
         val result = tick(state, DivineAction.BlessHarvest)
 
-        assertEquals(10, result.divineFavor)         // 30 - 20
-        assertEquals(250, result.tribe.foodSupply)   // (100+200) - 50
+        assertEquals(1L, result.worldTimeTick)
+        assertEquals(10, result.divineFavor)             // 30 - 20
+        assertEquals(250, result.tribe.foodSupply)       // (100+200) - 50
     }
 
     @Test
-    fun `favor clamped to zero when cost exceeds current favor`() {
-        val state = stableState(divineFavor = 3)
+    fun `action skipped when favor is insufficient`() {
+        val state = stableState(population = 50, foodSupply = 300, divineFavor = 3)
 
-        val result = tick(state, DivineAction.CastRain) // costs 10
+        val result = tick(state, DivineAction.CastRain)  // costs 10, player has 3
 
-        assertEquals(0, result.divineFavor)          // coerceIn(0, 100)
+        assertEquals(1L, result.worldTimeTick)
+        assertEquals(3, result.divineFavor)              // unchanged — action silently skipped
+        assertEquals(250, result.tribe.foodSupply)       // 300 - 50, no +50 from CastRain
+    }
+
+    @Test
+    fun `favor clamped to hundred when above max`() {
+        val state = stableState(divineFavor = 150)       // above the [0,100] range
+
+        val result = tick(state, DivineAction.CastRain)  // costs 10 → (150-10)=140 → coerceIn → 100
+
+        assertEquals(1L, result.worldTimeTick)
+        assertEquals(100, result.divineFavor)
     }
 }

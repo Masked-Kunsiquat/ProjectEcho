@@ -7,7 +7,7 @@ import kotlin.math.roundToInt
 fun tick(currentState: WorldState, action: DivineAction? = null): WorldState {
     var state = currentState
 
-    if (action != null) {
+    if (action != null && state.divineFavor >= action.favorCost) {
         val tribe = state.tribe
         val resolvedTribe = when (action) {
             DivineAction.CastRain -> tribe.copy(foodSupply = tribe.foodSupply + 50)
