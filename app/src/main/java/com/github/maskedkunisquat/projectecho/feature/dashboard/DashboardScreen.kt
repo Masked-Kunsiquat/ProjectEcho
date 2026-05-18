@@ -3,21 +3,34 @@ package com.github.maskedkunisquat.projectecho.feature.dashboard
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.github.maskedkunisquat.projectecho.domain.model.DivineAction
 import com.github.maskedkunisquat.projectecho.domain.model.WorldState
 
+/**
+ * Root screen composable that renders the full game view.
+ *
+ * Stateless — receives [worldState] and forwards player gestures upward via callbacks.
+ *
+ * @param worldState Current simulation snapshot to display.
+ * @param onTickPressed Called when the player presses the Manual Tick button.
+ * @param onActionPressed Called when the player selects a divine action.
+ * @param modifier Layout modifier forwarded to the root column.
+ */
 @Composable
 fun DashboardScreen(
     worldState: WorldState,
@@ -49,7 +62,14 @@ fun DashboardScreen(
             onActionPressed = onActionPressed,
         )
 
-        Spacer(modifier = Modifier.weight(1f))
+        HorizontalDivider()
+
+        Text(text = "Chronicle", style = MaterialTheme.typography.titleMedium)
+
+        HistoryLedger(
+            entries = worldState.eventHistory,
+            modifier = Modifier.weight(1f),
+        )
 
         Button(
             onClick = onTickPressed,
@@ -60,6 +80,50 @@ fun DashboardScreen(
     }
 }
 
+/**
+ * Scrollable Chronicle list showing event messages newest-first.
+ *
+ * Automatically snaps to the top whenever a new entry arrives.
+ *
+ * @param entries Ordered event messages from [WorldState.eventHistory].
+ */
+@Composable
+private fun HistoryLedger(
+    entries: List<String>,
+    modifier: Modifier = Modifier,
+) {
+    val listState = rememberLazyListState()
+
+    LaunchedEffect(entries.size) {
+        if (entries.isNotEmpty()) {
+            listState.animateScrollToItem(0)
+        }
+    }
+
+    LazyColumn(
+        state = listState,
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        items(entries.asReversed()) { entry ->
+            Text(
+                text = entry,
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(vertical = 2.dp),
+            )
+            HorizontalDivider()
+        }
+    }
+}
+
+/**
+ * Grid of divine action buttons arranged in two rows.
+ *
+ * Buttons are disabled when [divineFavor] is below the action's favor cost.
+ *
+ * @param divineFavor Player's current favor, used to enable or disable each button.
+ * @param onActionPressed Forwarded to each button; receives the selected [DivineAction].
+ */
 @Composable
 private fun ActionPanel(
     divineFavor: Int,
@@ -106,6 +170,14 @@ private fun ActionPanel(
     }
 }
 
+/**
+ * Single divine action button showing the action name and its favor cost.
+ *
+ * @param label Human-readable action name displayed as the button title.
+ * @param cost Favor cost shown beneath the label.
+ * @param enabled Whether the player currently has enough favor to activate this action.
+ * @param onClick Invoked when the button is tapped.
+ */
 @Composable
 private fun ActionButton(
     label: String,
@@ -126,6 +198,12 @@ private fun ActionButton(
     }
 }
 
+/**
+ * Single-row label-value pair for displaying a game stat.
+ *
+ * @param label Stat name, left-aligned.
+ * @param value Stat value, right-aligned.
+ */
 @Composable
 private fun StatRow(label: String, value: String) {
     Row(
