@@ -7,7 +7,11 @@ import com.github.maskedkunisquat.projectecho.domain.repository.WorldStateReposi
 class GameViewModelFactory(
     private val repository: WorldStateRepository,
 ) : ViewModelProvider.Factory {
-    @Suppress("UNCHECKED_CAST")
-    override fun <T : ViewModel> create(modelClass: Class<T>): T =
-        GameViewModel(repository) as T
+    override fun <T : ViewModel> create(modelClass: Class<T>): T {
+        if (!modelClass.isAssignableFrom(GameViewModel::class.java)) {
+            throw IllegalArgumentException("Unknown ViewModel class: ${modelClass.name}")
+        }
+        @Suppress("UNCHECKED_CAST")
+        return GameViewModel(repository) as T
+    }
 }

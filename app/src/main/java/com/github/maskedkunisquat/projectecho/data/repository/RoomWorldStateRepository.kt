@@ -15,5 +15,7 @@ class RoomWorldStateRepository(private val dao: WorldStateDao) : WorldStateRepos
     }
 
     override suspend fun load(): WorldState? =
-        dao.load()?.stateJson?.let { json.decodeFromString<WorldState>(it) }
+        dao.load()?.stateJson?.let { raw ->
+            runCatching { json.decodeFromString<WorldState>(raw) }.getOrNull()
+        }
 }
