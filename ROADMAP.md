@@ -72,28 +72,28 @@ A lightweight, text-and-UI-driven God Simulator built natively in Android with p
 
 ---
 
-## Phase 4: Local Persistence
+## Phase 4: Local Persistence ✅ COMPLETED
 
 > Seamless save: Room SQLite auto-saves a serialized `WorldState` snapshot so the player never loses progress when the app backgrounds.
 
 **Dependencies**
-- [ ] Add `androidx.room:room-runtime`, `androidx.room:room-ktx`, and `androidx.room:room-compiler` (KSP) to `app/build.gradle.kts`
-- [ ] Add `org.jetbrains.kotlinx:kotlinx-serialization-json` for `WorldState` ↔ JSON conversion
+- [x] Add `androidx.room:room-runtime`, `androidx.room:room-ktx`, and `androidx.room:room-compiler` (KSP) to `app/build.gradle.kts`
+- [x] Add `org.jetbrains.kotlinx:kotlinx-serialization-json` for `WorldState` ↔ JSON conversion (was already present)
 
 **Domain Layer (`/domain`)**
-- [ ] Define `WorldStateRepository` interface in `domain/` — `suspend fun save(state: WorldState)` and `suspend fun load(): WorldState?`
+- [x] Define `WorldStateRepository` interface in `domain/repository/` — `suspend fun save(state: WorldState)` and `suspend fun load(): WorldState?`
 
 **Data/Persistence Layer (`/data`)**
-- [ ] Create `WorldStateEntity` Room `@Entity` with a single-row primary key and a `stateJson: String` column
-- [ ] Define `WorldStateDao` with `@Upsert` and `@Query("SELECT * FROM world_state LIMIT 1")`
-- [ ] Build `AppDatabase` (`@Database`) in `data/db/AppDatabase.kt`
-- [ ] Implement `RoomWorldStateRepository` satisfying the `WorldStateRepository` interface — serializes `WorldState` to/from JSON
+- [x] Create `WorldStateEntity` Room `@Entity` with a single-row primary key and a `stateJson: String` column
+- [x] Define `WorldStateDao` with `@Upsert` and `@Query("SELECT * FROM world_state LIMIT 1")`
+- [x] Build `AppDatabase` (`@Database`) in `data/db/AppDatabase.kt`
+- [x] Implement `RoomWorldStateRepository` satisfying the `WorldStateRepository` interface — serializes `WorldState` to/from JSON
 
 **Feature/ViewModel Layer (`/feature`)**
-- [ ] Inject `WorldStateRepository` into `GameViewModel`
-- [ ] On init: call `repository.load()` on the IO dispatcher; use saved state if present, else default
-- [ ] After every `triggerTick()`: call `repository.save(newState)` on the IO dispatcher (fire-and-forget, non-blocking)
-- [ ] Handle `onCleared()` to flush any pending save
+- [x] Inject `WorldStateRepository` into `GameViewModel` via constructor + `GameViewModelFactory`
+- [x] On init: call `repository.load()` on the IO dispatcher; use saved state if present, else default
+- [x] After every `triggerTick()`: call `repository.save(newState)` on the IO dispatcher (fire-and-forget, non-blocking)
+- [x] Handle `onCleared()` to flush any pending save
 
 ---
 
