@@ -2,10 +2,12 @@ package com.github.maskedkunisquat.projectecho.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-val Purple80 = Color(0xFFD0BCFF)
-val PurpleGrey80 = Color(0xFFCCC2DC)
-val Pink80 = Color(0xFFEFB8C8)
-
-val Purple40 = Color(0xFF6650a4)
-val PurpleGrey40 = Color(0xFF625b71)
-val Pink40 = Color(0xFF7D5260)
+val EchoBackground     = Color(0xFF0F0F0F)
+val EchoSurface        = Color(0xFF1A1A1A)
+val EchoSurfaceVariant = Color(0xFF252525)
+val EchoAmber          = Color(0xFFFFB300)
+val EchoAmberDim       = Color(0xFFCC8C00)
+val EchoGold           = Color(0xFFFFD54F)
+val EchoOnBackground   = Color(0xFFE8DCC8)
+val EchoOnSurface      = Color(0xFFD4C5A9)
+val EchoOnSurfaceMuted = Color(0xFF7A6E5F)
