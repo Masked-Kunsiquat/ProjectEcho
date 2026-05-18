@@ -20,6 +20,12 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
+/**
+ * Application entry point.
+ *
+ * Loads `assets/events.json` on a background thread at startup and forwards the parsed
+ * events to [GameViewModel]. Then sets up the full-screen Compose UI.
+ */
 class MainActivity : ComponentActivity() {
     private val viewModel: GameViewModel by viewModels()
 

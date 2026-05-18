@@ -5,6 +5,22 @@ import com.github.maskedkunisquat.projectecho.domain.model.SimEvent
 import com.github.maskedkunisquat.projectecho.domain.model.WorldState
 import kotlin.math.roundToInt
 
+/**
+ * Advances the simulation by one tick and returns the next [WorldState].
+ *
+ * The tick runs in three sequential phases:
+ * 1. **Divine action** — if [action] is provided and the player has enough favor, apply its effect immediately.
+ * 2. **Survival simulation** — the tribe consumes one food unit per population member.
+ *    - Starving (`newFood < 0`): population shrinks by 5% (`× 0.95`), devotion drops by 5.
+ *    - Fed (`newFood > 0`): population grows by 2% (`× 1.02`), devotion rises by 1.
+ *    - Exact break-even: food set to 0, no population or devotion change.
+ * 3. **Event evaluation** — any [SimEvent] whose trigger is satisfied by the updated state fires once and is recorded.
+ *
+ * @param currentState The simulation state before this tick.
+ * @param action Optional divine intervention to apply first. Silently skipped if favor is insufficient.
+ * @param events Full list of scripted events from JSON; already-fired IDs are filtered out internally.
+ * @return A new [WorldState] reflecting all changes produced this tick.
+ */
 fun tick(
     currentState: WorldState,
     action: DivineAction? = null,
