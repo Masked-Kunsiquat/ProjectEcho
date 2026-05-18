@@ -47,7 +47,7 @@ class EventParserTest {
 
         val events = EventParser.parse(json)
 
-        val effect = events[0].effect!!
+        val effect = requireNotNull(events[0].effect) { "effect field should be present in parsed event" }
         assertEquals("devotion", effect.stat)
         assertEquals(10, effect.delta)
     }

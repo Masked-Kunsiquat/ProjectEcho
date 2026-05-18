@@ -36,41 +36,41 @@ class GameViewModelTest {
     @Test
     fun `applyDivineAction queues action consumed on next manual tick`() = runTest(testDispatcher) {
         val viewModel = GameViewModel()
-        val initialFavor = viewModel.worldState.value.divineFavor
-
-        viewModel.applyDivineAction(DivineAction.CastRain)
-        viewModel.triggerTick()
-
-        assertEquals(initialFavor - DivineAction.CastRain.favorCost, viewModel.worldState.value.divineFavor)
-        assertEquals(1L, viewModel.worldState.value.worldTimeTick)
-
-        viewModel.viewModelScope.cancel()
+        try {
+            val initialFavor = viewModel.worldState.value.divineFavor
+            viewModel.applyDivineAction(DivineAction.CastRain)
+            viewModel.triggerTick()
+            assertEquals(initialFavor - DivineAction.CastRain.favorCost, viewModel.worldState.value.divineFavor)
+            assertEquals(1L, viewModel.worldState.value.worldTimeTick)
+        } finally {
+            viewModel.viewModelScope.cancel()
+        }
     }
 
     @Test
     fun `pending action is consumed after one tick - second tick has no action`() = runTest(testDispatcher) {
         val viewModel = GameViewModel()
-        val initialFavor = viewModel.worldState.value.divineFavor
-
-        viewModel.applyDivineAction(DivineAction.CastRain)
-        viewModel.triggerTick()  // consumes action, favor drops by favorCost
-        viewModel.triggerTick()  // no pending action, favor unchanged
-
-        assertEquals(initialFavor - DivineAction.CastRain.favorCost, viewModel.worldState.value.divineFavor)
-        assertEquals(2L, viewModel.worldState.value.worldTimeTick)
-
-        viewModel.viewModelScope.cancel()
+        try {
+            val initialFavor = viewModel.worldState.value.divineFavor
+            viewModel.applyDivineAction(DivineAction.CastRain)
+            viewModel.triggerTick()  // consumes action, favor drops by favorCost
+            viewModel.triggerTick()  // no pending action, favor unchanged
+            assertEquals(initialFavor - DivineAction.CastRain.favorCost, viewModel.worldState.value.divineFavor)
+            assertEquals(2L, viewModel.worldState.value.worldTimeTick)
+        } finally {
+            viewModel.viewModelScope.cancel()
+        }
     }
 
     @Test
     fun `auto tick fires after 2 second delay`() = runTest(testDispatcher) {
         val viewModel = GameViewModel()
-        assertEquals(0L, viewModel.worldState.value.worldTimeTick)
-
-        advanceTimeBy(2_001L)
-
-        assertEquals(1L, viewModel.worldState.value.worldTimeTick)
-
-        viewModel.viewModelScope.cancel()
+        try {
+            assertEquals(0L, viewModel.worldState.value.worldTimeTick)
+            advanceTimeBy(2_001L)
+            assertEquals(1L, viewModel.worldState.value.worldTimeTick)
+        } finally {
+            viewModel.viewModelScope.cancel()
+        }
     }
 }

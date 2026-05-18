@@ -29,8 +29,11 @@ class MainActivity : ComponentActivity() {
 
         lifecycleScope.launch {
             val events = withContext(Dispatchers.IO) {
-                val json = assets.open("events.json").bufferedReader().readText()
-                EventParser.parse(json)
+                runCatching {
+                    assets.open("events.json").bufferedReader().use { reader ->
+                        EventParser.parse(reader.readText())
+                    }
+                }.getOrDefault(emptyList())
             }
             viewModel.setSimEvents(events)
         }

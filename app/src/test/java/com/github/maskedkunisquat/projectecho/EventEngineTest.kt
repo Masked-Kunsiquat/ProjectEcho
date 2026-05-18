@@ -65,8 +65,8 @@ class EventEngineTest {
     @Test
     fun `lte operator fires when value is below threshold`() {
         val events = listOf(event("favor_low", "divineFavor", "lte", 10))
-        val result = EventEngine.evaluate(state(divineFavor = 5), events)
-        assertEquals(1, result.size)
+        assertEquals(1, EventEngine.evaluate(state(divineFavor = 5), events).size)
+        assertEquals(1, EventEngine.evaluate(state(divineFavor = 10), events).size)
     }
 
     @Test
