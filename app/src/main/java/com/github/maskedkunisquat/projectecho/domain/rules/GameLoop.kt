@@ -1,10 +1,15 @@
 package com.github.maskedkunisquat.projectecho.domain.rules
 
 import com.github.maskedkunisquat.projectecho.domain.model.DivineAction
+import com.github.maskedkunisquat.projectecho.domain.model.SimEvent
 import com.github.maskedkunisquat.projectecho.domain.model.WorldState
 import kotlin.math.roundToInt
 
-fun tick(currentState: WorldState, action: DivineAction? = null): WorldState {
+fun tick(
+    currentState: WorldState,
+    action: DivineAction? = null,
+    events: List<SimEvent> = emptyList(),
+): WorldState {
     var state = currentState
 
     if (action != null && state.divineFavor >= action.favorCost) {
@@ -39,8 +44,20 @@ fun tick(currentState: WorldState, action: DivineAction? = null): WorldState {
         else -> tribe.copy(foodSupply = 0)
     }
 
-    return state.copy(
+    val postTickState = state.copy(
         worldTimeTick = state.worldTimeTick + 1,
         tribe = updatedTribe,
     )
+
+    val unfiredEvents = events.filter { it.id !in postTickState.firedEventIds }
+    val triggered = EventEngine.evaluate(postTickState, unfiredEvents)
+
+    return if (triggered.isEmpty()) {
+        postTickState
+    } else {
+        postTickState.copy(
+            eventHistory = postTickState.eventHistory + triggered.map { it.text },
+            firedEventIds = postTickState.firedEventIds + triggered.map { it.id },
+        )
+    }
 }

@@ -11,9 +11,14 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.lifecycleScope
+import com.github.maskedkunisquat.projectecho.domain.rules.EventParser
 import com.github.maskedkunisquat.projectecho.feature.dashboard.DashboardScreen
 import com.github.maskedkunisquat.projectecho.feature.dashboard.GameViewModel
 import com.github.maskedkunisquat.projectecho.ui.theme.ProjectEchoTheme
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class MainActivity : ComponentActivity() {
     private val viewModel: GameViewModel by viewModels()
@@ -21,6 +26,15 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        lifecycleScope.launch {
+            val events = withContext(Dispatchers.IO) {
+                val json = assets.open("events.json").bufferedReader().readText()
+                EventParser.parse(json)
+            }
+            viewModel.setSimEvents(events)
+        }
+
         setContent {
             ProjectEchoTheme {
                 val worldState by viewModel.worldState.collectAsState()

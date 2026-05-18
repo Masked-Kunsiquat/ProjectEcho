@@ -3,6 +3,7 @@ package com.github.maskedkunisquat.projectecho.feature.dashboard
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.github.maskedkunisquat.projectecho.domain.model.DivineAction
+import com.github.maskedkunisquat.projectecho.domain.model.SimEvent
 import com.github.maskedkunisquat.projectecho.domain.model.Tribe
 import com.github.maskedkunisquat.projectecho.domain.model.WorldState
 import com.github.maskedkunisquat.projectecho.domain.rules.tick
@@ -30,6 +31,9 @@ class GameViewModel : ViewModel() {
 
     private var pendingAction: DivineAction? = null
 
+    @Volatile
+    private var simEvents: List<SimEvent> = emptyList()
+
     init {
         viewModelScope.launch {
             while (true) {
@@ -39,6 +43,10 @@ class GameViewModel : ViewModel() {
         }
     }
 
+    fun setSimEvents(events: List<SimEvent>) {
+        simEvents = events
+    }
+
     fun applyDivineAction(action: DivineAction) {
         pendingAction = action
     }
@@ -46,6 +54,6 @@ class GameViewModel : ViewModel() {
     fun triggerTick() {
         val action = pendingAction
         pendingAction = null
-        _worldState.value = tick(_worldState.value, action)
+        _worldState.value = tick(_worldState.value, action, simEvents)
     }
 }

@@ -3,15 +3,18 @@ package com.github.maskedkunisquat.projectecho.feature.dashboard
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -49,13 +52,49 @@ fun DashboardScreen(
             onActionPressed = onActionPressed,
         )
 
-        Spacer(modifier = Modifier.weight(1f))
+        HorizontalDivider()
+
+        Text(text = "Chronicle", style = MaterialTheme.typography.titleMedium)
+
+        HistoryLedger(
+            entries = worldState.eventHistory,
+            modifier = Modifier.weight(1f),
+        )
 
         Button(
             onClick = onTickPressed,
             modifier = Modifier.align(Alignment.CenterHorizontally)
         ) {
             Text("Manual Tick")
+        }
+    }
+}
+
+@Composable
+private fun HistoryLedger(
+    entries: List<String>,
+    modifier: Modifier = Modifier,
+) {
+    val listState = rememberLazyListState()
+
+    LaunchedEffect(entries.size) {
+        if (entries.isNotEmpty()) {
+            listState.animateScrollToItem(0)
+        }
+    }
+
+    LazyColumn(
+        state = listState,
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        items(entries.asReversed()) { entry ->
+            Text(
+                text = entry,
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(vertical = 2.dp),
+            )
+            HorizontalDivider()
         }
     }
 }

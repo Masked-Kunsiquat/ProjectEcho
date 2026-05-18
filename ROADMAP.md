@@ -46,29 +46,29 @@ A lightweight, text-and-UI-driven God Simulator built natively in Android with p
 
 ---
 
-## Phase 3: The Data-Driven Event Engine
+## Phase 3: The Data-Driven Event Engine ✅ COMPLETED
 
 > Reactive narrative: a JSON-backed parser triggers contextual text events into a scrollable history ledger based on live tribe stats.
 
 **JSON Schema & Assets**
-- [ ] Design `SimEvent` schema: `{ "id", "trigger": { "stat", "operator", "threshold" }, "text", "effect": { "stat", "delta" } }`
-- [ ] Create `app/src/main/assets/events.json` with an initial set of at least 10 events (famine warnings, devotion surges, population milestones, etc.)
+- [x] Design `SimEvent` schema: `{ "id", "trigger": { "stat", "operator", "threshold" }, "text", "effect": { "stat", "delta" } }`
+- [x] Create `app/src/main/assets/events.json` with 13 events (famine warnings, devotion surges, population milestones, divine favor extremes)
 
 **Domain Layer (`/domain`)**
-- [ ] Define `SimEvent` data class in `domain/model/SimEvent.kt` mirroring the JSON schema
-- [ ] Build `EventParser` in `domain/rules/EventParser.kt` — reads raw JSON string, returns `List<SimEvent>` (pure Kotlin, no Android imports)
-- [ ] Build `EventEngine` in `domain/rules/EventEngine.kt` — evaluates each event's trigger condition against a `WorldState` and returns triggered event texts
-- [ ] Add `eventHistory: List<String>` field to `WorldState`
-- [ ] Call `EventEngine.evaluate(state, events)` inside `GameLoop.tick()` and append results to `eventHistory`
-- [ ] Unit tests: `EventParser` round-trip test + `EventEngine` trigger evaluation tests
+- [x] Define `SimEvent` data class in `domain/model/SimEvent.kt` mirroring the JSON schema
+- [x] Build `EventParser` in `domain/rules/EventParser.kt` — reads raw JSON string, returns `List<SimEvent>` (pure Kotlin, no Android imports)
+- [x] Build `EventEngine` in `domain/rules/EventEngine.kt` — evaluates each event's trigger condition against a `WorldState` and returns triggered events
+- [x] Add `eventHistory: List<String>` and `firedEventIds: Set<String>` fields to `WorldState`
+- [x] Call `EventEngine.evaluate(state, events)` inside `GameLoop.tick()` and append results to `eventHistory`; track fired IDs so each event fires at most once
+- [x] Unit tests: `EventParserTest` (5 tests: round-trip, effect, multiple, empty, unknown keys) + `EventEngineTest` (10 tests: all operators, unknown stat/op, multi-match)
 
 **Feature/ViewModel Layer (`/feature`)**
-- [ ] Load `events.json` from `assets/` in `GameViewModel` (using `context`) and pass parsed list to `GameLoop`
-- [ ] `GameViewModel` constructor accepts `Application` context (switch to `AndroidViewModel`)
+- [x] Load `events.json` from `assets/` in `MainActivity` on IO dispatcher; inject into `GameViewModel` via `setSimEvents()`
+- [x] `GameViewModel` exposes `setSimEvents(events: List<SimEvent>)` and forwards list to `GameLoop.tick()`
 
 **UI Layer (`/feature/dashboard`)**
-- [ ] Add a `HistoryLedger` Composable to `DashboardScreen` — a `LazyColumn` rendering `eventHistory` entries in reverse-chronological order
-- [ ] Auto-scroll ledger to the newest entry on each state update
+- [x] Add `HistoryLedger` Composable to `DashboardScreen` — a `LazyColumn` rendering `eventHistory` entries in reverse-chronological order
+- [x] Auto-scroll ledger to the newest entry on each state update
 
 ---
 
