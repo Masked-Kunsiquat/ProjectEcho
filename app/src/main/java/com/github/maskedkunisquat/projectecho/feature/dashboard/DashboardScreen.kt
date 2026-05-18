@@ -21,6 +21,16 @@ import androidx.compose.ui.unit.dp
 import com.github.maskedkunisquat.projectecho.domain.model.DivineAction
 import com.github.maskedkunisquat.projectecho.domain.model.WorldState
 
+/**
+ * Root screen composable that renders the full game view.
+ *
+ * Stateless — receives [worldState] and forwards player gestures upward via callbacks.
+ *
+ * @param worldState Current simulation snapshot to display.
+ * @param onTickPressed Called when the player presses the Manual Tick button.
+ * @param onActionPressed Called when the player selects a divine action.
+ * @param modifier Layout modifier forwarded to the root column.
+ */
 @Composable
 fun DashboardScreen(
     worldState: WorldState,
@@ -70,6 +80,13 @@ fun DashboardScreen(
     }
 }
 
+/**
+ * Scrollable Chronicle list showing event messages newest-first.
+ *
+ * Automatically snaps to the top whenever a new entry arrives.
+ *
+ * @param entries Ordered event messages from [WorldState.eventHistory].
+ */
 @Composable
 private fun HistoryLedger(
     entries: List<String>,
@@ -99,6 +116,14 @@ private fun HistoryLedger(
     }
 }
 
+/**
+ * Grid of divine action buttons arranged in two rows.
+ *
+ * Buttons are disabled when [divineFavor] is below the action's favor cost.
+ *
+ * @param divineFavor Player's current favor, used to enable or disable each button.
+ * @param onActionPressed Forwarded to each button; receives the selected [DivineAction].
+ */
 @Composable
 private fun ActionPanel(
     divineFavor: Int,
@@ -145,6 +170,14 @@ private fun ActionPanel(
     }
 }
 
+/**
+ * Single divine action button showing the action name and its favor cost.
+ *
+ * @param label Human-readable action name displayed as the button title.
+ * @param cost Favor cost shown beneath the label.
+ * @param enabled Whether the player currently has enough favor to activate this action.
+ * @param onClick Invoked when the button is tapped.
+ */
 @Composable
 private fun ActionButton(
     label: String,
@@ -165,6 +198,12 @@ private fun ActionButton(
     }
 }
 
+/**
+ * Single-row label-value pair for displaying a game stat.
+ *
+ * @param label Stat name, left-aligned.
+ * @param value Stat value, right-aligned.
+ */
 @Composable
 private fun StatRow(label: String, value: String) {
     Row(
