@@ -1,7 +1,7 @@
 package com.github.maskedkunisquat.projectecho.feature.dashboard
 
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -15,10 +15,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.tooling.preview.Preview
@@ -45,26 +42,25 @@ internal fun HistoryLedger(
         verticalArrangement = Arrangement.spacedBy(0.dp),
     ) {
         itemsIndexed(reversed, key = { index, _ -> entries.size - 1 - index }) { index, entry ->
-            LedgerEntry(text = entry, isNew = index == 0)
+            LedgerEntry(text = entry, appear = index != 0)
             HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
         }
     }
 }
 
 @Composable
-private fun LedgerEntry(text: String, isNew: Boolean) {
-    var visible by remember { mutableStateOf(!isNew) }
-    LaunchedEffect(Unit) { visible = true }
-    val alpha by animateFloatAsState(
-        targetValue = if (visible) 1f else 0f,
-        animationSpec = tween(durationMillis = 700, easing = FastOutSlowInEasing),
-        label = "entry_fade",
-    )
+private fun LedgerEntry(text: String, appear: Boolean) {
+    // appear=false (newest entry): Animatable starts at 0 and animates to 1.
+    // appear=true  (older entries): Animatable starts at 1, animateTo(1) is a no-op.
+    val alpha = remember { Animatable(if (appear) 1f else 0f) }
+    LaunchedEffect(Unit) {
+        alpha.animateTo(1f, animationSpec = tween(durationMillis = 700, easing = FastOutSlowInEasing))
+    }
     Text(
         text = text,
         style = MaterialTheme.typography.bodySmall,
         modifier = Modifier
-            .graphicsLayer { this.alpha = alpha }
+            .graphicsLayer { this.alpha = alpha.value }
             .padding(vertical = 4.dp),
     )
 }
