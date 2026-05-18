@@ -1,10 +1,28 @@
 package com.github.maskedkunisquat.projectecho.domain.rules
 
+import com.github.maskedkunisquat.projectecho.domain.model.DivineAction
 import com.github.maskedkunisquat.projectecho.domain.model.WorldState
 import kotlin.math.roundToInt
 
-fun tick(currentState: WorldState): WorldState {
-    val tribe = currentState.tribe
+fun tick(currentState: WorldState, action: DivineAction? = null): WorldState {
+    var state = currentState
+
+    if (action != null && state.divineFavor >= action.favorCost) {
+        val tribe = state.tribe
+        val resolvedTribe = when (action) {
+            DivineAction.CastRain -> tribe.copy(foodSupply = tribe.foodSupply + 50)
+            DivineAction.SendPlague -> tribe.copy(population = (tribe.population * 0.8).roundToInt())
+            DivineAction.InspireDevout -> tribe.copy(devotion = minOf(100, tribe.devotion + 15))
+            DivineAction.CauseFamine -> tribe.copy(foodSupply = maxOf(0, tribe.foodSupply - 80))
+            DivineAction.BlessHarvest -> tribe.copy(foodSupply = tribe.foodSupply + 200)
+        }
+        state = state.copy(
+            tribe = resolvedTribe,
+            divineFavor = (state.divineFavor - action.favorCost).coerceIn(0, 100),
+        )
+    }
+
+    val tribe = state.tribe
     val newFoodSupply = tribe.foodSupply - tribe.population
 
     val updatedTribe = when {
@@ -21,8 +39,8 @@ fun tick(currentState: WorldState): WorldState {
         else -> tribe.copy(foodSupply = 0)
     }
 
-    return currentState.copy(
-        worldTimeTick = currentState.worldTimeTick + 1,
+    return state.copy(
+        worldTimeTick = state.worldTimeTick + 1,
         tribe = updatedTribe,
     )
 }

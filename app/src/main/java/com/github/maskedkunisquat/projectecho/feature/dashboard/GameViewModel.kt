@@ -2,6 +2,7 @@ package com.github.maskedkunisquat.projectecho.feature.dashboard
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.github.maskedkunisquat.projectecho.domain.model.DivineAction
 import com.github.maskedkunisquat.projectecho.domain.model.Tribe
 import com.github.maskedkunisquat.projectecho.domain.model.WorldState
 import com.github.maskedkunisquat.projectecho.domain.rules.tick
@@ -16,7 +17,7 @@ class GameViewModel : ViewModel() {
     private val _worldState = MutableStateFlow(
         WorldState(
             worldTimeTick = 0L,
-            divineFavor = 10,
+            divineFavor = 50,
             tribe = Tribe(
                 name = "The Iron-Wrought",
                 population = 100,
@@ -27,6 +28,8 @@ class GameViewModel : ViewModel() {
     )
     val worldState: StateFlow<WorldState> = _worldState.asStateFlow()
 
+    private var pendingAction: DivineAction? = null
+
     init {
         viewModelScope.launch {
             while (true) {
@@ -36,7 +39,13 @@ class GameViewModel : ViewModel() {
         }
     }
 
+    fun applyDivineAction(action: DivineAction) {
+        pendingAction = action
+    }
+
     fun triggerTick() {
-        _worldState.value = tick(_worldState.value)
+        val action = pendingAction
+        pendingAction = null
+        _worldState.value = tick(_worldState.value, action)
     }
 }
