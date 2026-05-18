@@ -12,9 +12,12 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.lifecycleScope
+import com.github.maskedkunisquat.projectecho.data.db.AppDatabase
+import com.github.maskedkunisquat.projectecho.data.repository.RoomWorldStateRepository
 import com.github.maskedkunisquat.projectecho.domain.rules.EventParser
 import com.github.maskedkunisquat.projectecho.feature.dashboard.DashboardScreen
 import com.github.maskedkunisquat.projectecho.feature.dashboard.GameViewModel
+import com.github.maskedkunisquat.projectecho.feature.dashboard.GameViewModelFactory
 import com.github.maskedkunisquat.projectecho.ui.theme.ProjectEchoTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -23,11 +26,18 @@ import kotlinx.coroutines.withContext
 /**
  * Application entry point.
  *
- * Loads `assets/events.json` on a background thread at startup and forwards the parsed
- * events to [GameViewModel]. Then sets up the full-screen Compose UI.
+ * Builds the Room database and injects the repository into [GameViewModel] via
+ * [GameViewModelFactory]. Loads `assets/events.json` on a background thread and
+ * forwards the parsed events to the ViewModel.
  */
 class MainActivity : ComponentActivity() {
-    private val viewModel: GameViewModel by viewModels()
+    private val viewModel: GameViewModel by viewModels {
+        GameViewModelFactory(
+            RoomWorldStateRepository(
+                AppDatabase.getInstance(applicationContext).worldStateDao()
+            )
+        )
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

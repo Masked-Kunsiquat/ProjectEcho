@@ -6,21 +6,24 @@ import com.github.maskedkunisquat.projectecho.domain.model.DivineAction
 import com.github.maskedkunisquat.projectecho.domain.model.SimEvent
 import com.github.maskedkunisquat.projectecho.domain.model.Tribe
 import com.github.maskedkunisquat.projectecho.domain.model.WorldState
+import com.github.maskedkunisquat.projectecho.domain.repository.WorldStateRepository
 import com.github.maskedkunisquat.projectecho.domain.rules.tick
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * Manages live game state and drives the simulation tick loop for the Dashboard.
  *
- * Exposes [worldState] as a read-only [StateFlow] the UI observes. The simulation
- * auto-advances every 2 seconds; the player can also queue a [DivineAction] via
- * [applyDivineAction] and manually advance via [triggerTick].
+ * On init, restores any persisted [WorldState] from [repository] before starting the
+ * auto-tick loop. Each tick saves the new state to [repository] as a fire-and-forget
+ * IO coroutine.
  */
-class GameViewModel : ViewModel() {
+class GameViewModel(private val repository: WorldStateRepository) : ViewModel() {
 
     private val _worldState = MutableStateFlow(
         WorldState(
@@ -44,6 +47,9 @@ class GameViewModel : ViewModel() {
 
     init {
         viewModelScope.launch {
+            // Restore saved state before the first tick fires.
+            withContext(Dispatchers.IO) { repository.load() }
+                ?.let { saved -> _worldState.value = saved }
             while (true) {
                 delay(2_000L)
                 triggerTick()
@@ -71,14 +77,21 @@ class GameViewModel : ViewModel() {
     }
 
     /**
-     * Immediately advances the simulation by one tick.
+     * Immediately advances the simulation by one tick and persists the result.
      *
-     * Consumes any pending [DivineAction], computes the next [WorldState], and emits it.
      * Called automatically every 2 seconds by the init loop and also by the Manual Tick button.
      */
     fun triggerTick() {
         val action = pendingAction
         pendingAction = null
-        _worldState.value = tick(_worldState.value, action, simEvents)
+        val newState = tick(_worldState.value, action, simEvents)
+        _worldState.value = newState
+        viewModelScope.launch(Dispatchers.IO) {
+            repository.save(newState)
+        }
+    }
+
+    override fun onCleared() {
+        super.onCleared() // cancels viewModelScope, ending the tick loop and any in-flight saves
     }
 }
