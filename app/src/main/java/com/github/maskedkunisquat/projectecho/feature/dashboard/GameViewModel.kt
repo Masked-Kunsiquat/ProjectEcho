@@ -52,7 +52,8 @@ class GameViewModel(
     init {
         viewModelScope.launch {
             // Restore saved state before the first tick fires.
-            withContext(ioDispatcher) { repository.load() }
+            runCatching { withContext(ioDispatcher) { repository.load() } }
+                .getOrNull()
                 ?.let { saved -> _worldState.value = saved }
             while (true) {
                 delay(2_000L)
@@ -91,7 +92,7 @@ class GameViewModel(
         val newState = tick(_worldState.value, action, simEvents)
         _worldState.value = newState
         viewModelScope.launch(ioDispatcher) {
-            repository.save(newState)
+            runCatching { repository.save(newState) }
         }
     }
 

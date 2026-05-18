@@ -20,8 +20,14 @@ import org.junit.Before
 import org.junit.Test
 
 private class FakeWorldStateRepository : WorldStateRepository {
-    override suspend fun save(state: WorldState) = Unit
-    override suspend fun load(): WorldState? = null
+    val savedStates = mutableListOf<WorldState>()
+    var loadCallCount = 0
+
+    override suspend fun save(state: WorldState) { savedStates += state }
+    override suspend fun load(): WorldState? {
+        loadCallCount++
+        return savedStates.lastOrNull()
+    }
 }
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -73,11 +79,16 @@ class GameViewModelTest {
 
     @Test
     fun `auto tick fires after 2 second delay`() = runTest(testDispatcher) {
-        val viewModel = GameViewModel(FakeWorldStateRepository(), testDispatcher)
+        val repo = FakeWorldStateRepository()
+        val viewModel = GameViewModel(repo, testDispatcher)
         try {
             assertEquals(0L, viewModel.worldState.value.worldTimeTick)
             advanceTimeBy(2_001L)
             assertEquals(1L, viewModel.worldState.value.worldTimeTick)
+            // Verify load() was called on init and save() was called after the tick
+            assertEquals(1, repo.loadCallCount)
+            assertEquals(1, repo.savedStates.size)
+            assertEquals(1L, repo.savedStates[0].worldTimeTick)
         } finally {
             viewModel.viewModelScope.cancel()
         }
