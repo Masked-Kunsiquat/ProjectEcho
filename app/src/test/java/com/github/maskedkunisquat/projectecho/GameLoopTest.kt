@@ -35,14 +35,15 @@ class GameLoopTest {
 
         assertEquals(1L, result.worldTimeTick)
         assertEquals(11, result.divineFavor)             // 10 + 1 regen (devotion 51 ≥ 40)
-        assertEquals(100, result.tribe.foodSupply)       // 200 - 100
+        assertEquals(180, result.tribe.foodSupply)       // 200 + (100*0.8=80) - 100
         assertEquals(102, result.tribe.population)       // (100 * 1.02).roundToInt()
         assertEquals(51, result.tribe.devotion)          // 50 + 1
     }
 
     @Test
     fun `starving tick - food runs out`() {
-        val state = stableState(population = 100, foodSupply = 50, devotion = 20, divineFavor = 10)
+        val state = stableState(population = 100, foodSupply = 0, devotion = 20, divineFavor = 10)
+        // 0 + (100*0.8=80) - 100 = -20 → starvation (with 80% farming, need foodSupply < 20 to starve)
 
         val result = tick(state)
 
@@ -63,7 +64,7 @@ class GameLoopTest {
 
         assertEquals(1L, result.worldTimeTick)
         assertEquals(11, result.divineFavor)             // 20 - 10 (CastRain) + 1 regen (devotion 51 ≥ 40)
-        assertEquals(100, result.tribe.foodSupply)       // (100+50) - 50
+        assertEquals(140, result.tribe.foodSupply)       // (100+50) + (50*0.8=40) - 50
         assertEquals(51, result.tribe.population)        // (50 * 1.02).roundToInt()
     }
 
@@ -76,7 +77,7 @@ class GameLoopTest {
         assertEquals(1L, result.worldTimeTick)
         assertEquals(6, result.divineFavor)              // 20 - 15 (SendPlague) + 1 regen (devotion 51 ≥ 40)
         assertEquals(82, result.tribe.population)        // (80 * 1.02).roundToInt()
-        assertEquals(220, result.tribe.foodSupply)       // 300 - 80
+        assertEquals(284, result.tribe.foodSupply)       // 300 + (80*0.8=64) - 80
     }
 
     @Test
@@ -108,7 +109,7 @@ class GameLoopTest {
 
         assertEquals(1L, result.worldTimeTick)
         assertEquals(16, result.divineFavor)             // 20 - 5 (CauseFamine) + 1 regen (devotion 51 ≥ 40)
-        assertEquals(70, result.tribe.foodSupply)        // (200-80) - 50
+        assertEquals(110, result.tribe.foodSupply)       // (200-80) + (50*0.8=40) - 50
     }
 
     @Test
@@ -129,7 +130,7 @@ class GameLoopTest {
 
         assertEquals(1L, result.worldTimeTick)
         assertEquals(11, result.divineFavor)             // 30 - 20 (BlessHarvest) + 1 regen (devotion 51 ≥ 40)
-        assertEquals(250, result.tribe.foodSupply)       // (100+200) - 50
+        assertEquals(290, result.tribe.foodSupply)       // (100+200) + (50*0.8=40) - 50
     }
 
     @Test
@@ -140,7 +141,7 @@ class GameLoopTest {
 
         assertEquals(1L, result.worldTimeTick)
         assertEquals(4, result.divineFavor)              // action skipped + 1 regen (devotion 51 ≥ 40)
-        assertEquals(250, result.tribe.foodSupply)       // 300 - 50, no +50 from CastRain
+        assertEquals(290, result.tribe.foodSupply)       // 300 + (50*0.8=40) - 50, no +50 from CastRain
     }
 
     @Test

@@ -10,7 +10,7 @@ import kotlin.math.roundToInt
  *
  * The tick runs in three sequential phases:
  * 1. **Divine action** — if [action] is provided and the player has enough favor, apply its effect immediately.
- * 2. **Survival simulation** — the tribe consumes one food unit per population member.
+ * 2. **Survival simulation** — the tribe farms 80% of what it consumes; net drain = 20% of population.
  *    - Starving (`newFood < 0`): population shrinks by 5% (`× 0.95`), devotion drops by 3.
  *    - Fed (`newFood > 0`): population grows by 2% (`× 1.02`), devotion rises by 1.
  *    - After survival: favor regens by 1 (capped at 100) when tribe devotion ≥ 40.
@@ -45,7 +45,8 @@ fun tick(
     }
 
     val tribe = state.tribe
-    val newFoodSupply = tribe.foodSupply - tribe.population
+    val farmed = (tribe.population * 0.8).roundToInt()
+    val newFoodSupply = tribe.foodSupply + farmed - tribe.population
 
     val updatedTribe = when {
         newFoodSupply < 0 -> tribe.copy(
