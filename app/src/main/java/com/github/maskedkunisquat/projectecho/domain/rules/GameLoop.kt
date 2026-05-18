@@ -10,9 +10,10 @@ import kotlin.math.roundToInt
  *
  * The tick runs in three sequential phases:
  * 1. **Divine action** — if [action] is provided and the player has enough favor, apply its effect immediately.
- * 2. **Survival simulation** — the tribe consumes one food unit per population member.
- *    - Starving (`newFood < 0`): population shrinks by 5% (`× 0.95`), devotion drops by 5.
+ * 2. **Survival simulation** — the tribe farms 80% of what it consumes; net drain = 20% of population.
+ *    - Starving (`newFood < 0`): population shrinks by 5% (`× 0.95`), devotion drops by 3.
  *    - Fed (`newFood > 0`): population grows by 2% (`× 1.02`), devotion rises by 1.
+ *    - After survival: favor regens by `devotion × 3 / 100` per tick (0 at devotion 0, up to 3 at devotion 100).
  *    - Exact break-even: food set to 0, no population or devotion change.
  * 3. **Event evaluation** — any [SimEvent] whose trigger is satisfied by the updated state fires once and is recorded.
  *
@@ -44,13 +45,14 @@ fun tick(
     }
 
     val tribe = state.tribe
-    val newFoodSupply = tribe.foodSupply - tribe.population
+    val farmed = (tribe.population * 0.8).roundToInt()
+    val newFoodSupply = tribe.foodSupply + farmed - tribe.population
 
     val updatedTribe = when {
         newFoodSupply < 0 -> tribe.copy(
             foodSupply = 0,
             population = (tribe.population * 0.95).roundToInt(),
-            devotion = maxOf(0, tribe.devotion - 5),
+            devotion = maxOf(0, tribe.devotion - 3),
         )
         newFoodSupply > 0 -> tribe.copy(
             foodSupply = newFoodSupply,
@@ -60,8 +62,12 @@ fun tick(
         else -> tribe.copy(foodSupply = 0)
     }
 
+    val regenAmount = updatedTribe.devotion * 3 / 100
+    val regenedFavor = minOf(100, state.divineFavor + regenAmount)
+
     val postTickState = state.copy(
         worldTimeTick = state.worldTimeTick + 1,
+        divineFavor = regenedFavor,
         tribe = updatedTribe,
     )
 

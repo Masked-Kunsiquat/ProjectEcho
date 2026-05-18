@@ -1,5 +1,7 @@
 package com.github.maskedkunisquat.projectecho.domain.model
 
+import kotlinx.serialization.Serializable
+
 /**
  * Immutable snapshot of the entire simulation at a single point in time.
  *
@@ -12,6 +14,7 @@ package com.github.maskedkunisquat.projectecho.domain.model
  * @property eventHistory Narrative messages shown in the Chronicle UI, ordered oldest-first.
  * @property firedEventIds IDs of [SimEvent]s that have already triggered; prevents any event from firing more than once.
  */
+@Serializable
 data class WorldState(
     val worldTimeTick: Long,
     val divineFavor: Int,

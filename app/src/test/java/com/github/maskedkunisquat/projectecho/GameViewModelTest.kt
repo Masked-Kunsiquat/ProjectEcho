@@ -2,6 +2,8 @@ package com.github.maskedkunisquat.projectecho
 
 import androidx.lifecycle.viewModelScope
 import com.github.maskedkunisquat.projectecho.domain.model.DivineAction
+import com.github.maskedkunisquat.projectecho.domain.model.WorldState
+import com.github.maskedkunisquat.projectecho.domain.repository.WorldStateRepository
 import com.github.maskedkunisquat.projectecho.feature.dashboard.GameViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -16,6 +18,17 @@ import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Test
+
+private class FakeWorldStateRepository : WorldStateRepository {
+    val savedStates = mutableListOf<WorldState>()
+    var loadCallCount = 0
+
+    override suspend fun save(state: WorldState) { savedStates += state }
+    override suspend fun load(): WorldState? {
+        loadCallCount++
+        return savedStates.lastOrNull()
+    }
+}
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class GameViewModelTest {
@@ -35,12 +48,13 @@ class GameViewModelTest {
 
     @Test
     fun `applyDivineAction queues action consumed on next manual tick`() = runTest(testDispatcher) {
-        val viewModel = GameViewModel()
+        val viewModel = GameViewModel(FakeWorldStateRepository(), testDispatcher)
         try {
             val initialFavor = viewModel.worldState.value.divineFavor
             viewModel.applyDivineAction(DivineAction.CastRain)
             viewModel.triggerTick()
-            assertEquals(initialFavor - DivineAction.CastRain.favorCost, viewModel.worldState.value.divineFavor)
+            // CastRain costs 10; devotion stays ≥ 40 so +1 regen fires on the same tick
+            assertEquals(initialFavor - DivineAction.CastRain.favorCost + 1, viewModel.worldState.value.divineFavor)
             assertEquals(1L, viewModel.worldState.value.worldTimeTick)
         } finally {
             viewModel.viewModelScope.cancel()
@@ -49,13 +63,14 @@ class GameViewModelTest {
 
     @Test
     fun `pending action is consumed after one tick - second tick has no action`() = runTest(testDispatcher) {
-        val viewModel = GameViewModel()
+        val viewModel = GameViewModel(FakeWorldStateRepository(), testDispatcher)
         try {
             val initialFavor = viewModel.worldState.value.divineFavor
             viewModel.applyDivineAction(DivineAction.CastRain)
-            viewModel.triggerTick()  // consumes action, favor drops by favorCost
-            viewModel.triggerTick()  // no pending action, favor unchanged
-            assertEquals(initialFavor - DivineAction.CastRain.favorCost, viewModel.worldState.value.divineFavor)
+            viewModel.triggerTick()  // consumes action: -10 favor, +1 regen
+            viewModel.triggerTick()  // no action: +1 regen only (proves CastRain was consumed once)
+            // Net: -10 (one cost) + 2 (two regen ticks)
+            assertEquals(initialFavor - DivineAction.CastRain.favorCost + 2, viewModel.worldState.value.divineFavor)
             assertEquals(2L, viewModel.worldState.value.worldTimeTick)
         } finally {
             viewModel.viewModelScope.cancel()
@@ -64,11 +79,16 @@ class GameViewModelTest {
 
     @Test
     fun `auto tick fires after 2 second delay`() = runTest(testDispatcher) {
-        val viewModel = GameViewModel()
+        val repo = FakeWorldStateRepository()
+        val viewModel = GameViewModel(repo, testDispatcher)
         try {
             assertEquals(0L, viewModel.worldState.value.worldTimeTick)
             advanceTimeBy(2_001L)
             assertEquals(1L, viewModel.worldState.value.worldTimeTick)
+            // Verify load() was called on init and save() was called after the tick
+            assertEquals(1, repo.loadCallCount)
+            assertEquals(1, repo.savedStates.size)
+            assertEquals(1L, repo.savedStates[0].worldTimeTick)
         } finally {
             viewModel.viewModelScope.cancel()
         }
