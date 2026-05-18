@@ -24,10 +24,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
@@ -44,6 +41,9 @@ fun DashboardScreen(
     onTickPressed: () -> Unit,
     onActionPressed: (DivineAction) -> Unit,
     snackbarHostState: SnackbarHostState,
+    isChronicleVisible: Boolean,
+    onShowChronicle: () -> Unit,
+    onDismissChronicle: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     // Show latest event as a snackbar whenever a new entry lands in the history.
@@ -57,11 +57,9 @@ fun DashboardScreen(
         }
     }
 
-    var showChronicle by remember { mutableStateOf(false) }
-
-    if (showChronicle) {
+    if (isChronicleVisible) {
         ModalBottomSheet(
-            onDismissRequest = { showChronicle = false },
+            onDismissRequest = onDismissChronicle,
             sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
             containerColor = MaterialTheme.colorScheme.surface,
         ) {
@@ -144,7 +142,7 @@ fun DashboardScreen(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             OutlinedButton(
-                onClick = { showChronicle = true },
+                onClick = onShowChronicle,
                 modifier = Modifier.weight(1f),
                 border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
             ) {
@@ -288,6 +286,9 @@ private fun DashboardScreenPreview() {
             onTickPressed = {},
             onActionPressed = {},
             snackbarHostState = remember { SnackbarHostState() },
+            isChronicleVisible = false,
+            onShowChronicle = {},
+            onDismissChronicle = {},
         )
     }
 }

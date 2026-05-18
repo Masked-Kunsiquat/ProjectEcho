@@ -102,7 +102,7 @@ A lightweight, text-and-UI-driven God Simulator built natively in Android with p
 > Immersive dashboard: a clean geometric Compose UI with a scrolling history ledger and a canvas-drawn tribal grid map.
 
 **Dashboard Layout Redesign**
-- [x] Replace flat stat list with a two-panel layout: stats panel (top) + history ledger (bottom, scrollable)
+- [x] Replace flat stat list with a two-panel layout: stats panel (top) + history ledger (Chronicle via ModalBottomSheet)
 - [x] Add `LinearProgressIndicator` bars for `devotion` and `divineFavor` beneath their numeric values
 - [x] Group Divine Intervention buttons into a visually distinct `ActionPanel` Composable
 - [x] Apply consistent 16 dp / 24 dp spacing grid throughout
@@ -114,7 +114,7 @@ A lightweight, text-and-UI-driven God Simulator built natively in Android with p
 
 **Tribal Grid Map (Canvas)**
 - [x] Create `TribalGridMap` Composable in `feature/dashboard/TribalGridMap.kt` using `Canvas`
-- [x] Draw a geometric hex or square grid; shade cells by population density derived from `WorldState`
+- [x] Draw a triangle-pair procedural map; shade cells by population density derived from `WorldState`
 - [x] No bitmaps — pure vector shapes and `drawPath` calls only
 
 **Color & Typography**

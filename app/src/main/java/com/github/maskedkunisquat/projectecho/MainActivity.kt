@@ -12,7 +12,9 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.lifecycleScope
 import com.github.maskedkunisquat.projectecho.data.db.AppDatabase
@@ -54,6 +56,7 @@ class MainActivity : ComponentActivity() {
             ProjectEchoTheme {
                 val worldState by viewModel.worldState.collectAsState()
                 val snackbarHostState = remember { SnackbarHostState() }
+                var isChronicleVisible by remember { mutableStateOf(false) }
 
                 Scaffold(
                     modifier = Modifier.fillMaxSize(),
@@ -64,6 +67,9 @@ class MainActivity : ComponentActivity() {
                         onTickPressed = { viewModel.triggerTick() },
                         onActionPressed = { viewModel.applyDivineAction(it) },
                         snackbarHostState = snackbarHostState,
+                        isChronicleVisible = isChronicleVisible,
+                        onShowChronicle = { isChronicleVisible = true },
+                        onDismissChronicle = { isChronicleVisible = false },
                         modifier = Modifier.padding(innerPadding),
                     )
                 }

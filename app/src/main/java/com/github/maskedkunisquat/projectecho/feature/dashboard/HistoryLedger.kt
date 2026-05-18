@@ -44,7 +44,7 @@ internal fun HistoryLedger(
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(0.dp),
     ) {
-        itemsIndexed(reversed, key = { _, entry -> entry }) { index, entry ->
+        itemsIndexed(reversed, key = { index, _ -> entries.size - 1 - index }) { index, entry ->
             LedgerEntry(text = entry, isNew = index == 0)
             HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
         }
