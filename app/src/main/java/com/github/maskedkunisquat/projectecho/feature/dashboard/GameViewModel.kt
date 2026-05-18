@@ -8,6 +8,7 @@ import com.github.maskedkunisquat.projectecho.domain.model.Tribe
 import com.github.maskedkunisquat.projectecho.domain.model.WorldState
 import com.github.maskedkunisquat.projectecho.domain.repository.WorldStateRepository
 import com.github.maskedkunisquat.projectecho.domain.rules.tick
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -23,7 +24,10 @@ import kotlinx.coroutines.withContext
  * auto-tick loop. Each tick saves the new state to [repository] as a fire-and-forget
  * IO coroutine.
  */
-class GameViewModel(private val repository: WorldStateRepository) : ViewModel() {
+class GameViewModel(
+    private val repository: WorldStateRepository,
+    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
+) : ViewModel() {
 
     private val _worldState = MutableStateFlow(
         WorldState(
@@ -48,7 +52,7 @@ class GameViewModel(private val repository: WorldStateRepository) : ViewModel() 
     init {
         viewModelScope.launch {
             // Restore saved state before the first tick fires.
-            withContext(Dispatchers.IO) { repository.load() }
+            withContext(ioDispatcher) { repository.load() }
                 ?.let { saved -> _worldState.value = saved }
             while (true) {
                 delay(2_000L)
@@ -86,7 +90,7 @@ class GameViewModel(private val repository: WorldStateRepository) : ViewModel() 
         pendingAction = null
         val newState = tick(_worldState.value, action, simEvents)
         _worldState.value = newState
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch(ioDispatcher) {
             repository.save(newState)
         }
     }

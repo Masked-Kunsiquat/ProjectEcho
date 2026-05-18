@@ -34,7 +34,7 @@ class GameLoopTest {
         val result = tick(state)
 
         assertEquals(1L, result.worldTimeTick)
-        assertEquals(10, result.divineFavor)             // unchanged by no-action tick
+        assertEquals(11, result.divineFavor)             // 10 + 1 regen (devotion 51 ≥ 40)
         assertEquals(100, result.tribe.foodSupply)       // 200 - 100
         assertEquals(102, result.tribe.population)       // (100 * 1.02).roundToInt()
         assertEquals(51, result.tribe.devotion)          // 50 + 1
@@ -47,10 +47,10 @@ class GameLoopTest {
         val result = tick(state)
 
         assertEquals(1L, result.worldTimeTick)
-        assertEquals(10, result.divineFavor)             // unchanged by no-action tick
+        assertEquals(10, result.divineFavor)             // no regen: devotion 17 < 40
         assertEquals(0, result.tribe.foodSupply)         // clamped to 0
         assertEquals(95, result.tribe.population)        // (100 * 0.95).roundToInt()
-        assertEquals(15, result.tribe.devotion)          // 20 - 5
+        assertEquals(17, result.tribe.devotion)          // 20 - 3
     }
 
     // --- Phase 2: Divine Interventions ---
@@ -62,7 +62,7 @@ class GameLoopTest {
         val result = tick(state, DivineAction.CastRain)
 
         assertEquals(1L, result.worldTimeTick)
-        assertEquals(10, result.divineFavor)             // 20 - 10
+        assertEquals(11, result.divineFavor)             // 20 - 10 (CastRain) + 1 regen (devotion 51 ≥ 40)
         assertEquals(100, result.tribe.foodSupply)       // (100+50) - 50
         assertEquals(51, result.tribe.population)        // (50 * 1.02).roundToInt()
     }
@@ -74,7 +74,7 @@ class GameLoopTest {
         val result = tick(state, DivineAction.SendPlague)
 
         assertEquals(1L, result.worldTimeTick)
-        assertEquals(5, result.divineFavor)              // 20 - 15
+        assertEquals(6, result.divineFavor)              // 20 - 15 (SendPlague) + 1 regen (devotion 51 ≥ 40)
         assertEquals(82, result.tribe.population)        // (80 * 1.02).roundToInt()
         assertEquals(220, result.tribe.foodSupply)       // 300 - 80
     }
@@ -86,7 +86,7 @@ class GameLoopTest {
         val result = tick(state, DivineAction.InspireDevout)
 
         assertEquals(1L, result.worldTimeTick)
-        assertEquals(12, result.divineFavor)             // 20 - 8
+        assertEquals(13, result.divineFavor)             // 20 - 8 (InspireDevout) + 1 regen (devotion 66 ≥ 40)
         assertEquals(66, result.tribe.devotion)          // 50 + 15 (action) + 1 (thriving tick)
     }
 
@@ -107,7 +107,7 @@ class GameLoopTest {
         val result = tick(state, DivineAction.CauseFamine)
 
         assertEquals(1L, result.worldTimeTick)
-        assertEquals(15, result.divineFavor)             // 20 - 5
+        assertEquals(16, result.divineFavor)             // 20 - 5 (CauseFamine) + 1 regen (devotion 51 ≥ 40)
         assertEquals(70, result.tribe.foodSupply)        // (200-80) - 50
     }
 
@@ -128,7 +128,7 @@ class GameLoopTest {
         val result = tick(state, DivineAction.BlessHarvest)
 
         assertEquals(1L, result.worldTimeTick)
-        assertEquals(10, result.divineFavor)             // 30 - 20
+        assertEquals(11, result.divineFavor)             // 30 - 20 (BlessHarvest) + 1 regen (devotion 51 ≥ 40)
         assertEquals(250, result.tribe.foodSupply)       // (100+200) - 50
     }
 
@@ -139,7 +139,7 @@ class GameLoopTest {
         val result = tick(state, DivineAction.CastRain)  // costs 10, player has 3
 
         assertEquals(1L, result.worldTimeTick)
-        assertEquals(3, result.divineFavor)              // unchanged — action silently skipped
+        assertEquals(4, result.divineFavor)              // action skipped + 1 regen (devotion 51 ≥ 40)
         assertEquals(250, result.tribe.foodSupply)       // 300 - 50, no +50 from CastRain
     }
 
