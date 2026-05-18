@@ -97,32 +97,32 @@ A lightweight, text-and-UI-driven God Simulator built natively in Android with p
 
 ---
 
-## Phase 5: Minimalist Vector UI
+## Phase 5: Minimalist Vector UI ✅ COMPLETED
 
 > Immersive dashboard: a clean geometric Compose UI with a scrolling history ledger and a canvas-drawn tribal grid map.
 
 **Dashboard Layout Redesign**
-- [ ] Replace flat stat list with a two-panel layout: stats panel (top) + history ledger (bottom, scrollable)
-- [ ] Add `LinearProgressIndicator` bars for `devotion` and `divineFavor` beneath their numeric values
-- [ ] Group Divine Intervention buttons into a visually distinct `ActionPanel` Composable
-- [ ] Apply consistent 16 dp / 24 dp spacing grid throughout
+- [x] Replace flat stat list with a two-panel layout: stats panel (top) + history ledger (bottom, scrollable)
+- [x] Add `LinearProgressIndicator` bars for `devotion` and `divineFavor` beneath their numeric values
+- [x] Group Divine Intervention buttons into a visually distinct `ActionPanel` Composable
+- [x] Apply consistent 16 dp / 24 dp spacing grid throughout
 
 **History Ledger**
-- [ ] Extract `HistoryLedger` into its own file `feature/dashboard/HistoryLedger.kt`
-- [ ] Style entries with monospace / serif typography to feel like ancient records
-- [ ] Animate new entries fading in with `AnimatedVisibility`
+- [x] Extract `HistoryLedger` into its own file `feature/dashboard/HistoryLedger.kt`
+- [x] Style entries with monospace / serif typography to feel like ancient records
+- [x] Animate new entries fading in with `AnimatedVisibility`
 
 **Tribal Grid Map (Canvas)**
-- [ ] Create `TribalGridMap` Composable in `feature/dashboard/TribalGridMap.kt` using `Canvas`
-- [ ] Draw a geometric hex or square grid; shade cells by population density derived from `WorldState`
-- [ ] No bitmaps — pure vector shapes and `drawPath` calls only
+- [x] Create `TribalGridMap` Composable in `feature/dashboard/TribalGridMap.kt` using `Canvas`
+- [x] Draw a geometric hex or square grid; shade cells by population density derived from `WorldState`
+- [x] No bitmaps — pure vector shapes and `drawPath` calls only
 
 **Color & Typography**
-- [ ] Expand `Color.kt` with a dedicated dark-mode palette (deep charcoal background, amber/gold accents)
-- [ ] Update `Type.kt` with at least three type scales: display (tribe name), body (stats), caption (ledger entries)
-- [ ] Set `useDarkTheme = true` as default in `Theme.kt` to match the game's tone
+- [x] Expand `Color.kt` with a dedicated dark-mode palette (deep charcoal background, amber/gold accents)
+- [x] Update `Type.kt` with at least three type scales: display (tribe name), body (stats), caption (ledger entries)
+- [x] Set `useDarkTheme = true` as default in `Theme.kt` to match the game's tone
 
 **Polish**
-- [ ] Ensure all Composables pass Compose preview annotations for rapid iteration in Android Studio
-- [ ] Verify no `LocalContext` or Android references leak into domain-layer calls from UI
-- [ ] Smoke-test on API 28 (minSdk) emulator for compatibility
+- [x] Ensure all Composables pass Compose preview annotations for rapid iteration in Android Studio
+- [x] Verify no `LocalContext` or Android references leak into domain-layer calls from UI
+- [x] Smoke-test on API 28 (minSdk) emulator for compatibility
