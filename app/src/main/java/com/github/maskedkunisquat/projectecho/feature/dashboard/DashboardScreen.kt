@@ -14,10 +14,20 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
@@ -27,19 +37,54 @@ import com.github.maskedkunisquat.projectecho.domain.model.Tribe
 import com.github.maskedkunisquat.projectecho.domain.model.WorldState
 import com.github.maskedkunisquat.projectecho.ui.theme.ProjectEchoTheme
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DashboardScreen(
     worldState: WorldState,
     onTickPressed: () -> Unit,
     onActionPressed: (DivineAction) -> Unit,
+    snackbarHostState: SnackbarHostState,
     modifier: Modifier = Modifier,
 ) {
+    // Show latest event as a snackbar whenever a new entry lands in the history.
+    // LaunchedEffect cancels the previous snackbar if a newer event fires first.
+    LaunchedEffect(worldState.eventHistory.size) {
+        if (worldState.eventHistory.isNotEmpty()) {
+            snackbarHostState.showSnackbar(
+                message = worldState.eventHistory.last(),
+                duration = SnackbarDuration.Short,
+            )
+        }
+    }
+
+    var showChronicle by remember { mutableStateOf(false) }
+
+    if (showChronicle) {
+        ModalBottomSheet(
+            onDismissRequest = { showChronicle = false },
+            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+            containerColor = MaterialTheme.colorScheme.surface,
+        ) {
+            Text(
+                text = "Chronicle",
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+            )
+            HistoryLedger(
+                entries = worldState.eventHistory,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(360.dp)
+                    .padding(horizontal = 16.dp),
+            )
+        }
+    }
+
     Column(
         modifier = modifier
             .fillMaxSize()
             .padding(horizontal = 16.dp),
     ) {
-        // Top panel — fixed, non-scrolling
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -88,31 +133,29 @@ fun DashboardScreen(
                     .fillMaxWidth()
                     .height(120.dp),
             )
-
-            HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
         }
 
-        // Chronicle label
-        Text(
-            text = "Chronicle",
-            style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier.padding(vertical = 8.dp),
-        )
+        Spacer(modifier = Modifier.weight(1f))
 
-        // Ledger — fills remaining space
-        HistoryLedger(
-            entries = worldState.eventHistory,
-            modifier = Modifier.weight(1f),
-        )
-
-        // Footer button
-        Button(
-            onClick = onTickPressed,
+        Row(
             modifier = Modifier
-                .align(Alignment.CenterHorizontally)
+                .fillMaxWidth()
                 .padding(vertical = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Text("Manual Tick")
+            OutlinedButton(
+                onClick = { showChronicle = true },
+                modifier = Modifier.weight(1f),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+            ) {
+                Text("Chronicle")
+            }
+            Button(
+                onClick = onTickPressed,
+                modifier = Modifier.weight(1f),
+            ) {
+                Text("Manual Tick")
+            }
         }
     }
 }
@@ -244,6 +287,7 @@ private fun DashboardScreenPreview() {
             ),
             onTickPressed = {},
             onActionPressed = {},
+            snackbarHostState = remember { SnackbarHostState() },
         )
     }
 }

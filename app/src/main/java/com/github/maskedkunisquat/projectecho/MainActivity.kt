@@ -8,8 +8,11 @@ import androidx.activity.viewModels
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.lifecycleScope
 import com.github.maskedkunisquat.projectecho.data.db.AppDatabase
@@ -23,13 +26,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-/**
- * Application entry point.
- *
- * Builds the Room database and injects the repository into [GameViewModel] via
- * [GameViewModelFactory]. Loads `assets/events.json` on a background thread and
- * forwards the parsed events to the ViewModel.
- */
 class MainActivity : ComponentActivity() {
     private val viewModel: GameViewModel by viewModels {
         GameViewModelFactory(
@@ -57,12 +53,18 @@ class MainActivity : ComponentActivity() {
         setContent {
             ProjectEchoTheme {
                 val worldState by viewModel.worldState.collectAsState()
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
+                val snackbarHostState = remember { SnackbarHostState() }
+
+                Scaffold(
+                    modifier = Modifier.fillMaxSize(),
+                    snackbarHost = { SnackbarHost(snackbarHostState) },
+                ) { innerPadding ->
                     DashboardScreen(
                         worldState = worldState,
                         onTickPressed = { viewModel.triggerTick() },
                         onActionPressed = { viewModel.applyDivineAction(it) },
-                        modifier = Modifier.padding(innerPadding)
+                        snackbarHostState = snackbarHostState,
+                        modifier = Modifier.padding(innerPadding),
                     )
                 }
             }
