@@ -1,9 +1,11 @@
 package com.github.maskedkunisquat.projectecho
 
+import androidx.lifecycle.viewModelScope
 import com.github.maskedkunisquat.projectecho.domain.model.DivineAction
 import com.github.maskedkunisquat.projectecho.feature.dashboard.GameViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestDispatcher
 import kotlinx.coroutines.test.advanceTimeBy
@@ -41,6 +43,8 @@ class GameViewModelTest {
 
         assertEquals(initialFavor - DivineAction.CastRain.favorCost, viewModel.worldState.value.divineFavor)
         assertEquals(1L, viewModel.worldState.value.worldTimeTick)
+
+        viewModel.viewModelScope.cancel()
     }
 
     @Test
@@ -54,6 +58,8 @@ class GameViewModelTest {
 
         assertEquals(initialFavor - DivineAction.CastRain.favorCost, viewModel.worldState.value.divineFavor)
         assertEquals(2L, viewModel.worldState.value.worldTimeTick)
+
+        viewModel.viewModelScope.cancel()
     }
 
     @Test
@@ -64,5 +70,7 @@ class GameViewModelTest {
         advanceTimeBy(2_001L)
 
         assertEquals(1L, viewModel.worldState.value.worldTimeTick)
+
+        viewModel.viewModelScope.cancel()
     }
 }
