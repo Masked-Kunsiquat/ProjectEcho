@@ -1,24 +1,63 @@
 package com.github.maskedkunisquat.projectecho.domain.model
 
 import kotlinx.serialization.Serializable
+import kotlin.math.sqrt
+import kotlin.random.Random
 
-/**
- * Immutable snapshot of the entire simulation at a single point in time.
- *
- * Every tick produces a new [WorldState] rather than mutating the existing one,
- * keeping the game loop a pure function.
- *
- * @property worldTimeTick Number of ticks elapsed since the game started.
- * @property divineFavor Player's current favor currency (0–100), spent on [DivineAction]s.
- * @property tribe The tribe's current stats.
- * @property eventHistory Narrative messages shown in the Chronicle UI, ordered oldest-first.
- * @property firedEventIds IDs of [SimEvent]s that have already triggered; prevents any event from firing more than once.
- */
 @Serializable
 data class WorldState(
     val worldTimeTick: Long,
     val divineFavor: Int,
-    val tribe: Tribe,
+    val tiles: List<MapTile>,
+    val tribes: Map<String, Tribe>,
     val eventHistory: List<String> = emptyList(),
     val firedEventIds: Set<String> = emptySet(),
-)
+) {
+    companion object {
+        fun initial(): WorldState {
+            val tribeId = "iron-wrought"
+            val tribeName = "The Iron-Wrought"
+            val population = 100
+
+            val rng = Random(tribeName.hashCode())
+            val startRow = rng.nextInt(GRID_ROWS)
+            val startCol = rng.nextInt(GRID_COLS)
+            val claimedCount = (population * GRID_SIZE) / 500
+
+            val orderedIds = (0 until GRID_SIZE).sortedBy { idx ->
+                val cellIdx = idx / 2
+                val row = cellIdx / GRID_COLS
+                val col = cellIdx % GRID_COLS
+                val dRow = (row - startRow).toFloat()
+                val dCol = (col - startCol).toFloat()
+                sqrt((dRow * dRow + dCol * dCol).toDouble()).toFloat() + rng.nextFloat() * 1.5f
+            }
+            val occupiedIds = orderedIds.take(claimedCount).toHashSet()
+
+            val tiles = (0 until GRID_SIZE).map { id ->
+                val cellIdx = id / 2
+                MapTile(
+                    id = id,
+                    col = cellIdx % GRID_COLS,
+                    row = cellIdx / GRID_COLS,
+                    occupantTribeId = if (id in occupiedIds) tribeId else null,
+                )
+            }
+
+            val tribe = Tribe(
+                tribeId = tribeId,
+                name = tribeName,
+                population = population,
+                devotion = 50,
+                foodSupply = 500,
+            )
+
+            return WorldState(
+                worldTimeTick = 0L,
+                divineFavor = 50,
+                tiles = tiles,
+                tribes = mapOf(tribeId to tribe),
+            )
+        }
+    }
+}

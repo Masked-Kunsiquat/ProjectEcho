@@ -18,7 +18,16 @@ class EventEngineTest {
     ) = WorldState(
         worldTimeTick = 1L,
         divineFavor = divineFavor,
-        tribe = Tribe("Test Tribe", population, devotion, foodSupply),
+        tiles = emptyList(),
+        tribes = mapOf(
+            "test" to Tribe(
+                tribeId = "test",
+                name = "Test Tribe",
+                population = population,
+                devotion = devotion,
+                foodSupply = foodSupply,
+            )
+        ),
     )
 
     private fun event(

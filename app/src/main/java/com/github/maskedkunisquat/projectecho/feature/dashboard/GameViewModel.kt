@@ -4,7 +4,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.github.maskedkunisquat.projectecho.domain.model.DivineAction
 import com.github.maskedkunisquat.projectecho.domain.model.SimEvent
-import com.github.maskedkunisquat.projectecho.domain.model.Tribe
 import com.github.maskedkunisquat.projectecho.domain.model.WorldState
 import com.github.maskedkunisquat.projectecho.domain.repository.WorldStateRepository
 import com.github.maskedkunisquat.projectecho.domain.rules.tick
@@ -29,18 +28,7 @@ class GameViewModel(
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) : ViewModel() {
 
-    private val _worldState = MutableStateFlow(
-        WorldState(
-            worldTimeTick = 0L,
-            divineFavor = 50,
-            tribe = Tribe(
-                name = "The Iron-Wrought",
-                population = 100,
-                devotion = 50,
-                foodSupply = 500
-            )
-        )
-    )
+    private val _worldState = MutableStateFlow(WorldState.initial())
     /** Current game state; observed by the UI layer. */
     val worldState: StateFlow<WorldState> = _worldState.asStateFlow()
 

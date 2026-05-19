@@ -28,10 +28,11 @@ object EventEngine {
      * Any unrecognised key returns false rather than throwing, so malformed JSON events are silently skipped.
      */
     private fun matches(state: WorldState, trigger: SimEvent.Trigger): Boolean {
+        val tribe = state.tribes.values.firstOrNull() ?: return false
         val value = when (trigger.stat) {
-            "population" -> state.tribe.population
-            "devotion" -> state.tribe.devotion
-            "foodSupply" -> state.tribe.foodSupply
+            "population" -> tribe.population
+            "devotion" -> tribe.devotion
+            "foodSupply" -> tribe.foodSupply
             "divineFavor" -> state.divineFavor
             else -> return false
         }
