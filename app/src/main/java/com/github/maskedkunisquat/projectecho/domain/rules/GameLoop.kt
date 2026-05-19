@@ -93,7 +93,7 @@ fun tick(
         val lastFired = postTickState.eventCooldowns[event.id]
         when {
             lastFired == null -> true
-            event.cooldownTicks == null -> false
+            event.cooldownTicks == null || event.cooldownTicks < 0 -> false
             else -> currentTick >= lastFired + event.cooldownTicks
         }
     }
