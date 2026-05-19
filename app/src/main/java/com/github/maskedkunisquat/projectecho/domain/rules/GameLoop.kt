@@ -55,12 +55,12 @@ fun tick(
         val afterSurvival = when {
             newFoodSupply < 0 -> tribe.copy(
                 foodSupply = 0,
-                population = (tribe.population * 0.95).roundToInt(),
+                population = minOf(tribe.population - 1, (tribe.population * 0.95).roundToInt()).coerceAtLeast(0),
                 devotion = maxOf(0, tribe.devotion - 3),
             )
             newFoodSupply > 0 -> tribe.copy(
                 foodSupply = newFoodSupply,
-                population = (tribe.population * 1.02).roundToInt(),
+                population = maxOf(tribe.population + 1, (tribe.population * 1.02).roundToInt()),
                 devotion = minOf(100, tribe.devotion + 1),
             )
             else -> tribe.copy(foodSupply = 0)

@@ -28,7 +28,7 @@ class EnvironmentalPhaseTest {
 
     @Test fun `Parched multiplier is 0_1`() = assertEquals(0.1, EnvironmentalPhase.Parched.foodMultiplier, 0.001)
     @Test fun `Saturated multiplier is 0_5`() = assertEquals(0.5, EnvironmentalPhase.Saturated.foodMultiplier, 0.001)
-    @Test fun `Fertile multiplier is 1_0`() = assertEquals(1.0, EnvironmentalPhase.Fertile.foodMultiplier, 0.001)
+    @Test fun `Fertile multiplier is 1_5`() = assertEquals(1.5, EnvironmentalPhase.Fertile.foodMultiplier, 0.001)
     @Test fun `Deluge multiplier is 0_0`() = assertEquals(0.0, EnvironmentalPhase.Deluge.foodMultiplier, 0.001)
 
     // --- Decay convergence ---
@@ -106,8 +106,8 @@ class EnvironmentalPhaseTest {
             tiles = listOf(tileFor("echosi", moisture = 35)),
         )
         val result = tick(state)
-        // farmed = (100 * 0.8 * 1.0).roundToInt() = 80; newFood = 200 + 80 - 100 = 180
-        assertEquals(180, result.tribes["echosi"]!!.foodSupply)
+        // farmed = (100 * 0.8 * 1.5).roundToInt() = 120; newFood = 200 + 120 - 100 = 220
+        assertEquals(220, result.tribes["echosi"]!!.foodSupply)
         assertEquals(102, result.tribes["echosi"]!!.population)
     }
 
