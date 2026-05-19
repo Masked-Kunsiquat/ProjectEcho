@@ -164,16 +164,16 @@
 
 > Surface biome data visually and rework CastRain to flow through the simulation.
 
-- [ ] Rework `DivineAction.CastRain` — instead of `+50 foodSupply` directly, push `soilMoisture` up on all occupied tiles (makes the action flow through the simulation rather than bypassing it)
-- [ ] Update `TribalGridMap` — colour tiles by biome when unoccupied (e.g. deep blue for Water, tan for Desert, dark green for Forest, teal for Coast, keep existing amber/charcoal for occupied/Grassland)
-- [ ] Add `MapOverlay` enum to the feature layer (`Default`, `Biome`, `Climate`, `Volatility`); add `overlay: MapOverlay` parameter to `TribalGridMap`:
+- [x] Rework `DivineAction.CastRain` — instead of `+50 foodSupply` directly, push `soilMoisture` up on all occupied tiles (makes the action flow through the simulation rather than bypassing it); also raise `volatility` on those tiles by a small fixed amount — restoring the original divine-overreach mechanic: meddling charges the land so the next natural weather front hits harder than it should
+- [x] Update `TribalGridMap` — colour tiles by biome when unoccupied (e.g. deep blue for Water, tan for Desert, dark green for Forest, teal for Coast, keep existing amber/charcoal for occupied/Grassland)
+- [x] Add `MapOverlay` enum to the feature layer (`Default`, `Biome`, `Climate`, `Volatility`); add `overlay: MapOverlay` parameter to `TribalGridMap`:
   - `Default` — current occupancy colouring (amber = occupied, grey = empty)
   - `Biome` — tile coloured by `BiomeType` regardless of occupancy
   - `Climate` — tile coloured on a moisture gradient (red=Parched → blue=Deluge)
   - `Volatility` — greyscale intensity by `volatility` value
-- [ ] Add overlay toggle row above the map in `DashboardScreen` (small icon/label buttons; persists in `GameViewModel` as UI state, not `WorldState`)
-- [ ] Weather front column outline persists across all overlay modes (positional indicator, not data)
-- [ ] Write unit test: CastRain raises `soilMoisture` on occupied tiles instead of adding `foodSupply` directly
+- [x] Add overlay toggle row above the map in `DashboardScreen` (small icon/label buttons; persists in `GameViewModel` as UI state, not `WorldState`)
+- [x] Weather front column outline persists across all overlay modes (positional indicator, not data)
+- [x] Write unit test: CastRain raises `soilMoisture` on occupied tiles instead of adding `foodSupply` directly
 - [ ] Smoke test: CastRain visibly shifts tile moisture in Chronicle; overlay toggle switches map colouring correctly
 
 ---

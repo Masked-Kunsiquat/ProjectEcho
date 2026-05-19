@@ -13,9 +13,11 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.github.maskedkunisquat.projectecho.domain.model.BiomeType
 import com.github.maskedkunisquat.projectecho.domain.model.GRID_COLS
 import com.github.maskedkunisquat.projectecho.domain.model.GRID_ROWS
 import com.github.maskedkunisquat.projectecho.domain.model.MapTile
@@ -25,11 +27,21 @@ import com.github.maskedkunisquat.projectecho.domain.model.WorldState
 import com.github.maskedkunisquat.projectecho.domain.rules.getNeighbors
 import com.github.maskedkunisquat.projectecho.ui.theme.ProjectEchoTheme
 
+private val biomeColorWater   = Color(0xFF1A4D8F)
+private val biomeColorDesert  = Color(0xFFD4A96A)
+private val biomeColorForest  = Color(0xFF1A5C2A)
+private val biomeColorCoast   = Color(0xFF1A7080)
+
+private val climateParched  = Color(0xFFCC3333)
+private val climateFertile  = Color(0xFF33BB55)
+private val climateDeluge   = Color(0xFF3355BB)
+
 @Composable
 internal fun TribalGridMap(
     tiles: List<MapTile>,
     activeFront: WeatherFront? = null,
     hoveredTileId: Int? = null,
+    overlay: MapOverlay = MapOverlay.Default,
     onTilePressed: (Int) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
@@ -73,8 +85,8 @@ internal fun TribalGridMap(
                 val pathA = trianglePath(idxA, x0, x1, y0, y1, row, col)
                 val pathB = trianglePath(idxB, x0, x1, y0, y1, row, col)
 
-                val colorA = if (tileMap[idxA]?.occupantTribeId != null) occupiedColor else emptyColor
-                val colorB = if (tileMap[idxB]?.occupantTribeId != null) occupiedColor else emptyColor
+                val colorA = tileDisplayColor(tileMap[idxA], overlay, occupiedColor, emptyColor)
+                val colorB = tileDisplayColor(tileMap[idxB], overlay, occupiedColor, emptyColor)
 
                 drawPath(pathA, colorA)
                 drawPath(pathB, colorB)
@@ -100,7 +112,7 @@ internal fun TribalGridMap(
             }
         }
 
-        // Pass 3: weather front column outline
+        // Pass 3: weather front column outline — persists across all overlay modes
         if (activeFront != null) {
             val outlineColor = if (activeFront.type == WeatherType.RainCloud) rainOutline else heatOutline
             drawRect(
@@ -111,6 +123,42 @@ internal fun TribalGridMap(
             )
         }
     }
+}
+
+private fun tileDisplayColor(
+    tile: MapTile?,
+    overlay: MapOverlay,
+    occupiedColor: Color,
+    emptyColor: Color,
+): Color {
+    if (tile == null) return emptyColor
+    return when (overlay) {
+        MapOverlay.Default    -> if (tile.occupantTribeId != null) occupiedColor else emptyColor
+        MapOverlay.Biome      -> biomeColor(tile.biome, emptyColor)
+        MapOverlay.Climate    -> climateColor(tile.soilMoisture)
+        MapOverlay.Volatility -> volatilityColor(tile.volatility)
+    }
+}
+
+private fun biomeColor(biome: BiomeType, emptyColor: Color): Color = when (biome) {
+    BiomeType.Grassland -> emptyColor
+    BiomeType.Forest    -> biomeColorForest
+    BiomeType.Desert    -> biomeColorDesert
+    BiomeType.Coast     -> biomeColorCoast
+    BiomeType.Water     -> biomeColorWater
+}
+
+private fun climateColor(moisture: Int): Color {
+    val t = moisture / 100f
+    return when {
+        t <= 0.5f -> lerp(climateParched, climateFertile, t * 2f)
+        else      -> lerp(climateFertile, climateDeluge, (t - 0.5f) * 2f)
+    }
+}
+
+private fun volatilityColor(volatility: Int): Color {
+    val brightness = 0.10f + (volatility / 100f) * 0.85f
+    return Color(brightness, brightness, brightness)
 }
 
 private fun trianglePath(

@@ -63,6 +63,8 @@ fun DashboardScreen(
     isChronicleVisible: Boolean,
     onShowChronicle: () -> Unit,
     onDismissChronicle: () -> Unit,
+    mapOverlay: MapOverlay = MapOverlay.Default,
+    onOverlaySelected: (MapOverlay) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     LaunchedEffect(worldState.eventHistory.size) {
@@ -142,11 +144,21 @@ fun DashboardScreen(
             }
         }
 
+        // Overlay toggle row
+        OverlayToggleRow(
+            selected = mapOverlay,
+            onSelect = onOverlaySelected,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 4.dp),
+        )
+
         // Aspect-ratio constrained so cells stay square (16×6 grid)
         TribalGridMap(
             tiles = worldState.tiles,
             activeFront = worldState.activeFront,
             hoveredTileId = hoveredTileId,
+            overlay = mapOverlay,
             onTilePressed = { hoveredTileId = it },
             modifier = Modifier
                 .fillMaxWidth()
@@ -410,6 +422,50 @@ private fun EnvironmentalPhase.displayName(): String = when (this) {
     is EnvironmentalPhase.Saturated -> "Saturated"
     is EnvironmentalPhase.Fertile   -> "Fertile"
     is EnvironmentalPhase.Parched   -> "Parched"
+}
+
+@Composable
+private fun OverlayToggleRow(
+    selected: MapOverlay,
+    onSelect: (MapOverlay) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val overlays = listOf(
+        MapOverlay.Default    to "Default",
+        MapOverlay.Biome      to "Biome",
+        MapOverlay.Climate    to "Climate",
+        MapOverlay.Volatility to "Volatile",
+    )
+    Row(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        overlays.forEach { (overlay, label) ->
+            val isSelected = selected == overlay
+            val containerColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer
+                                 else MaterialTheme.colorScheme.surface
+            val contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer
+                               else MaterialTheme.colorScheme.onSurfaceVariant
+            val borderColor = if (isSelected) MaterialTheme.colorScheme.primary
+                              else MaterialTheme.colorScheme.surfaceVariant
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(containerColor)
+                    .border(1.dp, borderColor, RoundedCornerShape(6.dp))
+                    .clickable { onSelect(overlay) }
+                    .padding(vertical = 4.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = contentColor,
+                )
+            }
+        }
+    }
 }
 
 @Preview(showBackground = true, backgroundColor = 0xFF0F0F0F, name = "Dashboard - Full")

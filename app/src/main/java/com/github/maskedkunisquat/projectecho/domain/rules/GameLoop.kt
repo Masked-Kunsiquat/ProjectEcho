@@ -34,17 +34,21 @@ fun tick(
     if (action != null && state.divineFavor >= action.favorCost) {
         val updatedTribes = state.tribes.mapValues { (_, tribe) ->
             when (action) {
-                DivineAction.CastRain    -> tribe.copy(foodSupply = tribe.foodSupply + 50)
+                DivineAction.CastRain    -> tribe  // moisture effect flows through tiles instead
                 DivineAction.SendPlague  -> tribe.copy(population = (tribe.population * 0.8).roundToInt())
                 DivineAction.InspireDevout -> tribe.copy(devotion = minOf(100, tribe.devotion + 15))
                 DivineAction.CauseFamine -> tribe.copy(foodSupply = maxOf(0, tribe.foodSupply - 80))
                 DivineAction.BlessHarvest -> tribe.copy(foodSupply = tribe.foodSupply + 200)
             }
         }
+        // CastRain with no targeted cluster falls back to all occupied tiles
+        val effectiveCluster = if (action == DivineAction.CastRain && targetCluster.isEmpty()) {
+            state.tiles.filter { it.occupantTribeId != null }.map { it.id }
+        } else targetCluster
         state = state.copy(
             tribes = updatedTribes,
             divineFavor = (state.divineFavor - action.favorCost).coerceIn(0, 100),
-            tiles = applyClusterTileEffect(state.tiles, targetCluster, action),
+            tiles = applyClusterTileEffect(state.tiles, effectiveCluster, action),
         )
     }
 
@@ -208,7 +212,10 @@ private fun applyClusterTileEffect(
     return tiles.map { tile ->
         if (tile.id !in clusterSet) tile
         else when (action) {
-            DivineAction.CastRain     -> tile.copy(soilMoisture = (tile.soilMoisture + 15).coerceIn(0, 100))
+            DivineAction.CastRain     -> tile.copy(
+                soilMoisture = (tile.soilMoisture + 25).coerceIn(0, 100),
+                volatility   = minOf(100, tile.volatility + 10),
+            )
             DivineAction.BlessHarvest -> tile.copy(soilMoisture = (tile.soilMoisture + 8).coerceIn(0, 100))
             DivineAction.CauseFamine  -> tile.copy(soilMoisture = (tile.soilMoisture - 15).coerceIn(0, 100))
             else                      -> tile
