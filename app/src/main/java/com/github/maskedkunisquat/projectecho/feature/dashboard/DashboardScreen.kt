@@ -44,6 +44,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.github.maskedkunisquat.projectecho.domain.model.DivineAction
 import com.github.maskedkunisquat.projectecho.domain.model.EnvironmentalPhase
+import com.github.maskedkunisquat.projectecho.domain.model.GRID_COLS
+import com.github.maskedkunisquat.projectecho.domain.model.GRID_ROWS
 import com.github.maskedkunisquat.projectecho.domain.model.Tribe
 import com.github.maskedkunisquat.projectecho.domain.model.WorldState
 import com.github.maskedkunisquat.projectecho.ui.theme.ProjectEchoTheme
@@ -136,13 +138,13 @@ fun DashboardScreen(
             }
         }
 
-        // Map hero — fills all available vertical space
+        // Aspect-ratio constrained so cells stay square (16×6 grid)
         TribalGridMap(
             tiles = worldState.tiles,
             activeFront = worldState.activeFront,
             modifier = Modifier
                 .fillMaxWidth()
-                .weight(1f),
+                .aspectRatio(GRID_COLS.toFloat() / GRID_ROWS.toFloat()),
         )
 
         // Tribe legend strip — scrollable for future multi-tribe support
@@ -178,6 +180,8 @@ fun DashboardScreen(
             modifier = Modifier.padding(horizontal = 16.dp),
             color = MaterialTheme.colorScheme.surfaceVariant,
         )
+
+        Spacer(modifier = Modifier.weight(1f))
 
         Row(
             modifier = Modifier

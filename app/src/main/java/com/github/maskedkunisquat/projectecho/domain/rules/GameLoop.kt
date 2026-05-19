@@ -8,6 +8,8 @@ import com.github.maskedkunisquat.projectecho.domain.model.WeatherFront
 import com.github.maskedkunisquat.projectecho.domain.model.WeatherType
 import com.github.maskedkunisquat.projectecho.domain.model.WorldState
 import com.github.maskedkunisquat.projectecho.domain.model.GRID_COLS
+import com.github.maskedkunisquat.projectecho.domain.model.GRID_SIZE
+import com.github.maskedkunisquat.projectecho.domain.model.Tribe
 import kotlin.math.roundToInt
 import kotlin.random.Random
 
@@ -77,6 +79,7 @@ fun tick(
         worldTimeTick = state.worldTimeTick + 1,
         divineFavor = regenedFavor,
         tribes = survivedTribes,
+        tiles = territoryStep(state.tiles, survivedTribes),
     )
 
     val unfiredEvents = events.filter { it.id !in postTickState.firedEventIds }
@@ -130,6 +133,21 @@ fun weatherStep(state: WorldState, random: Random = Random.Default): WorldState 
         eventHistory = if (exited) working.eventHistory + "The storm has passed. The land is still."
                        else working.eventHistory,
     )
+}
+
+internal fun territoryStep(tiles: List<MapTile>, tribes: Map<String, Tribe>): List<MapTile> {
+    val working = tiles.toMutableList()
+    for ((tribeId, tribe) in tribes) {
+        val expected = maxOf(0, tribe.population * GRID_SIZE / 500)
+        val occupiedIndices = working.indices.filter { working[it].occupantTribeId == tribeId }
+        val excess = occupiedIndices.size - expected
+        if (excess > 0) {
+            occupiedIndices.takeLast(excess).forEach { idx ->
+                working[idx] = working[idx].copy(occupantTribeId = null)
+            }
+        }
+    }
+    return working
 }
 
 fun decayStep(tiles: List<MapTile>): List<MapTile> = tiles.map { tile ->
