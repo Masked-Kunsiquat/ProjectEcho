@@ -10,6 +10,7 @@ import com.github.maskedkunisquat.projectecho.domain.model.WorldState
 import com.github.maskedkunisquat.projectecho.domain.model.GRID_COLS
 import com.github.maskedkunisquat.projectecho.domain.model.GRID_SIZE
 import com.github.maskedkunisquat.projectecho.domain.model.Tribe
+import kotlin.math.abs
 import kotlin.math.roundToInt
 import kotlin.random.Random
 
@@ -144,6 +145,21 @@ internal fun territoryStep(tiles: List<MapTile>, tribes: Map<String, Tribe>): Li
         if (excess > 0) {
             occupiedIndices.takeLast(excess).forEach { idx ->
                 working[idx] = working[idx].copy(occupantTribeId = null)
+            }
+        } else if (excess < 0) {
+            val deficit = -excess
+            val frontier = working.indices.filter { idx ->
+                val t = working[idx]
+                if (t.occupantTribeId != null) return@filter false
+                occupiedIndices.any { ownedIdx ->
+                    val o = working[ownedIdx]
+                    val dCol = abs(t.col - o.col)
+                    val dRow = abs(t.row - o.row)
+                    (dCol == 0 && dRow == 0) || (dCol + dRow == 1)
+                }
+            }
+            frontier.take(deficit).forEach { idx ->
+                working[idx] = working[idx].copy(occupantTribeId = tribeId)
             }
         }
     }
