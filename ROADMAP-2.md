@@ -80,8 +80,11 @@
 - [ ] **Multiple text variants per event** — change `text: String` in `SimEvent` / `events.json` to `texts: List<String>`; at fire time pick one at random; update `EventParser` and all existing events to use the new array format (single-item arrays preserve current behaviour)
 - [ ] **Optional re-fire with cooldown** — add an optional `cooldownTicks: Int?` field to `SimEvent`; replace the blanket `firedEventIds: Set<String>` block with a `eventCooldowns: Map<String, Long>` map storing the tick the event last fired; an event may re-fire once `worldTimeTick >= lastFiredTick + cooldownTicks` (events without a cooldown remain one-and-done)
 - [ ] Update `events.json` — add `{{tribeName}}` to at least 5 existing event strings; add 2–3 variant strings to at least 3 high-frequency events (e.g. `famine_warning`, `tribe_grows`, `devotion_surge`); set a `cooldownTicks` on recurring-condition events (`famine_warning`, `faith_wavers`, `divine_power_wanes`)
+- [ ] **EventEngine stat resolver map** — replace the cascading `if/when` stat branches in `EventEngine.matches()` with a `Map<String, (WorldState) -> Double?>` dispatch table; adding a new triggerable stat becomes one line; unknown stat keys return `null` and log a warning instead of silently skipping
+- [ ] **Multi-condition triggers** — extend `SimEvent.Trigger` to support an optional `conditions: List<Trigger>` with a `logic: "AND" | "OR"` field alongside the existing single-condition shape; `EventParser` handles both; single-condition events in `events.json` require no changes
+- [ ] Add 2–3 multi-condition events to `events.json` exercising the new format (e.g. drought + starvation combo, high devotion + abundant food)
 - [ ] Update `WorldStateEntity` serialization for the new `eventCooldowns` map field
-- [ ] Write unit tests: template tokens resolve correctly, unknown tokens pass through unchanged, variant selection is within the texts array, cooldown blocks re-fire before expiry and allows it after, one-and-done events (no cooldown) still fire exactly once
+- [ ] Write unit tests: template tokens resolve correctly, unknown tokens pass through unchanged, variant selection is within the texts array, cooldown blocks re-fire before expiry and allows it after, one-and-done events (no cooldown) still fire exactly once, AND/OR multi-condition logic resolves correctly, unknown stat key returns null without crashing
 - [ ] Smoke test: run a session into starvation; confirm Chronicle shows the tribe's actual name and that `famine_warning` reappears after its cooldown elapses
 
 ---
@@ -108,8 +111,15 @@
 - [ ] Update `EnvironmentalPhase` food contribution in `GameLoop.tick()` — `Coast` tiles add a flat fishing bonus on top of the phase multiplier
 - [ ] Rework `DivineAction.CastRain` — instead of `+50 foodSupply` directly, push `soilMoisture` up on all occupied tiles (makes the action flow through the simulation rather than bypassing it)
 - [ ] Update `TribalGridMap` — colour tiles by biome when unoccupied (e.g. deep blue for Water, tan for Desert, dark green for Forest, teal for Coast, keep existing amber/charcoal for occupied/Grassland)
+- [ ] Add `MapOverlay` enum to the feature layer (`Default`, `Biome`, `Climate`, `Volatility`); add `overlay: MapOverlay` parameter to `TribalGridMap`:
+  - `Default` — current occupancy colouring (amber = occupied, grey = empty)
+  - `Biome` — tile coloured by `BiomeType` regardless of occupancy
+  - `Climate` — tile coloured on a moisture gradient (red=Parched → blue=Deluge)
+  - `Volatility` — greyscale intensity by `volatility` value
+- [ ] Add overlay toggle row above the map in `DashboardScreen` (small icon/label buttons; persists in `GameViewModel` as UI state, not `WorldState`)
+- [ ] Weather front column outline persists across all overlay modes (positional indicator, not data)
 - [ ] Write unit tests: biome moisture baseline used in decay, weather delta scaled by resistance, Coast fishing bonus applied, Water tiles remain unoccupied, CastRain rework raises moisture on occupied tiles
-- [ ] Smoke test: new world generates visible water bodies and coast tiles; Desert tiles dry out faster; Forest tiles stay greener; CastRain visibly shifts tile moisture in Chronicle
+- [ ] Smoke test: new world generates visible water bodies and coast tiles; Desert tiles dry out faster; Forest tiles stay greener; CastRain visibly shifts tile moisture in Chronicle; overlay toggle switches map colouring correctly
 
 ---
 
