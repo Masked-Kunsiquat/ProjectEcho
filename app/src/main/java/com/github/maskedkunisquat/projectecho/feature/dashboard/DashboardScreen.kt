@@ -19,6 +19,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.graphics.Color
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -163,6 +164,14 @@ fun DashboardScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .aspectRatio(GRID_COLS.toFloat() / GRID_ROWS.toFloat()),
+        )
+
+        // Overlay colour legend
+        MapOverlayLegend(
+            overlay = mapOverlay,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 4.dp),
         )
 
         // Tribe legend strip — scrollable for future multi-tribe support
@@ -422,6 +431,60 @@ private fun EnvironmentalPhase.displayName(): String = when (this) {
     is EnvironmentalPhase.Saturated -> "Saturated"
     is EnvironmentalPhase.Fertile   -> "Fertile"
     is EnvironmentalPhase.Parched   -> "Parched"
+}
+
+@Composable
+private fun MapOverlayLegend(
+    overlay: MapOverlay,
+    modifier: Modifier = Modifier,
+) {
+    val occupied = MaterialTheme.colorScheme.primary
+    val empty    = MaterialTheme.colorScheme.surfaceVariant
+
+    val items: List<Pair<Color, String>> = when (overlay) {
+        MapOverlay.Default    -> listOf(occupied to "Occupied", empty to "Empty")
+        MapOverlay.Biome      -> listOf(
+            empty            to "Grassland",
+            biomeColorForest to "Forest",
+            biomeColorDesert to "Desert",
+            biomeColorCoast  to "Coast",
+            biomeColorWater  to "Water",
+        )
+        MapOverlay.Climate    -> listOf(
+            climateParched to "Parched",
+            climateFertile to "Fertile",
+            climateDeluge  to "Deluge",
+        )
+        MapOverlay.Volatility -> listOf(
+            Color(0.25f, 0.25f, 0.25f) to "Low",
+            Color(0.60f, 0.60f, 0.60f) to "Mid",
+            Color(0.95f, 0.95f, 0.95f) to "High",
+        )
+    }
+
+    Row(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        items.forEach { (color, label) ->
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(8.dp)
+                        .background(color, CircleShape),
+                )
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+    }
 }
 
 @Composable

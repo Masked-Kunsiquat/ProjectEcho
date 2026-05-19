@@ -27,14 +27,14 @@ import com.github.maskedkunisquat.projectecho.domain.model.WorldState
 import com.github.maskedkunisquat.projectecho.domain.rules.getNeighbors
 import com.github.maskedkunisquat.projectecho.ui.theme.ProjectEchoTheme
 
-private val biomeColorWater   = Color(0xFF1A4D8F)
-private val biomeColorDesert  = Color(0xFFD4A96A)
-private val biomeColorForest  = Color(0xFF1A5C2A)
-private val biomeColorCoast   = Color(0xFF1A7080)
+internal val biomeColorWater   = Color(0xFF1A4D8F)
+internal val biomeColorDesert  = Color(0xFFD4A96A)
+internal val biomeColorForest  = Color(0xFF1A5C2A)
+internal val biomeColorCoast   = Color(0xFF1A7080)
 
-private val climateParched  = Color(0xFFCC3333)
-private val climateFertile  = Color(0xFF33BB55)
-private val climateDeluge   = Color(0xFF3355BB)
+internal val climateParched  = Color(0xFFCC3333)
+internal val climateFertile  = Color(0xFF33BB55)
+internal val climateDeluge   = Color(0xFF3355BB)
 
 @Composable
 internal fun TribalGridMap(
@@ -157,7 +157,7 @@ private fun climateColor(moisture: Int): Color {
 }
 
 private fun volatilityColor(volatility: Int): Color {
-    val brightness = 0.10f + (volatility / 100f) * 0.85f
+    val brightness = 0.25f + (volatility / 100f) * 0.70f
     return Color(brightness, brightness, brightness)
 }
 
