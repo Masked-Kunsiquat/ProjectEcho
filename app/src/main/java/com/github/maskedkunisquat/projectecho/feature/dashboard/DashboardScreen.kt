@@ -5,6 +5,10 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -500,7 +504,7 @@ private fun OverlayToggleRow(
         MapOverlay.Volatility to "Volatile",
     )
     Row(
-        modifier = modifier,
+        modifier = modifier.selectableGroup(),
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         overlays.forEach { (overlay, label) ->
@@ -514,10 +518,15 @@ private fun OverlayToggleRow(
             Box(
                 modifier = Modifier
                     .weight(1f)
+                    .heightIn(min = 48.dp)
                     .clip(RoundedCornerShape(6.dp))
                     .background(containerColor)
                     .border(1.dp, borderColor, RoundedCornerShape(6.dp))
-                    .clickable { onSelect(overlay) }
+                    .selectable(
+                        selected = isSelected,
+                        onClick = { onSelect(overlay) },
+                        role = Role.RadioButton,
+                    )
                     .padding(vertical = 4.dp),
                 contentAlignment = Alignment.Center,
             ) {

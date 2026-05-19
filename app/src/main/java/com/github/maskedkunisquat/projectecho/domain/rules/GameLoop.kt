@@ -155,7 +155,7 @@ fun weatherStep(state: WorldState, random: Random = Random.Default): WorldState 
     val nextColumn = front.column + front.direction
     val exited = nextColumn < 0 || nextColumn >= GRID_COLS
 
-    val extremeEvent = if (updatedTiles.any { it.col == front.column && it.volatility > HIGH_VOLATILITY_THRESHOLD }) {
+    val extremeEvent = if (updatedTiles.any { it.col == front.column && it.biome != BiomeType.Water && it.volatility > HIGH_VOLATILITY_THRESHOLD }) {
         when (front.type) {
             WeatherType.RainCloud -> "A great storm tears through the valley."
             WeatherType.HeatWave  -> "The land cracks and bleaches under relentless heat."
@@ -212,7 +212,7 @@ private fun applyClusterTileEffect(
     return tiles.map { tile ->
         if (tile.id !in clusterSet) tile
         else when (action) {
-            DivineAction.CastRain     -> tile.copy(
+            DivineAction.CastRain     -> if (tile.biome == BiomeType.Water) tile else tile.copy(
                 soilMoisture = (tile.soilMoisture + 25).coerceIn(0, 100),
                 volatility   = minOf(100, tile.volatility + 10),
             )
