@@ -7,6 +7,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -26,11 +28,11 @@ internal fun TribalGridMap(
     activeFront: WeatherFront? = null,
     modifier: Modifier = Modifier,
 ) {
-    val occupiedColor  = MaterialTheme.colorScheme.primary
-    val emptyColor     = MaterialTheme.colorScheme.surfaceVariant
-    val separatorColor = MaterialTheme.colorScheme.background
-    val rainTint       = Color(0x5500AAFF)
-    val heatTint       = Color(0x55FF6600)
+    val occupiedColor   = MaterialTheme.colorScheme.primary
+    val emptyColor      = MaterialTheme.colorScheme.surfaceVariant
+    val separatorColor  = MaterialTheme.colorScheme.background
+    val rainOutline     = Color(0xFF4499FF)
+    val heatOutline     = Color(0xFFFF6600)
 
     val tileMap = remember(tiles) { tiles.associateBy { it.id } }
 
@@ -67,16 +69,19 @@ internal fun TribalGridMap(
 
                 drawPath(pathA, colorA)
                 drawPath(pathB, colorB)
-
-                if (activeFront != null && col == activeFront.column) {
-                    val tint = if (activeFront.type == WeatherType.RainCloud) rainTint else heatTint
-                    drawPath(pathA, tint)
-                    drawPath(pathB, tint)
-                }
-
                 drawPath(pathA, separatorColor, style = stroke)
                 drawPath(pathB, separatorColor, style = stroke)
             }
+        }
+
+        if (activeFront != null) {
+            val outlineColor = if (activeFront.type == WeatherType.RainCloud) rainOutline else heatOutline
+            drawRect(
+                color = outlineColor,
+                topLeft = Offset(activeFront.column * cellW, 0f),
+                size = Size(cellW, size.height),
+                style = Stroke(width = 2.dp.toPx()),
+            )
         }
     }
 }

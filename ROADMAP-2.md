@@ -102,7 +102,9 @@
   - Mark all land tiles adjacent to `Water` as `Coast`
   - Distribute remaining tiles between `Grassland`, `Forest`, and `Desert` by weighted random seeded from world hash
 - [ ] Update `decayStep()` in `GameLoop` — use each tile's `BiomeType.moistureBaseline` instead of the hardcoded `MOISTURE_BASELINE = 35`
-- [ ] Update `weatherStep()` — scale moisture delta by `BiomeType.weatherResistance`; `HeatWave` over `Desert` or `Grassland` tiles also increments `volatility` by a fixed delta
+- [ ] Update `weatherStep()` — scale moisture delta by `BiomeType.weatherResistance`; any weather front passing a tile raises its `volatility` by a fixed delta (completing the loop: `decayStep` already drains it downward)
+- [ ] Wire `volatility` as a weather intensity multiplier in `weatherStep()` — high volatility amplifies the moisture delta (`delta * (1 + volatility / 100f)`); creates emergent storms/droughts without a separate stat
+- [ ] Gate extreme Chronicle events on high volatility (e.g. "A great storm tears through the valley" when volatility > 70 during a RainCloud pass; "The land cracks and bleaches" during a HeatWave)
 - [ ] Update `EnvironmentalPhase` food contribution in `GameLoop.tick()` — `Coast` tiles add a flat fishing bonus on top of the phase multiplier
 - [ ] Rework `DivineAction.CastRain` — instead of `+50 foodSupply` directly, push `soilMoisture` up on all occupied tiles (makes the action flow through the simulation rather than bypassing it)
 - [ ] Update `TribalGridMap` — colour tiles by biome when unoccupied (e.g. deep blue for Water, tan for Desert, dark green for Forest, teal for Coast, keep existing amber/charcoal for occupied/Grassland)
