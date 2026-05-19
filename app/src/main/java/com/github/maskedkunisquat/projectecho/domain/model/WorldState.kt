@@ -11,7 +11,7 @@ data class WorldState(
     val tiles: List<MapTile>,
     val tribes: Map<String, Tribe>,
     val eventHistory: List<String> = emptyList(),
-    val firedEventIds: Set<String> = emptySet(),
+    val eventCooldowns: Map<String, Long> = emptyMap(),
     val activeFront: WeatherFront? = null,
     val nextSpawnTick: Long = 10L,
 ) {

@@ -5,33 +5,42 @@ import kotlinx.serialization.Serializable
 /**
  * A scripted in-game event loaded from `assets/events.json`.
  *
- * Each event fires at most once: after triggering, its [id] is added to
- * [WorldState.firedEventIds] so it never fires again.
+ * Events with no [cooldownTicks] fire exactly once. Events with a cooldown may
+ * re-fire after [cooldownTicks] ticks have elapsed since the last firing; this is
+ * tracked by [WorldState.eventCooldowns].
  *
  * @property id Unique string key matching the JSON definition.
- * @property trigger Condition that must hold for the event to fire.
- * @property text Narrative string appended to the Chronicle when the event fires.
+ * @property trigger Condition (or compound conditions) that must hold for the event to fire.
+ * @property texts One or more narrative variants; one is chosen at random when the event fires.
+ * @property cooldownTicks Optional re-fire cooldown in ticks. Null means one-and-done.
  * @property effect Optional stat mutation applied when the event fires.
  */
 @Serializable
 data class SimEvent(
     val id: String,
     val trigger: Trigger,
-    val text: String,
+    val texts: List<String>,
+    val cooldownTicks: Int? = null,
     val effect: Effect? = null,
 ) {
     /**
-     * Condition that activates the parent [SimEvent].
+     * A single condition or a compound logical group of conditions.
      *
-     * @property stat World stat to check: `"population"`, `"devotion"`, `"foodSupply"`, or `"divineFavor"`.
-     * @property operator Comparison to apply: `"lt"`, `"gt"`, `"lte"`, `"gte"`, or `"eq"`.
-     * @property threshold Integer value the stat is compared against.
+     * Single-condition shape (existing JSON is unchanged):
+     *   { "stat": "foodSupply", "operator": "lt", "threshold": 50 }
+     *
+     * Multi-condition shape:
+     *   { "logic": "AND", "conditions": [ ... ] }
+     *
+     * A trigger is treated as multi-condition when [conditions] is non-null.
      */
     @Serializable
     data class Trigger(
-        val stat: String,
-        val operator: String,
-        val threshold: Int,
+        val stat: String = "",
+        val operator: String = "",
+        val threshold: Int = 0,
+        val logic: String? = null,
+        val conditions: List<Trigger>? = null,
     )
 
     /**

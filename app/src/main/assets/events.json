@@ -1,77 +1,163 @@
 [
   {
     "id": "famine_warning",
+    "cooldownTicks": 30,
     "trigger": { "stat": "foodSupply", "operator": "lt", "threshold": 50 },
-    "text": "The granaries run thin. Your people whisper of empty bowls and hungry nights."
+    "texts": [
+      "The granaries run thin. {{tribeName}} whispers of empty bowls and hungry nights.",
+      "Hunger gnaws at the edges of {{tribeName}}'s strength. The stores will not last the moon.",
+      "The silos grow hollow. Elders of {{tribeName}} speak of lean times to come."
+    ]
   },
   {
     "id": "starvation_crisis",
     "trigger": { "stat": "foodSupply", "operator": "lt", "threshold": 1 },
-    "text": "Famine grips the land. Children cry in the dark. The tribe faces ruin."
+    "texts": [
+      "Famine grips the land. Children cry in the dark. {{tribeName}} faces ruin.",
+      "The last grain has been ground. {{tribeName}} is on its knees before starvation."
+    ]
   },
   {
     "id": "abundant_stores",
     "trigger": { "stat": "foodSupply", "operator": "gte", "threshold": 500 },
-    "text": "The granaries overflow. The tribe feasts beneath a harvest moon."
+    "texts": [
+      "The granaries overflow. {{tribeName}} feasts beneath a harvest moon.",
+      "Abundance blesses the land. {{tribeName}}'s children grow strong and loud."
+    ]
   },
   {
     "id": "faith_wavers",
+    "cooldownTicks": 25,
     "trigger": { "stat": "devotion", "operator": "lt", "threshold": 20 },
-    "text": "The old prayers fade. Your people begin to doubt the gods."
+    "texts": [
+      "The old prayers fade. {{tribeName}} begins to doubt the gods.",
+      "Doubt creeps through the village of {{tribeName}} like frost through the stones.",
+      "The altars of {{tribeName}} stand dusty and untended."
+    ]
   },
   {
     "id": "gods_forsaken",
     "trigger": { "stat": "devotion", "operator": "lt", "threshold": 5 },
-    "text": "The tribe has abandoned the old ways. Silence fills the temple."
+    "texts": [
+      "{{tribeName}} has abandoned the old ways. Silence fills the temple."
+    ]
   },
   {
     "id": "devotion_surge",
     "trigger": { "stat": "devotion", "operator": "gte", "threshold": 80 },
-    "text": "A wave of holy fervor sweeps the tribe. Your name is chanted at every hearth."
+    "texts": [
+      "A wave of holy fervor sweeps {{tribeName}}. Your name is chanted at every hearth.",
+      "The faithful of {{tribeName}} have taken to the streets in rapturous song.",
+      "{{tribeName}} raises shrines at every crossroads in your honor."
+    ]
   },
   {
     "id": "undying_zeal",
     "trigger": { "stat": "devotion", "operator": "gte", "threshold": 95 },
-    "text": "The tribe worships with undying zeal. Offerings burn day and night in your honor."
+    "texts": [
+      "{{tribeName}} worships with undying zeal. Offerings burn day and night in your honor."
+    ]
   },
   {
     "id": "tribe_grows",
     "trigger": { "stat": "population", "operator": "gte", "threshold": 200 },
-    "text": "The tribe has grown into a great host. A new generation takes root."
+    "texts": [
+      "{{tribeName}} has grown into a great host. A new generation takes root.",
+      "Children fill the halls of {{tribeName}}. The tribe swells with new life.",
+      "New voices join the chorus of {{tribeName}} — the tribe grows beyond the elders' memory."
+    ]
   },
   {
     "id": "tribe_flourishes",
     "trigger": { "stat": "population", "operator": "gte", "threshold": 500 },
-    "text": "The tribe spreads across the land. Villages rise where there were once only fires."
+    "texts": [
+      "{{tribeName}} spreads across the land. Villages rise where there were once only fires."
+    ]
   },
   {
     "id": "tribe_dwindles",
     "trigger": { "stat": "population", "operator": "lt", "threshold": 50 },
-    "text": "The tribe dwindles to a scattered few. Their songs grow quieter with each passing moon."
+    "texts": [
+      "{{tribeName}} dwindles to a scattered few. Their songs grow quieter with each passing moon."
+    ]
   },
   {
     "id": "near_extinction",
     "trigger": { "stat": "population", "operator": "lt", "threshold": 20 },
-    "text": "Only a remnant survives. The tribe's flame flickers on the edge of darkness."
+    "texts": [
+      "Only a remnant of {{tribeName}} survives. Their flame flickers on the edge of darkness."
+    ]
   },
   {
     "id": "divine_power_wanes",
+    "cooldownTicks": 20,
     "trigger": { "stat": "divineFavor", "operator": "lt", "threshold": 10 },
-    "text": "Your divine power fades to a whisper. The mortal world grows heavy with silence."
+    "texts": [
+      "Your divine power fades to a whisper. The mortal world grows heavy with silence.",
+      "The heavens grow dim. {{tribeName}} senses the thinning of divine grace.",
+      "Something ancient and heavy weighs on your will. The world turns without you."
+    ]
   },
   {
     "id": "divine_power_surges",
     "trigger": { "stat": "divineFavor", "operator": "gte", "threshold": 90 },
-    "text": "Divine energy crackles through you. The heavens bend to your will."
+    "texts": [
+      "Divine energy crackles through you. The heavens bend to your will."
+    ]
   },
   {
     "id": "parched_land",
     "trigger": { "stat": "soilMoisture", "operator": "lte", "threshold": 20 },
-    "text": "The fields lie scorched and cracked. Not a drop of rain has kissed the earth in many moons."
+    "texts": [
+      "The fields lie scorched and cracked. Not a drop of rain has kissed the earth in many moons."
+    ]
   },
   {
     "id": "deluge_flooding",
     "trigger": { "stat": "soilMoisture", "operator": "gte", "threshold": 81 },
-    "text": "The rivers spill their banks and swallow the fields whole. Your people flee to higher ground."
+    "texts": [
+      "The rivers spill their banks and swallow the fields whole. {{tribeName}} flees to higher ground."
+    ]
+  },
+  {
+    "id": "drought_and_starving",
+    "trigger": {
+      "logic": "AND",
+      "conditions": [
+        { "stat": "soilMoisture", "operator": "lte", "threshold": 20 },
+        { "stat": "foodSupply", "operator": "lt", "threshold": 50 }
+      ]
+    },
+    "texts": [
+      "Parched earth and empty larders. {{tribeName}} prays for rain that does not come.",
+      "The soil cracks and the stores fail. {{tribeName}} walks a knife's edge between survival and ruin."
+    ]
+  },
+  {
+    "id": "faithful_and_fed",
+    "trigger": {
+      "logic": "AND",
+      "conditions": [
+        { "stat": "devotion", "operator": "gte", "threshold": 80 },
+        { "stat": "foodSupply", "operator": "gte", "threshold": 500 }
+      ]
+    },
+    "texts": [
+      "With full bellies and devout hearts, {{tribeName}} stands at the peak of its glory.",
+      "A golden age dawns for {{tribeName}}. The gods smile and the granaries overflow."
+    ]
+  },
+  {
+    "id": "dying_faith_or_favor",
+    "trigger": {
+      "logic": "OR",
+      "conditions": [
+        { "stat": "devotion", "operator": "lt", "threshold": 5 },
+        { "stat": "divineFavor", "operator": "lt", "threshold": 5 }
+      ]
+    },
+    "texts": [
+      "A great silence falls between {{tribeName}} and the divine. The bond grows fragile."
+    ]
   }
 ]

@@ -4,40 +4,39 @@ import com.github.maskedkunisquat.projectecho.domain.model.SimEvent
 import com.github.maskedkunisquat.projectecho.domain.model.WorldState
 
 object EventEngine {
+
+    private val statResolvers: Map<String, (WorldState) -> List<Double>?> = mapOf(
+        "divineFavor" to { state ->
+            listOf(state.divineFavor.toDouble())
+        },
+        "soilMoisture" to { state ->
+            val occupied = state.tiles.filter { it.occupantTribeId != null }
+            if (occupied.isEmpty()) null else listOf(occupied.map { it.soilMoisture }.average())
+        },
+        "population" to { state ->
+            state.tribes.values.map { it.population.toDouble() }.takeIf { it.isNotEmpty() }
+        },
+        "devotion" to { state ->
+            state.tribes.values.map { it.devotion.toDouble() }.takeIf { it.isNotEmpty() }
+        },
+        "foodSupply" to { state ->
+            state.tribes.values.map { it.foodSupply.toDouble() }.takeIf { it.isNotEmpty() }
+        },
+    )
+
     fun evaluate(state: WorldState, events: List<SimEvent>): List<SimEvent> =
         events.filter { matches(state, it.trigger) }
 
-    private fun matches(state: WorldState, trigger: SimEvent.Trigger): Boolean {
-        // divineFavor is world-level and independent of tribe presence.
-        if (trigger.stat == "divineFavor") {
-            return compare(state.divineFavor, trigger.operator, trigger.threshold)
-        }
-        // soilMoisture: average across all tribe-occupied tiles (kept as Double to avoid boundary truncation).
-        if (trigger.stat == "soilMoisture") {
-            val occupiedTiles = state.tiles.filter { it.occupantTribeId != null }
-            if (occupiedTiles.isEmpty()) return false
-            val avgMoisture = occupiedTiles.map { it.soilMoisture }.average()
-            return compare(avgMoisture, trigger.operator, trigger.threshold)
-        }
-        // Tribe-level stats: fire if any tribe meets the condition.
-        return state.tribes.values.any { tribe ->
-            val value = when (trigger.stat) {
-                "population" -> tribe.population
-                "devotion"   -> tribe.devotion
-                "foodSupply" -> tribe.foodSupply
-                else         -> return false  // unknown stat — skip silently
+    internal fun matches(state: WorldState, trigger: SimEvent.Trigger): Boolean {
+        if (trigger.conditions != null) {
+            return when (trigger.logic) {
+                "AND" -> trigger.conditions.all { matches(state, it) }
+                "OR"  -> trigger.conditions.any { matches(state, it) }
+                else  -> false
             }
-            compare(value, trigger.operator, trigger.threshold)
         }
-    }
-
-    private fun compare(value: Int, operator: String, threshold: Int): Boolean = when (operator) {
-        "lt"  -> value < threshold
-        "gt"  -> value > threshold
-        "lte" -> value <= threshold
-        "gte" -> value >= threshold
-        "eq"  -> value == threshold
-        else  -> false
+        val values = statResolvers[trigger.stat]?.invoke(state) ?: return false
+        return values.any { compare(it, trigger.operator, trigger.threshold) }
     }
 
     private fun compare(value: Double, operator: String, threshold: Int): Boolean = when (operator) {

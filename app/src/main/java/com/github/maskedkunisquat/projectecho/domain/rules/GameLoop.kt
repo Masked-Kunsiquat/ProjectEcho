@@ -88,15 +88,27 @@ fun tick(
         tiles = territoryStep(state.tiles, survivedTribes),
     )
 
-    val unfiredEvents = events.filter { it.id !in postTickState.firedEventIds }
-    val triggered = EventEngine.evaluate(postTickState, unfiredEvents)
+    val currentTick = postTickState.worldTimeTick
+    val eligibleEvents = events.filter { event ->
+        val lastFired = postTickState.eventCooldowns[event.id]
+        when {
+            lastFired == null -> true
+            event.cooldownTicks == null -> false
+            else -> currentTick >= lastFired + event.cooldownTicks
+        }
+    }
+    val triggered = EventEngine.evaluate(postTickState, eligibleEvents)
 
     val eventedState = if (triggered.isEmpty()) {
         postTickState
     } else {
+        val resolvedTexts = triggered.map { event ->
+            val rawText = event.texts[random.nextInt(event.texts.size)]
+            NarrativeResolver.resolve(rawText, postTickState)
+        }
         postTickState.copy(
-            eventHistory = postTickState.eventHistory + triggered.map { it.text },
-            firedEventIds = postTickState.firedEventIds + triggered.map { it.id },
+            eventHistory = postTickState.eventHistory + resolvedTexts,
+            eventCooldowns = postTickState.eventCooldowns + triggered.map { it.id to currentTick },
         )
     }
 
