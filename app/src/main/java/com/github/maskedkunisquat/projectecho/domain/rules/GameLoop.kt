@@ -19,6 +19,9 @@ internal const val MOISTURE_BASELINE = 35
 internal const val DECAY_DELTA = 1
 private const val DELUGE_CASUALTY_RATE = 0.97
 internal const val TILE_CAPACITY = 10  // max people a single tile can feed at full multiplier
+internal const val WEATHER_VOLATILITY_GAIN = 5
+internal const val COAST_FISHING_BONUS = 5
+internal const val HIGH_VOLATILITY_THRESHOLD = 70
 
 fun tick(
     currentState: WorldState,
@@ -56,7 +59,8 @@ fun tick(
 
         val effectiveFarmers = if (occupiedTiles.isEmpty()) tribe.population
                                else minOf(tribe.population, occupiedTiles.size * TILE_CAPACITY)
-        val farmed = (effectiveFarmers * 0.8 * effectiveMultiplier).roundToInt()
+        val coastBonus = occupiedTiles.count { it.biome == BiomeType.Coast } * COAST_FISHING_BONUS
+        val farmed = (effectiveFarmers * 0.8 * effectiveMultiplier).roundToInt() + coastBonus
         val newFoodSupply = tribe.foodSupply + farmed - tribe.population
 
         val afterSurvival = when {
@@ -136,20 +140,31 @@ fun weatherStep(state: WorldState, random: Random = Random.Default): WorldState 
     val front = working.activeFront ?: return working
 
     val updatedTiles = working.tiles.map { tile ->
-        if (tile.col == front.column)
-            tile.copy(soilMoisture = (tile.soilMoisture + front.type.moistureDelta).coerceIn(0, 100))
-        else
-            tile
+        if (tile.col != front.column || tile.biome == BiomeType.Water) return@map tile
+        val amplifiedDelta = (front.type.moistureDelta * tile.biome.weatherResistance *
+                (1f + tile.volatility / 100f)).roundToInt()
+        tile.copy(
+            soilMoisture = (tile.soilMoisture + amplifiedDelta).coerceIn(0, 100),
+            volatility = minOf(100, tile.volatility + WEATHER_VOLATILITY_GAIN),
+        )
     }
 
     val nextColumn = front.column + front.direction
     val exited = nextColumn < 0 || nextColumn >= GRID_COLS
+
+    val extremeEvent = if (updatedTiles.any { it.col == front.column && it.volatility > HIGH_VOLATILITY_THRESHOLD }) {
+        when (front.type) {
+            WeatherType.RainCloud -> "A great storm tears through the valley."
+            WeatherType.HeatWave  -> "The land cracks and bleaches under relentless heat."
+        }
+    } else null
+
     return working.copy(
         tiles = updatedTiles,
         activeFront = if (exited) null else front.copy(column = nextColumn),
         nextSpawnTick = if (exited) working.worldTimeTick + random.nextLong(20L, 41L) else working.nextSpawnTick,
-        eventHistory = if (exited) working.eventHistory + "The storm has passed. The land is still."
-                       else working.eventHistory,
+        eventHistory = working.eventHistory +
+                listOfNotNull(extremeEvent, if (exited) "The storm has passed. The land is still." else null),
     )
 }
 
@@ -203,10 +218,11 @@ private fun applyClusterTileEffect(
 }
 
 fun decayStep(tiles: List<MapTile>): List<MapTile> = tiles.map { tile ->
+    val baseline = tile.biome.moistureBaseline
     tile.copy(
         soilMoisture = when {
-            tile.soilMoisture > MOISTURE_BASELINE -> maxOf(MOISTURE_BASELINE, tile.soilMoisture - DECAY_DELTA)
-            tile.soilMoisture < MOISTURE_BASELINE -> minOf(MOISTURE_BASELINE, tile.soilMoisture + DECAY_DELTA)
+            tile.soilMoisture > baseline -> maxOf(baseline, tile.soilMoisture - DECAY_DELTA)
+            tile.soilMoisture < baseline -> minOf(baseline, tile.soilMoisture + DECAY_DELTA)
             else -> tile.soilMoisture
         },
         volatility = maxOf(0, tile.volatility - DECAY_DELTA),
