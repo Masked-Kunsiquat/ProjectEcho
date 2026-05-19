@@ -8,6 +8,9 @@ fun getNeighbors(
     cols: Int = GRID_COLS,
     rows: Int = GRID_ROWS,
 ): List<Int> {
+    require(cols > 0) { "cols must be positive, was $cols" }
+    require(rows > 0) { "rows must be positive, was $rows" }
+    require(tileId in 0 until cols * rows * 2) { "tileId $tileId out of range [0, ${cols * rows * 2})" }
     val cellIdx = tileId / 2
     val row = cellIdx / cols
     val col = cellIdx % cols

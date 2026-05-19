@@ -6,6 +6,7 @@ import com.github.maskedkunisquat.projectecho.domain.model.DivineAction
 import com.github.maskedkunisquat.projectecho.domain.model.SimEvent
 import com.github.maskedkunisquat.projectecho.domain.model.WorldState
 import com.github.maskedkunisquat.projectecho.domain.repository.WorldStateRepository
+import com.github.maskedkunisquat.projectecho.domain.rules.getNeighbors
 import com.github.maskedkunisquat.projectecho.domain.rules.tick
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -66,9 +67,9 @@ class GameViewModel(
      * Only one action can be pending at a time; a second call before the next tick
      * replaces the previous one.
      */
-    fun applyDivineAction(action: DivineAction, cluster: List<Int> = emptyList()) {
+    fun applyDivineAction(action: DivineAction, targetTileId: Int? = null) {
         pendingAction = action
-        pendingCluster = cluster
+        pendingCluster = targetTileId?.let { listOf(it) + getNeighbors(it) } ?: emptyList()
     }
 
     /**

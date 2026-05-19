@@ -105,7 +105,7 @@
 - [x] **Population growth guarantee** — `(pop * 1.02).roundToInt()` silently rounded back to the same integer at small populations (e.g. 10 * 1.02 = 10). Growth now guarantees ≥ +1/tick when fed; starvation guarantees ≥ −1/tick when hungry.
 - [x] **Fertile soil surplus** — `Fertile.foodMultiplier` raised from 1.0 → 1.5 so Fertile land produces a net food surplus (120 food per 100 people vs. 100 consumed). At the old value, tribes on baseline soil always drained food to zero and could never grow without divine intervention.
 - [x] **Territory expansion** — `territoryStep()` only shrank territory (population drop → release tiles). Expansion branch added: when population exceeds current tile count, the tribe claims adjacent unclaimed frontier tiles one at a time per tick.
-- [x] **Carrying capacity** — added `TILE_CAPACITY = 10` constant; farming output is now `min(population, tiles × TILE_CAPACITY) × 0.8 × soilMultiplier`. Population ceiling at full grid (192 tiles, Fertile soil) ≈ 2 300. Above that the food surplus goes neutral and growth halts naturally.
+- [x] **Carrying capacity** — added `TILE_CAPACITY = 10` constant; farming output is now `min(population, tiles × TILE_CAPACITY) × 0.8 × soilMultiplier`. `TILE_CAPACITY` is a per-tile production limit, not a strict population ceiling: at full grid (192 tiles) with Fertile soil (×1.5), output plateaus at `192 × 10 × 0.8 × 1.5 = 2 304` food/tick, which equals consumption at pop ≈ 2 300. Above that, the tribe starves back to equilibrium.
 
 ---
 

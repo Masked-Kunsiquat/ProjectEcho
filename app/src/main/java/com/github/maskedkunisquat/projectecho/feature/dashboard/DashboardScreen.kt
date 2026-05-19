@@ -48,7 +48,6 @@ import com.github.maskedkunisquat.projectecho.domain.model.GRID_COLS
 import com.github.maskedkunisquat.projectecho.domain.model.GRID_ROWS
 import com.github.maskedkunisquat.projectecho.domain.model.Tribe
 import com.github.maskedkunisquat.projectecho.domain.model.WorldState
-import com.github.maskedkunisquat.projectecho.domain.rules.getNeighbors
 import com.github.maskedkunisquat.projectecho.ui.theme.ProjectEchoTheme
 
 // U+26A1 + U+FE0E forces text presentation so the glyph inherits Compose color styling
@@ -59,7 +58,7 @@ private const val FAVOR_ICON = "⚡︎"
 fun DashboardScreen(
     worldState: WorldState,
     onTickPressed: () -> Unit,
-    onActionPressed: (DivineAction, List<Int>) -> Unit,
+    onActionPressed: (DivineAction, Int?) -> Unit,
     snackbarHostState: SnackbarHostState,
     isChronicleVisible: Boolean,
     onShowChronicle: () -> Unit,
@@ -178,8 +177,7 @@ fun DashboardScreen(
         ActionPanel(
             divineFavor = worldState.divineFavor,
             onActionPressed = { action ->
-                val cluster = hoveredTileId?.let { id -> listOf(id) + getNeighbors(id) } ?: emptyList()
-                onActionPressed(action, cluster)
+                onActionPressed(action, hoveredTileId)
                 hoveredTileId = null
             },
             modifier = Modifier
@@ -421,7 +419,7 @@ private fun DashboardScreenPreview() {
         DashboardScreen(
             worldState = WorldState.initial(),
             onTickPressed = {},
-            onActionPressed = { _, _ -> },
+            onActionPressed = { _, _ -> },  // preview stub
             snackbarHostState = remember { SnackbarHostState() },
             isChronicleVisible = false,
             onShowChronicle = {},
