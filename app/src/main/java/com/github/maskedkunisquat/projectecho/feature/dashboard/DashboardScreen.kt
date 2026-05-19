@@ -50,6 +50,9 @@ import com.github.maskedkunisquat.projectecho.domain.model.Tribe
 import com.github.maskedkunisquat.projectecho.domain.model.WorldState
 import com.github.maskedkunisquat.projectecho.ui.theme.ProjectEchoTheme
 
+// U+26A1 + U+FE0E forces text presentation so the glyph inherits Compose color styling
+private const val FAVOR_ICON = "⚡︎"
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DashboardScreen(
@@ -126,7 +129,7 @@ fun DashboardScreen(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    text = "⚡${worldState.divineFavor}",
+                    text = "$FAVOR_ICON${worldState.divineFavor}",
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.primary,
                 )
@@ -354,7 +357,7 @@ private fun ActionChip(
         ) {
             Text(text = label, style = MaterialTheme.typography.labelMedium, color = contentColor)
             Spacer(modifier = Modifier.height(2.dp))
-            Text(text = "⚡$cost", style = MaterialTheme.typography.labelSmall, color = contentColor)
+            Text(text = "$FAVOR_ICON$cost", style = MaterialTheme.typography.labelSmall, color = contentColor)
         }
     }
 }
