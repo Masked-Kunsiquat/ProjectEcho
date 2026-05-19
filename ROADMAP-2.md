@@ -12,12 +12,12 @@
 
 > Transform the flat V1 data model into a grid-backed world state holding 192 individual `MapTile` objects.
 
-- [ ] Add `MapTile.kt` to `domain/model/` — data class with: `id: Int`, `col: Int`, `row: Int`, `soilMoisture: Int` (0–100), `volatility: Int` (0–100), `occupantTribeId: String?`
-- [ ] Transform `WorldState.kt` — replace single `tribe: Tribe` with `tiles: List<MapTile>` (192 entries mirroring the 16×6 herringbone grid) and a `tribes: Map<String, Tribe>` registry
-- [ ] Update `Tribe.kt` to act as a census: keep global counters (`tribeId: String`, `population: Int`, `foodSupply: Int`, `devotion: Int`); remove tile-local fields — individual `MapTile` structures now track which tribe occupies each cell
-- [ ] Update `WorldStateEntity.kt` and `RoomWorldStateRepository.kt` to serialize the expanded `WorldState` (tiles list + tribes map) via `kotlinx.serialization`
-- [ ] Update `GameLoop.tick()` to accept and return the new `WorldState` structure; route tile-level reads/writes through the tile list
-- [ ] Update `GameLoopTest.kt` and `GameViewModelTest.kt` for new model signatures
+- [x] Add `MapTile.kt` to `domain/model/` — data class with: `id: Int`, `col: Int`, `row: Int`, `soilMoisture: Int` (0–100), `volatility: Int` (0–100), `occupantTribeId: String?`
+- [x] Transform `WorldState.kt` — replace single `tribe: Tribe` with `tiles: List<MapTile>` (192 entries mirroring the 16×6 herringbone grid) and a `tribes: Map<String, Tribe>` registry
+- [x] Update `Tribe.kt` to act as a census: keep global counters (`tribeId: String`, `population: Int`, `foodSupply: Int`, `devotion: Int`); remove tile-local fields — individual `MapTile` structures now track which tribe occupies each cell
+- [x] Update `WorldStateEntity.kt` and `RoomWorldStateRepository.kt` to serialize the expanded `WorldState` (tiles list + tribes map) via `kotlinx.serialization`
+- [x] Update `GameLoop.tick()` to accept and return the new `WorldState` structure; route tile-level reads/writes through the tile list
+- [x] Update `GameLoopTest.kt` and `GameViewModelTest.kt` for new model signatures
 - [ ] Smoke test: app launches, tribe renders on grid, tick advances without crash
 
 ---
@@ -26,15 +26,15 @@
 
 > Give the land a living metabolism — soil moisture and volatility drift on their own, and phase thresholds govern food output.
 
-- [ ] Add a `decayStep()` function inside `GameLoop.kt` that runs at the end of every tick; nudge each tile's `soilMoisture` and `volatility` toward a fertile baseline by a configurable delta constant
-- [ ] Define `EnvironmentalPhase` sealed class (or enum) in `domain/model/` with 4 variants:
+- [x] Add a `decayStep()` function inside `GameLoop.kt` that runs at the end of every tick; nudge each tile's `soilMoisture` and `volatility` toward a fertile baseline by a configurable delta constant
+- [x] Define `EnvironmentalPhase` sealed class (or enum) in `domain/model/` with 4 variants:
   - `Deluge` — moisture **81–100**: starvation penalty, active population casualties each tick
   - `Saturated` — moisture **51–80**: 50% food efficiency
   - `Fertile` — moisture **21–50**: 100% food growth (baseline)
   - `Parched` — moisture **0–20**: 10% crop yield
-- [ ] Wire `EnvironmentalPhase` resolution into the survival phase of `GameLoop.tick()` — per-tile phase determines each tile's food delta contribution for any tribe occupying it
-- [ ] Add at least 2 new environmental trigger events to `assets/events.json` (e.g., "The fields lie scorched and cracked" for Parched; "The rivers spill their banks" for Deluge)
-- [ ] Write unit tests covering each phase threshold, boundary conditions (e.g., exactly 81 = Deluge), and decay convergence
+- [x] Wire `EnvironmentalPhase` resolution into the survival phase of `GameLoop.tick()` — per-tile phase determines each tile's food delta contribution for any tribe occupying it
+- [x] Add at least 2 new environmental trigger events to `assets/events.json` (e.g., "The fields lie scorched and cracked" for Parched; "The rivers spill their banks" for Deluge)
+- [x] Write unit tests covering each phase threshold, boundary conditions (e.g., exactly 81 = Deluge), and decay convergence
 - [ ] Smoke test: manually set tile moisture values in a test; confirm food output matches expected phase multipliers
 
 ---
@@ -71,7 +71,21 @@
 
 ---
 
-## Phase 10 — Future Runway (Placeholders)
+## Phase 10 — Dynamic Chronicle (Living Narrative)
+
+> Make every Chronicle entry feel authored, not canned — tribe names in the text, varied flavour per event, and recurring conditions that can speak again.
+
+- [ ] **Template substitution in event text** — extend `EventEngine` (or a new `NarrativeResolver`) to replace `{{tribeName}}`, `{{population}}`, `{{foodSupply}}`, and `{{tick}}` placeholders in event text strings at fire time before appending to `eventHistory`
+- [ ] **Multiple text variants per event** — change `text: String` in `SimEvent` / `events.json` to `texts: List<String>`; at fire time pick one at random; update `EventParser` and all existing events to use the new array format (single-item arrays preserve current behaviour)
+- [ ] **Optional re-fire with cooldown** — add an optional `cooldownTicks: Int?` field to `SimEvent`; replace the blanket `firedEventIds: Set<String>` block with a `eventCooldowns: Map<String, Long>` map storing the tick the event last fired; an event may re-fire once `worldTimeTick >= lastFiredTick + cooldownTicks` (events without a cooldown remain one-and-done)
+- [ ] Update `events.json` — add `{{tribeName}}` to at least 5 existing event strings; add 2–3 variant strings to at least 3 high-frequency events (e.g. `famine_warning`, `tribe_grows`, `devotion_surge`); set a `cooldownTicks` on recurring-condition events (`famine_warning`, `faith_wavers`, `divine_power_wanes`)
+- [ ] Update `WorldStateEntity` serialization for the new `eventCooldowns` map field
+- [ ] Write unit tests: template tokens resolve correctly, unknown tokens pass through unchanged, variant selection is within the texts array, cooldown blocks re-fire before expiry and allows it after, one-and-done events (no cooldown) still fire exactly once
+- [ ] Smoke test: run a session into starvation; confirm Chronicle shows the tribe's actual name and that `famine_warning` reappears after its cooldown elapses
+
+---
+
+## Phase 11 — Future Runway (Placeholders)
 
 > Stubs for the next generation of social and civilizational mechanics. No implementation yet — just defined triggers and expected outputs.
 

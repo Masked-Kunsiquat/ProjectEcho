@@ -1,5 +1,6 @@
 package com.github.maskedkunisquat.projectecho
 
+import com.github.maskedkunisquat.projectecho.domain.model.MapTile
 import com.github.maskedkunisquat.projectecho.domain.model.SimEvent
 import com.github.maskedkunisquat.projectecho.domain.model.Tribe
 import com.github.maskedkunisquat.projectecho.domain.model.WorldState
@@ -110,6 +111,41 @@ class EventEngineTest {
         assertEquals(2, result.size)
         assertEquals("food_low", result[0].id)
         assertEquals("pop_ok", result[1].id)
+    }
+
+    @Test
+    fun `soilMoisture trigger uses Double precision - fractional average does not truncate`() {
+        // Tiles [20, 21] → avg 20.5; with Int truncation this would wrongly fire lte-20
+        val tiles = listOf(
+            MapTile(id = 0, col = 0, row = 0, soilMoisture = 20, occupantTribeId = "test"),
+            MapTile(id = 1, col = 1, row = 0, soilMoisture = 21, occupantTribeId = "test"),
+        )
+        val tileState = WorldState(
+            worldTimeTick = 1L, divineFavor = 50, tiles = tiles,
+            tribes = mapOf("test" to Tribe("test", "Test Tribe", 100, 50, 300)),
+        )
+        val events = listOf(event("parched", "soilMoisture", "lte", 20))
+        assertTrue(EventEngine.evaluate(tileState, events).isEmpty())
+    }
+
+    @Test
+    fun `soilMoisture trigger fires when average exactly meets threshold`() {
+        val tiles = listOf(
+            MapTile(id = 0, col = 0, row = 0, soilMoisture = 20, occupantTribeId = "test"),
+            MapTile(id = 1, col = 1, row = 0, soilMoisture = 20, occupantTribeId = "test"),
+        )
+        val tileState = WorldState(
+            worldTimeTick = 1L, divineFavor = 50, tiles = tiles,
+            tribes = mapOf("test" to Tribe("test", "Test Tribe", 100, 50, 300)),
+        )
+        val events = listOf(event("parched", "soilMoisture", "lte", 20))
+        assertEquals(1, EventEngine.evaluate(tileState, events).size)
+    }
+
+    @Test
+    fun `soilMoisture trigger returns no match when no tiles are occupied`() {
+        val events = listOf(event("parched", "soilMoisture", "lte", 20))
+        assertTrue(EventEngine.evaluate(state(), events).isEmpty())
     }
 
     @Test

@@ -63,5 +63,15 @@
     "id": "divine_power_surges",
     "trigger": { "stat": "divineFavor", "operator": "gte", "threshold": 90 },
     "text": "Divine energy crackles through you. The heavens bend to your will."
+  },
+  {
+    "id": "parched_land",
+    "trigger": { "stat": "soilMoisture", "operator": "lte", "threshold": 20 },
+    "text": "The fields lie scorched and cracked. Not a drop of rain has kissed the earth in many moons."
+  },
+  {
+    "id": "deluge_flooding",
+    "trigger": { "stat": "soilMoisture", "operator": "gte", "threshold": 81 },
+    "text": "The rivers spill their banks and swallow the fields whole. Your people flee to higher ground."
   }
 ]
