@@ -19,7 +19,7 @@ import kotlinx.serialization.Serializable
 data class SimEvent(
     val id: String,
     val trigger: Trigger,
-    val texts: List<String>,
+    val texts: List<String> = emptyList(),
     val cooldownTicks: Int? = null,
     val effect: Effect? = null,
 ) {
@@ -33,6 +33,8 @@ data class SimEvent(
      *   { "logic": "AND", "conditions": [ ... ] }
      *
      * A trigger is treated as multi-condition when [conditions] is non-null.
+     * Single-condition triggers that omit [stat]/[operator]/[threshold] fall back to
+     * empty-string defaults and will never match any stat resolver — a safe no-op.
      */
     @Serializable
     data class Trigger(

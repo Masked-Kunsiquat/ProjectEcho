@@ -30,7 +30,7 @@ object EventEngine {
     internal fun matches(state: WorldState, trigger: SimEvent.Trigger): Boolean {
         if (trigger.conditions != null) {
             return when (trigger.logic) {
-                "AND" -> trigger.conditions.all { matches(state, it) }
+                "AND" -> trigger.conditions.isNotEmpty() && trigger.conditions.all { matches(state, it) }
                 "OR"  -> trigger.conditions.any { matches(state, it) }
                 else  -> false
             }

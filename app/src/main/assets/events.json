@@ -149,15 +149,17 @@
   },
   {
     "id": "dying_faith_or_favor",
+    "cooldownTicks": 35,
     "trigger": {
       "logic": "OR",
       "conditions": [
-        { "stat": "devotion", "operator": "lt", "threshold": 5 },
-        { "stat": "divineFavor", "operator": "lt", "threshold": 5 }
+        { "stat": "devotion", "operator": "lt", "threshold": 15 },
+        { "stat": "divineFavor", "operator": "lt", "threshold": 10 }
       ]
     },
     "texts": [
-      "A great silence falls between {{tribeName}} and the divine. The bond grows fragile."
+      "A great silence falls between {{tribeName}} and the divine. The bond grows fragile.",
+      "Something is slipping. {{tribeName}} and the heavens drift apart like smoke on still air."
     ]
   }
 ]

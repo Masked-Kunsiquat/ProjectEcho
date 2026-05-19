@@ -102,9 +102,8 @@ fun tick(
     val eventedState = if (triggered.isEmpty()) {
         postTickState
     } else {
-        val resolvedTexts = triggered.map { event ->
-            val rawText = event.texts[random.nextInt(event.texts.size)]
-            NarrativeResolver.resolve(rawText, postTickState)
+        val resolvedTexts = triggered.mapNotNull { event ->
+            event.texts.randomOrNull(random)?.let { NarrativeResolver.resolve(it, postTickState) }
         }
         postTickState.copy(
             eventHistory = postTickState.eventHistory + resolvedTexts,
