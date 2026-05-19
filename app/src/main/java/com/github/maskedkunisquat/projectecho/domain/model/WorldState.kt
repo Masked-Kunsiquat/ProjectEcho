@@ -18,7 +18,7 @@ data class WorldState(
     companion object {
         fun initial(): WorldState {
             val tribeId = "iron-wrought"
-            val tribeName = "The Iron-Wrought"
+            val tribeName = TribeNameGenerator.generate(tribeId.hashCode())
             val population = 100
 
             val rng = Random(tribeId.hashCode())
