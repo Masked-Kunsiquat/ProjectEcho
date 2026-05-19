@@ -71,7 +71,21 @@
 
 ---
 
-## Phase 10 — Future Runway (Placeholders)
+## Phase 10 — Dynamic Chronicle (Living Narrative)
+
+> Make every Chronicle entry feel authored, not canned — tribe names in the text, varied flavour per event, and recurring conditions that can speak again.
+
+- [ ] **Template substitution in event text** — extend `EventEngine` (or a new `NarrativeResolver`) to replace `{{tribeName}}`, `{{population}}`, `{{foodSupply}}`, and `{{tick}}` placeholders in event text strings at fire time before appending to `eventHistory`
+- [ ] **Multiple text variants per event** — change `text: String` in `SimEvent` / `events.json` to `texts: List<String>`; at fire time pick one at random; update `EventParser` and all existing events to use the new array format (single-item arrays preserve current behaviour)
+- [ ] **Optional re-fire with cooldown** — add an optional `cooldownTicks: Int?` field to `SimEvent`; replace the blanket `firedEventIds: Set<String>` block with a `eventCooldowns: Map<String, Long>` map storing the tick the event last fired; an event may re-fire once `worldTimeTick >= lastFiredTick + cooldownTicks` (events without a cooldown remain one-and-done)
+- [ ] Update `events.json` — add `{{tribeName}}` to at least 5 existing event strings; add 2–3 variant strings to at least 3 high-frequency events (e.g. `famine_warning`, `tribe_grows`, `devotion_surge`); set a `cooldownTicks` on recurring-condition events (`famine_warning`, `faith_wavers`, `divine_power_wanes`)
+- [ ] Update `WorldStateEntity` serialization for the new `eventCooldowns` map field
+- [ ] Write unit tests: template tokens resolve correctly, unknown tokens pass through unchanged, variant selection is within the texts array, cooldown blocks re-fire before expiry and allows it after, one-and-done events (no cooldown) still fire exactly once
+- [ ] Smoke test: run a session into starvation; confirm Chronicle shows the tribe's actual name and that `famine_warning` reappears after its cooldown elapses
+
+---
+
+## Phase 11 — Future Runway (Placeholders)
 
 > Stubs for the next generation of social and civilizational mechanics. No implementation yet — just defined triggers and expected outputs.
 
