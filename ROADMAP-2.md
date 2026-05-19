@@ -72,6 +72,27 @@
 - [ ] Smoke test: touch a tile on-device; confirm radial halo highlights the correct neighbors; cast Rain, confirm moisture increases across the entire highlighted cluster
 
 ### Dashboard UI Overhaul
+
+```
+┌─────────────────────────────────┐
+│ PROJECT ECHO      ⚡67   T:142  │  ← Divine Favor + Tick (global)
+├─────────────────────────────────┤
+│                                 │
+│                                 │
+│           M A P                 │  ← hero; fills available space
+│        (fills space)            │
+│                                 │
+├─────────────────────────────────┤
+│ ● The Iron-Wrought          ▸   │  ← legend chip; tap for detail sheet
+│   Pop 847  ·  Food 1,204        │
+├─────────────────────────────────┤
+│  [ Rain ] [Harvest] [Inspire]   │  ← fixed-size square chips
+│  [Famine] [Plague ]             │    ⚡cost badge, uniform size always
+├─────────────────────────────────┤
+│  [ Chronicle ]  [ Manual Tick ] │
+└─────────────────────────────────┘
+```
+
 - [ ] **Top bar** — global-only row: "PROJECT ECHO" left, Divine Favor (⚡icon + number) + Tick counter right; remove Divine Favor from the stats column
 - [ ] **Map promoted** — `TribalGridMap` fills the available vertical space between the top bar and tribe legend (remove fixed 120dp height); map is the visual centrepiece
 - [ ] **Tribe legend chip** — replace the plain `displayLarge` tribe name with a `TribeLegendRow`: colored dot + tribe name + inline micro-stats (population · food supply) on one line; tapping the chip opens a tribe detail bottom sheet; row is horizontally scrollable for future multi-tribe support
