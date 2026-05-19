@@ -8,17 +8,22 @@ import com.github.maskedkunisquat.projectecho.domain.model.WeatherFront
 import com.github.maskedkunisquat.projectecho.domain.model.WeatherType
 import com.github.maskedkunisquat.projectecho.domain.model.WorldState
 import com.github.maskedkunisquat.projectecho.domain.model.GRID_COLS
+import com.github.maskedkunisquat.projectecho.domain.model.GRID_SIZE
+import com.github.maskedkunisquat.projectecho.domain.model.Tribe
+import kotlin.math.abs
 import kotlin.math.roundToInt
 import kotlin.random.Random
 
 internal const val MOISTURE_BASELINE = 35
 internal const val DECAY_DELTA = 1
 private const val DELUGE_CASUALTY_RATE = 0.97
+internal const val TILE_CAPACITY = 10  // max people a single tile can feed at full multiplier
 
 fun tick(
     currentState: WorldState,
     action: DivineAction? = null,
     events: List<SimEvent> = emptyList(),
+    targetCluster: List<Int> = emptyList(),
     random: Random = Random.Default,
 ): WorldState {
     var state = currentState.copy(tiles = decayStep(currentState.tiles))
@@ -36,6 +41,7 @@ fun tick(
         state = state.copy(
             tribes = updatedTribes,
             divineFavor = (state.divineFavor - action.favorCost).coerceIn(0, 100),
+            tiles = applyClusterTileEffect(state.tiles, targetCluster, action),
         )
     }
 
@@ -47,18 +53,20 @@ fun tick(
             occupiedTiles.map { EnvironmentalPhase.from(it.soilMoisture).foodMultiplier }.average()
         }
 
-        val farmed = (tribe.population * 0.8 * effectiveMultiplier).roundToInt()
+        val effectiveFarmers = if (occupiedTiles.isEmpty()) tribe.population
+                               else minOf(tribe.population, occupiedTiles.size * TILE_CAPACITY)
+        val farmed = (effectiveFarmers * 0.8 * effectiveMultiplier).roundToInt()
         val newFoodSupply = tribe.foodSupply + farmed - tribe.population
 
         val afterSurvival = when {
             newFoodSupply < 0 -> tribe.copy(
                 foodSupply = 0,
-                population = (tribe.population * 0.95).roundToInt(),
+                population = minOf(tribe.population - 1, (tribe.population * 0.95).roundToInt()).coerceAtLeast(0),
                 devotion = maxOf(0, tribe.devotion - 3),
             )
             newFoodSupply > 0 -> tribe.copy(
                 foodSupply = newFoodSupply,
-                population = (tribe.population * 1.02).roundToInt(),
+                population = maxOf(tribe.population + 1, (tribe.population * 1.02).roundToInt()),
                 devotion = minOf(100, tribe.devotion + 1),
             )
             else -> tribe.copy(foodSupply = 0)
@@ -77,6 +85,7 @@ fun tick(
         worldTimeTick = state.worldTimeTick + 1,
         divineFavor = regenedFavor,
         tribes = survivedTribes,
+        tiles = territoryStep(state.tiles, survivedTribes),
     )
 
     val unfiredEvents = events.filter { it.id !in postTickState.firedEventIds }
@@ -130,6 +139,54 @@ fun weatherStep(state: WorldState, random: Random = Random.Default): WorldState 
         eventHistory = if (exited) working.eventHistory + "The storm has passed. The land is still."
                        else working.eventHistory,
     )
+}
+
+internal fun territoryStep(tiles: List<MapTile>, tribes: Map<String, Tribe>): List<MapTile> {
+    val working = tiles.toMutableList()
+    for ((tribeId, tribe) in tribes) {
+        val expected = maxOf(0, tribe.population * GRID_SIZE / 500)
+        val occupiedIndices = working.indices.filter { working[it].occupantTribeId == tribeId }
+        val excess = occupiedIndices.size - expected
+        if (excess > 0) {
+            occupiedIndices.takeLast(excess).forEach { idx ->
+                working[idx] = working[idx].copy(occupantTribeId = null)
+            }
+        } else if (excess < 0) {
+            val deficit = -excess
+            val frontier = working.indices.filter { idx ->
+                val t = working[idx]
+                if (t.occupantTribeId != null) return@filter false
+                occupiedIndices.any { ownedIdx ->
+                    val o = working[ownedIdx]
+                    val dCol = abs(t.col - o.col)
+                    val dRow = abs(t.row - o.row)
+                    (dCol == 0 && dRow == 0) || (dCol + dRow == 1)
+                }
+            }
+            frontier.take(deficit).forEach { idx ->
+                working[idx] = working[idx].copy(occupantTribeId = tribeId)
+            }
+        }
+    }
+    return working
+}
+
+private fun applyClusterTileEffect(
+    tiles: List<MapTile>,
+    cluster: List<Int>,
+    action: DivineAction,
+): List<MapTile> {
+    if (cluster.isEmpty()) return tiles
+    val clusterSet = cluster.toHashSet()
+    return tiles.map { tile ->
+        if (tile.id !in clusterSet) tile
+        else when (action) {
+            DivineAction.CastRain     -> tile.copy(soilMoisture = (tile.soilMoisture + 15).coerceIn(0, 100))
+            DivineAction.BlessHarvest -> tile.copy(soilMoisture = (tile.soilMoisture + 8).coerceIn(0, 100))
+            DivineAction.CauseFamine  -> tile.copy(soilMoisture = (tile.soilMoisture - 15).coerceIn(0, 100))
+            else                      -> tile
+        }
+    }
 }
 
 fun decayStep(tiles: List<MapTile>): List<MapTile> = tiles.map { tile ->

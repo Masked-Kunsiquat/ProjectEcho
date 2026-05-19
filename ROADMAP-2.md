@@ -63,12 +63,12 @@
 > Redesign divine interventions from single-tile pokes to spatial cluster actions with an on-screen halo indicator. Simultaneously overhaul the dashboard layout so the map is the hero, tribe identity scales to multi-tribe, and the action panel is uniform.
 
 ### Radial Splash Targeting
-- [ ] Add `TileNeighbors.kt` utility to `domain/rules/` — pure Kotlin function `getNeighbors(tileId: Int, cols: Int = 16): List<Int>` returning the geometric neighbors for a herringbone triangle tile (handles edge tiles, corner tiles, and interior tiles differently)
-- [ ] Update `TribalGridMap.kt` — add touch/pointer input handling on the `Canvas`; on finger press, calculate the touched tile using existing triangle geometry
-- [ ] Add `hoveredCluster: List<Int>` state to `TribalGridMap` — on each press, call `getNeighbors()` and redraw the touched tile plus its neighbors with a radial amber glow and white outline halo
-- [ ] Update `GameViewModel.kt` — replace single-tile `applyDivineAction(action)` with `applyDivineAction(action, targetCluster: List<Int>)` that accepts a tile ID list
-- [ ] Update the action phase in `GameLoop.tick()` — iterate over `targetCluster` tiles and apply stat modifications (moisture ±, volatility ±) to each; population/food effects scale proportionally by the number of occupied tiles in the cluster
-- [ ] Write unit tests for `getNeighbors()` covering: a center tile, a left-edge tile, a right-edge tile, a corner tile
+- [x] Add `TileNeighbors.kt` utility to `domain/rules/` — pure Kotlin function `getNeighbors(tileId: Int, cols: Int = 16): List<Int>` returning the geometric neighbors for a herringbone triangle tile (handles edge tiles, corner tiles, and interior tiles differently)
+- [x] Update `TribalGridMap.kt` — add touch/pointer input handling on the `Canvas`; on finger press, calculate the touched tile using existing triangle geometry
+- [x] Add `hoveredCluster: List<Int>` state to `TribalGridMap` — on each press, call `getNeighbors()` and redraw the touched tile plus its neighbors with a radial amber glow and white outline halo
+- [x] Update `GameViewModel.kt` — replace single-tile `applyDivineAction(action)` with `applyDivineAction(action, targetCluster: List<Int>)` that accepts a tile ID list
+- [x] Update the action phase in `GameLoop.tick()` — iterate over `targetCluster` tiles and apply stat modifications (moisture ±, volatility ±) to each; population/food effects scale proportionally by the number of occupied tiles in the cluster
+- [x] Write unit tests for `getNeighbors()` covering: a center tile, a left-edge tile, a right-edge tile, a corner tile
 - [ ] Smoke test: touch a tile on-device; confirm radial halo highlights the correct neighbors; cast Rain, confirm moisture increases across the entire highlighted cluster
 
 ### Dashboard UI Overhaul
@@ -93,12 +93,19 @@
 └─────────────────────────────────┘
 ```
 
-- [ ] **Top bar** — global-only row: "PROJECT ECHO" left, Divine Favor (⚡icon + number) + Tick counter right; remove Divine Favor from the stats column
-- [ ] **Map promoted** — `TribalGridMap` fills the available vertical space between the top bar and tribe legend (remove fixed 120dp height); map is the visual centrepiece
-- [ ] **Tribe legend chip** — replace the plain `displayLarge` tribe name with a `TribeLegendRow`: colored dot + tribe name + inline micro-stats (population · food supply) on one line; tapping the chip opens a tribe detail bottom sheet; row is horizontally scrollable for future multi-tribe support
-- [ ] **Tribe detail bottom sheet** — shows full per-tribe stats (population, food supply, devotion progress bar, tiles occupied, current `EnvironmentalPhase`); dismissed by swipe
-- [ ] **Action panel** — replace variable-width `OutlinedButton` labels with fixed-size square chips; shorten labels to one word ("Rain", "Harvest", "Inspire", "Famine", "Plague"); show favor cost as a small ⚡badge; eliminates the oval/circle inconsistency
-- [ ] Smoke test: dashboard renders correctly at multiple screen sizes; tribe chip opens detail sheet; action chips are uniform; map fills available space
+- [x] **Top bar** — global-only row: "PROJECT ECHO" left, Divine Favor (⚡icon + number) + Tick counter right; remove Divine Favor from the stats column
+- [x] **Map promoted** — `TribalGridMap` fills the available vertical space between the top bar and tribe legend (remove fixed 120dp height); map is the visual centrepiece
+- [x] **Tribe legend chip** — replace the plain `displayLarge` tribe name with a `TribeLegendRow`: colored dot + tribe name + inline micro-stats (population · food supply) on one line; tapping the chip opens a tribe detail bottom sheet; row is horizontally scrollable for future multi-tribe support
+- [x] **Tribe detail bottom sheet** — shows full per-tribe stats (population, food supply, devotion progress bar, tiles occupied, current `EnvironmentalPhase`); dismissed by swipe
+- [x] **Action panel** — replace variable-width `OutlinedButton` labels with fixed-size square chips; shorten labels to one word ("Rain", "Harvest", "Inspire", "Famine", "Plague"); show favor cost as a small ⚡badge; eliminates the oval/circle inconsistency
+- [x] Smoke test: dashboard renders correctly at multiple screen sizes; tribe chip opens detail sheet; action chips are uniform; map fills available space
+
+### Simulation Engine Fixes (landed during Phase 9)
+
+- [x] **Population growth guarantee** — `(pop * 1.02).roundToInt()` silently rounded back to the same integer at small populations (e.g. 10 * 1.02 = 10). Growth now guarantees ≥ +1/tick when fed; starvation guarantees ≥ −1/tick when hungry.
+- [x] **Fertile soil surplus** — `Fertile.foodMultiplier` raised from 1.0 → 1.5 so Fertile land produces a net food surplus (120 food per 100 people vs. 100 consumed). At the old value, tribes on baseline soil always drained food to zero and could never grow without divine intervention.
+- [x] **Territory expansion** — `territoryStep()` only shrank territory (population drop → release tiles). Expansion branch added: when population exceeds current tile count, the tribe claims adjacent unclaimed frontier tiles one at a time per tick.
+- [x] **Carrying capacity** — added `TILE_CAPACITY = 10` constant; farming output is now `min(population, tiles × TILE_CAPACITY) × 0.8 × soilMultiplier`. `TILE_CAPACITY` is a per-tile production limit, not a strict population ceiling: at full grid (192 tiles) with Fertile soil (×1.5), output plateaus at `192 × 10 × 0.8 × 1.5 = 2 304` food/tick, which equals consumption at pop ≈ 2 300. Above that, the tribe starves back to equilibrium.
 
 ---
 
@@ -179,6 +186,7 @@
   - Trigger: tile population density on a single `MapTile` exceeds a configurable threshold
   - Expected output: a new `Tribe` entry is inserted into `WorldState.tribes`; excess population density migrates to an adjacent unoccupied `MapTile` slot; Chronicle logs the schism
   - Status: *placeholder — no implementation*
+  - **Design note for multi-tribe:** The carrying capacity system (Phase 9) makes territory the scarce resource — a tribe at its ceiling *must* expand to grow, and expansion stops at another tribe's border. This is the right foundation for conflict. One thing to revisit before implementation: the current territory formula (`expected = population × 192 / 500`) makes territory *follow* population. With carrying capacity, causality is reversed — territory *determines* the population ceiling. At scale the formula always demands more tiles than the grid holds, so `territoryStep` perpetually tries to expand (harmless, just semantically odd). Multi-tribe will likely need territory to be driven by something other than raw population — devotion, strength, or divine favor — so that two tribes compete for finite land rather than each computing an uncapped "expected" tile count independently.
 
 - [ ] **Sophistication Progression**
   - Outline: a `sophisticationLevel: Int` counter on `Tribe` that rises as population and devotion milestones are crossed; higher levels unlock new narrative event categories, new `DivineAction` types, and unique Chronicle entries

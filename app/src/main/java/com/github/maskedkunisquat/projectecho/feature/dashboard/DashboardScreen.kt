@@ -1,44 +1,64 @@
 package com.github.maskedkunisquat.projectecho.feature.dashboard
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.github.maskedkunisquat.projectecho.domain.model.DivineAction
+import com.github.maskedkunisquat.projectecho.domain.model.EnvironmentalPhase
+import com.github.maskedkunisquat.projectecho.domain.model.GRID_COLS
+import com.github.maskedkunisquat.projectecho.domain.model.GRID_ROWS
+import com.github.maskedkunisquat.projectecho.domain.model.Tribe
 import com.github.maskedkunisquat.projectecho.domain.model.WorldState
 import com.github.maskedkunisquat.projectecho.ui.theme.ProjectEchoTheme
+
+// U+26A1 + U+FE0E forces text presentation so the glyph inherits Compose color styling
+private const val FAVOR_ICON = "⚡︎"
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DashboardScreen(
     worldState: WorldState,
     onTickPressed: () -> Unit,
-    onActionPressed: (DivineAction) -> Unit,
+    onActionPressed: (DivineAction, Int?) -> Unit,
     snackbarHostState: SnackbarHostState,
     isChronicleVisible: Boolean,
     onShowChronicle: () -> Unit,
@@ -75,69 +95,107 @@ fun DashboardScreen(
         }
     }
 
-    val tribe = worldState.tribes.values.firstOrNull() ?: return
+    var hoveredTileId by remember { mutableStateOf<Int?>(null) }
+    var detailTribeId by remember { mutableStateOf<String?>(null) }
+    detailTribeId?.let { tribeId ->
+        worldState.tribes[tribeId]?.let { tribe ->
+            val occupiedTiles = worldState.tiles.filter { it.occupantTribeId == tribeId }
+            val avgMoisture = if (occupiedTiles.isEmpty()) 35
+                              else occupiedTiles.sumOf { it.soilMoisture } / occupiedTiles.size
+            TribeDetailSheet(
+                tribe = tribe,
+                tilesOccupied = occupiedTiles.size,
+                environmentalPhase = EnvironmentalPhase.from(avgMoisture),
+                onDismiss = { detailTribeId = null },
+            )
+        }
+    }
 
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .padding(horizontal = 16.dp),
-    ) {
-        Column(
+    Column(modifier = modifier.fillMaxSize()) {
+        // Global top bar: title left, ⚡favor + tick right
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
         ) {
+            Text(
+                text = "PROJECT ECHO",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+            )
             Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text(text = "PROJECT ECHO", style = MaterialTheme.typography.titleMedium)
                 Text(
-                    text = "Tick ${worldState.worldTimeTick}",
+                    text = "$FAVOR_ICON${worldState.divineFavor}",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+                Text(
+                    text = "T:${worldState.worldTimeTick}",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
+        }
 
-            Text(text = tribe.name, style = MaterialTheme.typography.displayLarge)
+        // Aspect-ratio constrained so cells stay square (16×6 grid)
+        TribalGridMap(
+            tiles = worldState.tiles,
+            activeFront = worldState.activeFront,
+            hoveredTileId = hoveredTileId,
+            onTilePressed = { hoveredTileId = it },
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(GRID_COLS.toFloat() / GRID_ROWS.toFloat()),
+        )
 
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                StatRow(label = "Population", value = tribe.population.toString())
-                StatRow(label = "Food Supply", value = tribe.foodSupply.toString())
-                ProgressStatRow(label = "Devotion",     value = tribe.devotion,       maxValue = 100)
-                ProgressStatRow(label = "Divine Favor", value = worldState.divineFavor, maxValue = 100)
-            }
-
-            HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
-
-            Surface(
-                shape = RoundedCornerShape(8.dp),
-                color = MaterialTheme.colorScheme.surface,
-            ) {
-                ActionPanel(
-                    divineFavor = worldState.divineFavor,
-                    onActionPressed = onActionPressed,
-                    modifier = Modifier.padding(12.dp),
+        // Tribe legend strip — scrollable for future multi-tribe support
+        LazyRow(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            items(worldState.tribes.values.toList(), key = { it.tribeId }) { tribe ->
+                TribeLegendChip(
+                    tribe = tribe,
+                    onClick = { detailTribeId = tribe.tribeId },
                 )
             }
-
-            TribalGridMap(
-                tiles = worldState.tiles,
-                activeFront = worldState.activeFront,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(120.dp),
-            )
         }
+
+        HorizontalDivider(
+            modifier = Modifier.padding(horizontal = 16.dp),
+            color = MaterialTheme.colorScheme.surfaceVariant,
+        )
+
+        // Action panel — uniform square chips with ⚡cost badge
+        ActionPanel(
+            divineFavor = worldState.divineFavor,
+            onActionPressed = { action ->
+                onActionPressed(action, hoveredTileId)
+                hoveredTileId = null
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+        )
+
+        HorizontalDivider(
+            modifier = Modifier.padding(horizontal = 16.dp),
+            color = MaterialTheme.colorScheme.surfaceVariant,
+        )
 
         Spacer(modifier = Modifier.weight(1f))
 
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(vertical = 16.dp),
+                .padding(horizontal = 16.dp, vertical = 12.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             OutlinedButton(
@@ -153,6 +211,159 @@ fun DashboardScreen(
             ) {
                 Text("Manual Tick")
             }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun TribeDetailSheet(
+    tribe: Tribe,
+    tilesOccupied: Int,
+    environmentalPhase: EnvironmentalPhase,
+    onDismiss: () -> Unit,
+) {
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        containerColor = MaterialTheme.colorScheme.surface,
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp)
+                .padding(bottom = 32.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Text(text = tribe.name, style = MaterialTheme.typography.titleLarge)
+            HorizontalDivider()
+            StatRow(label = "Population",     value = tribe.population.toString())
+            StatRow(label = "Food Supply",    value = tribe.foodSupply.toString())
+            StatRow(label = "Tiles Occupied", value = tilesOccupied.toString())
+            StatRow(label = "Environment",    value = environmentalPhase.displayName())
+            ProgressStatRow(label = "Devotion", value = tribe.devotion, maxValue = 100)
+        }
+    }
+}
+
+@Composable
+private fun TribeLegendChip(
+    tribe: Tribe,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier
+            .clip(RoundedCornerShape(8.dp))
+            .border(1.dp, MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(8.dp))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Box(
+            modifier = Modifier
+                .size(10.dp)
+                .background(MaterialTheme.colorScheme.primary, CircleShape),
+        )
+        Column {
+            Text(
+                text = tribe.name,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Text(
+                text = "Pop ${tribe.population} · Food ${tribe.foodSupply}",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Text(
+            text = "▸",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+@Composable
+private fun ActionPanel(
+    divineFavor: Int,
+    onActionPressed: (DivineAction) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val actions = listOf(
+        DivineAction.CastRain      to "Rain",
+        DivineAction.BlessHarvest  to "Harvest",
+        DivineAction.InspireDevout to "Inspire",
+        DivineAction.CauseFamine   to "Famine",
+        DivineAction.SendPlague    to "Plague",
+    )
+
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            actions.take(3).forEach { (action, label) ->
+                ActionChip(
+                    label = label,
+                    cost = action.favorCost,
+                    enabled = divineFavor >= action.favorCost,
+                    onClick = { onActionPressed(action) },
+                    modifier = Modifier.weight(1f),
+                )
+            }
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            actions.drop(3).forEach { (action, label) ->
+                ActionChip(
+                    label = label,
+                    cost = action.favorCost,
+                    enabled = divineFavor >= action.favorCost,
+                    onClick = { onActionPressed(action) },
+                    modifier = Modifier.weight(1f),
+                )
+            }
+            Spacer(modifier = Modifier.weight(1f))
+        }
+    }
+}
+
+@Composable
+private fun ActionChip(
+    label: String,
+    cost: Int,
+    enabled: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val containerColor = if (enabled) MaterialTheme.colorScheme.primaryContainer
+                         else MaterialTheme.colorScheme.surfaceVariant
+    val contentColor = if (enabled) MaterialTheme.colorScheme.onPrimaryContainer
+                       else MaterialTheme.colorScheme.onSurfaceVariant
+    val borderColor = if (enabled) MaterialTheme.colorScheme.primary
+                      else MaterialTheme.colorScheme.surfaceVariant
+
+    Box(
+        modifier = modifier
+            .aspectRatio(1f)
+            .clip(RoundedCornerShape(8.dp))
+            .background(containerColor)
+            .border(1.dp, borderColor, RoundedCornerShape(8.dp))
+            .then(if (enabled) Modifier.clickable(onClick = onClick) else Modifier),
+        contentAlignment = Alignment.Center,
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+        ) {
+            Text(text = label, style = MaterialTheme.typography.labelMedium, color = contentColor)
+            Spacer(modifier = Modifier.height(2.dp))
+            Text(text = "$FAVOR_ICON$cost", style = MaterialTheme.typography.labelSmall, color = contentColor)
         }
     }
 }
@@ -180,74 +391,6 @@ private fun ProgressStatRow(label: String, value: Int, maxValue: Int) {
 }
 
 @Composable
-private fun ActionPanel(
-    divineFavor: Int,
-    onActionPressed: (DivineAction) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val actions = listOf(
-        DivineAction.CastRain      to "Cast Rain",
-        DivineAction.BlessHarvest  to "Bless Harvest",
-        DivineAction.InspireDevout to "Inspire Devout",
-        DivineAction.CauseFamine   to "Cause Famine",
-        DivineAction.SendPlague    to "Send Plague",
-    )
-
-    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(text = "Divine Interventions", style = MaterialTheme.typography.titleMedium)
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            actions.take(3).forEach { (action, label) ->
-                ActionButton(
-                    label = label,
-                    cost = action.favorCost,
-                    enabled = divineFavor >= action.favorCost,
-                    onClick = { onActionPressed(action) },
-                    modifier = Modifier.weight(1f),
-                )
-            }
-        }
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            actions.drop(3).forEach { (action, label) ->
-                ActionButton(
-                    label = label,
-                    cost = action.favorCost,
-                    enabled = divineFavor >= action.favorCost,
-                    onClick = { onActionPressed(action) },
-                    modifier = Modifier.weight(1f),
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun ActionButton(
-    label: String,
-    cost: Int,
-    enabled: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    OutlinedButton(
-        onClick = onClick,
-        enabled = enabled,
-        modifier = modifier,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary),
-    ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(text = label, style = MaterialTheme.typography.labelMedium)
-            Text(text = "($cost favor)", style = MaterialTheme.typography.labelSmall)
-        }
-    }
-}
-
-@Composable
 private fun StatRow(label: String, value: String) {
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -262,6 +405,13 @@ private fun StatRow(label: String, value: String) {
     }
 }
 
+private fun EnvironmentalPhase.displayName(): String = when (this) {
+    is EnvironmentalPhase.Deluge    -> "Deluge"
+    is EnvironmentalPhase.Saturated -> "Saturated"
+    is EnvironmentalPhase.Fertile   -> "Fertile"
+    is EnvironmentalPhase.Parched   -> "Parched"
+}
+
 @Preview(showBackground = true, backgroundColor = 0xFF0F0F0F, name = "Dashboard - Full")
 @Composable
 private fun DashboardScreenPreview() {
@@ -269,7 +419,7 @@ private fun DashboardScreenPreview() {
         DashboardScreen(
             worldState = WorldState.initial(),
             onTickPressed = {},
-            onActionPressed = {},
+            onActionPressed = { _, _ -> },  // preview stub
             snackbarHostState = remember { SnackbarHostState() },
             isChronicleVisible = false,
             onShowChronicle = {},

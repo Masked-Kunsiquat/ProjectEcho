@@ -28,7 +28,7 @@ class EnvironmentalPhaseTest {
 
     @Test fun `Parched multiplier is 0_1`() = assertEquals(0.1, EnvironmentalPhase.Parched.foodMultiplier, 0.001)
     @Test fun `Saturated multiplier is 0_5`() = assertEquals(0.5, EnvironmentalPhase.Saturated.foodMultiplier, 0.001)
-    @Test fun `Fertile multiplier is 1_0`() = assertEquals(1.0, EnvironmentalPhase.Fertile.foodMultiplier, 0.001)
+    @Test fun `Fertile multiplier is 1_5`() = assertEquals(1.5, EnvironmentalPhase.Fertile.foodMultiplier, 0.001)
     @Test fun `Deluge multiplier is 0_0`() = assertEquals(0.0, EnvironmentalPhase.Deluge.foodMultiplier, 0.001)
 
     // --- Decay convergence ---
@@ -85,7 +85,11 @@ class EnvironmentalPhaseTest {
     // --- Tick integration: phase multipliers affect food output ---
 
     private fun tileFor(tribeId: String, moisture: Int, id: Int = 0) =
-        MapTile(id = id, col = 0, row = 0, soilMoisture = moisture, occupantTribeId = tribeId)
+        MapTile(id = id, col = id % 16, row = id / 16, soilMoisture = moisture, occupantTribeId = tribeId)
+
+    // 10 tiles so TILE_CAPACITY*10=100 effective farmers matches pop=100; keeps multiplier tests clean
+    private fun tilesFor(tribeId: String, moisture: Int, count: Int = 10) =
+        (0 until count).map { tileFor(tribeId, moisture, id = it) }
 
     private fun stateWithTiles(
         population: Int = 100,
@@ -103,11 +107,11 @@ class EnvironmentalPhaseTest {
     fun `Fertile tiles give full farming output`() {
         val state = stateWithTiles(
             population = 100, foodSupply = 200,
-            tiles = listOf(tileFor("echosi", moisture = 35)),
+            tiles = tilesFor("echosi", moisture = 35),
         )
         val result = tick(state)
-        // farmed = (100 * 0.8 * 1.0).roundToInt() = 80; newFood = 200 + 80 - 100 = 180
-        assertEquals(180, result.tribes["echosi"]!!.foodSupply)
+        // farmed = (100 * 0.8 * 1.5).roundToInt() = 120; newFood = 200 + 120 - 100 = 220
+        assertEquals(220, result.tribes["echosi"]!!.foodSupply)
         assertEquals(102, result.tribes["echosi"]!!.population)
     }
 
@@ -115,7 +119,7 @@ class EnvironmentalPhaseTest {
     fun `Saturated tiles give 50 percent farming output`() {
         val state = stateWithTiles(
             population = 100, foodSupply = 200,
-            tiles = listOf(tileFor("echosi", moisture = 65)),
+            tiles = tilesFor("echosi", moisture = 65),
         )
         val result = tick(state)
         // farmed = (100 * 0.8 * 0.5).roundToInt() = 40; newFood = 200 + 40 - 100 = 140
@@ -127,7 +131,7 @@ class EnvironmentalPhaseTest {
     fun `Parched tiles cause near-starvation yield`() {
         val state = stateWithTiles(
             population = 100, foodSupply = 50,
-            tiles = listOf(tileFor("echosi", moisture = 10)),
+            tiles = tilesFor("echosi", moisture = 10),
         )
         val result = tick(state)
         // farmed = (100 * 0.8 * 0.1).roundToInt() = 8; newFood = 50 + 8 - 100 = -42 → starvation
@@ -140,7 +144,7 @@ class EnvironmentalPhaseTest {
     fun `Deluge tiles cause zero farming and apply population casualties`() {
         val state = stateWithTiles(
             population = 100, foodSupply = 500,
-            tiles = listOf(tileFor("echosi", moisture = 90)),
+            tiles = tilesFor("echosi", moisture = 90),
         )
         val result = tick(state)
         // farmed = 0; newFood = 500 + 0 - 100 = 400 (positive)
@@ -148,6 +152,18 @@ class EnvironmentalPhaseTest {
         // Deluge casualties: pop = (102 * 0.97).roundToInt() = 99
         assertEquals(400, result.tribes["echosi"]!!.foodSupply)
         assertEquals(99, result.tribes["echosi"]!!.population)
+    }
+
+    @Test
+    fun `tile capacity caps effective farmers when population exceeds territory`() {
+        // 5 tiles × TILE_CAPACITY(10) = 50 effective farmers; pop=100 is over-capacity
+        val state = stateWithTiles(
+            population = 100, foodSupply = 200,
+            tiles = tilesFor("echosi", moisture = 35, count = 5),
+        )
+        val result = tick(state)
+        // effectiveFarmers=50; farmed = (50*0.8*1.5).roundToInt()=60; newFood = 200+60-100 = 160
+        assertEquals(160, result.tribes["echosi"]!!.foodSupply)
     }
 
     @Test

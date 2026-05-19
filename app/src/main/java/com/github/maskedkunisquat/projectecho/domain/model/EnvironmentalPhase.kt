@@ -10,7 +10,7 @@ sealed class EnvironmentalPhase {
         get() = when (this) {
             is Deluge    -> 0.0
             is Saturated -> 0.5
-            is Fertile   -> 1.0
+            is Fertile   -> 1.5
             is Parched   -> 0.1
         }
 
