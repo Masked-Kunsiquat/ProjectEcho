@@ -53,7 +53,7 @@
 - [x] On weather spawn, append a telegraphed warning to `eventHistory` (e.g., "Dark clouds gather on the eastern horizon…" for RainCloud; "A shimmering heat bends the horizon…" for HeatWave)
 - [x] On weather exit, append a closing note to `eventHistory` (e.g., "The storm has passed. The land is still.")
 - [x] Write unit tests: front spawns on edge, advances column correctly each tick, applies moisture delta only to current column's tiles, clears on grid exit
-- [ ] Smoke test: observe Chronicle ledger for weather warnings; confirm moisture values shift on the affected column's tiles each tick
+- [x] Smoke test: observe Chronicle ledger for weather warnings; confirm moisture values shift on the affected column's tiles each tick
 
 ---
 
