@@ -93,11 +93,11 @@
 └─────────────────────────────────┘
 ```
 
-- [ ] **Top bar** — global-only row: "PROJECT ECHO" left, Divine Favor (⚡icon + number) + Tick counter right; remove Divine Favor from the stats column
-- [ ] **Map promoted** — `TribalGridMap` fills the available vertical space between the top bar and tribe legend (remove fixed 120dp height); map is the visual centrepiece
-- [ ] **Tribe legend chip** — replace the plain `displayLarge` tribe name with a `TribeLegendRow`: colored dot + tribe name + inline micro-stats (population · food supply) on one line; tapping the chip opens a tribe detail bottom sheet; row is horizontally scrollable for future multi-tribe support
-- [ ] **Tribe detail bottom sheet** — shows full per-tribe stats (population, food supply, devotion progress bar, tiles occupied, current `EnvironmentalPhase`); dismissed by swipe
-- [ ] **Action panel** — replace variable-width `OutlinedButton` labels with fixed-size square chips; shorten labels to one word ("Rain", "Harvest", "Inspire", "Famine", "Plague"); show favor cost as a small ⚡badge; eliminates the oval/circle inconsistency
+- [x] **Top bar** — global-only row: "PROJECT ECHO" left, Divine Favor (⚡icon + number) + Tick counter right; remove Divine Favor from the stats column
+- [x] **Map promoted** — `TribalGridMap` fills the available vertical space between the top bar and tribe legend (remove fixed 120dp height); map is the visual centrepiece
+- [x] **Tribe legend chip** — replace the plain `displayLarge` tribe name with a `TribeLegendRow`: colored dot + tribe name + inline micro-stats (population · food supply) on one line; tapping the chip opens a tribe detail bottom sheet; row is horizontally scrollable for future multi-tribe support
+- [x] **Tribe detail bottom sheet** — shows full per-tribe stats (population, food supply, devotion progress bar, tiles occupied, current `EnvironmentalPhase`); dismissed by swipe
+- [x] **Action panel** — replace variable-width `OutlinedButton` labels with fixed-size square chips; shorten labels to one word ("Rain", "Harvest", "Inspire", "Famine", "Plague"); show favor cost as a small ⚡badge; eliminates the oval/circle inconsistency
 - [ ] Smoke test: dashboard renders correctly at multiple screen sizes; tribe chip opens detail sheet; action chips are uniform; map fills available space
 
 ---
