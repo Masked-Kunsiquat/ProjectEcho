@@ -21,7 +21,7 @@ fun tick(
     events: List<SimEvent> = emptyList(),
     random: Random = Random.Default,
 ): WorldState {
-    var state = currentState
+    var state = currentState.copy(tiles = decayStep(currentState.tiles))
 
     if (action != null && state.divineFavor >= action.favorCost) {
         val updatedTribes = state.tribes.mapValues { (_, tribe) ->
@@ -91,8 +91,7 @@ fun tick(
         )
     }
 
-    val afterWeather = weatherStep(eventedState, random)
-    return afterWeather.copy(tiles = decayStep(afterWeather.tiles))
+    return weatherStep(eventedState, random)
 }
 
 fun weatherStep(state: WorldState, random: Random = Random.Default): WorldState {

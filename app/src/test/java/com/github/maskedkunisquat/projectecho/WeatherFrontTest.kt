@@ -6,6 +6,7 @@ import com.github.maskedkunisquat.projectecho.domain.model.MapTile
 import com.github.maskedkunisquat.projectecho.domain.model.WeatherFront
 import com.github.maskedkunisquat.projectecho.domain.model.WeatherType
 import com.github.maskedkunisquat.projectecho.domain.model.WorldState
+import com.github.maskedkunisquat.projectecho.domain.rules.tick
 import com.github.maskedkunisquat.projectecho.domain.rules.weatherStep
 import kotlin.random.Random
 import org.junit.Assert.assertEquals
@@ -96,7 +97,7 @@ class WeatherFrontTest {
 
     @Test
     fun `front clears and appends exit message when column exits east edge`() {
-        val front = WeatherFront(type = WeatherType.RainCloud, column = 15, direction = 1)
+        val front = WeatherFront(type = WeatherType.RainCloud, column = GRID_COLS - 1, direction = 1)
         val result = weatherStep(stateWithFront(front))
 
         assertNull(result.activeFront)
@@ -160,11 +161,29 @@ class WeatherFrontTest {
 
     @Test
     fun `nextSpawnTick randomised on front exit`() {
-        val front = WeatherFront(type = WeatherType.RainCloud, column = 15, direction = 1)
+        val front = WeatherFront(type = WeatherType.RainCloud, column = GRID_COLS - 1, direction = 1)
         val result = weatherStep(stateWithFront(front, tick = 50L), Random(42))
 
         assertNull(result.activeFront)
         // nextSpawnTick must be in range [50+20, 50+40] = [70, 90]
         assertTrue(result.nextSpawnTick in 70L..90L)
+    }
+
+    // --- Pipeline ordering: decay before weather ---
+
+    @Test
+    fun `tick preserves full weather delta for the current tick before decay runs`() {
+        // Tiles start at baseline (35) — decay leaves them unchanged.
+        // Rain front on column 5: weatherStep should push col-5 tiles to 50 (+15).
+        // If decayStep ran after weatherStep in the same tick it would reduce col-5 to 49,
+        // so this test fails on the wrong ordering.
+        val front = WeatherFront(type = WeatherType.RainCloud, column = 5, direction = 1)
+        val state = stateWithFront(front)
+
+        val result = tick(state)
+
+        result.tiles.filter { it.col == 5 }.forEach { assertEquals(50, it.soilMoisture) }
+        result.tiles.filter { it.col != 5 }.forEach { assertEquals(35, it.soilMoisture) }
+        assertEquals(6, result.activeFront?.column)
     }
 }
