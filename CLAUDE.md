@@ -18,6 +18,13 @@ You are an expert software architect and senior Kotlin developer assisting a non
 - **Contents:** Jetpack Compose layout files.
 - **Behavior:** The UI accepts a read-only game state object, renders it as clean vector shapes or typography, and passes user interactions (button clicks) immediately up to the game loop.
 
+## Git Workflow — STRICT RULES
+
+- **NEVER run `git push` or `gh pr create` without the user explicitly asking.** Only commit.
+- After completing a phase: update ROADMAP-2.md checkboxes → update memory → commit. **Stop there.**
+- Wait for the user to say "push" or "open a PR" before doing either.
+- **Why:** Every push triggers a CodeRabbit review and burns limited quota.
+
 ## Code Quality Standards
 - **Data-Driven:** Do not hardcode branching logic into deep `if/else` strings. Use data structures, state machines, and configuration files (like JSON simulation rules) to manage complexity.
 - **Clarity Over Cleverness:** Write readable, self-documenting Kotlin code. Avoid over-engineering, massive inheritance chains, or premature optimizations.

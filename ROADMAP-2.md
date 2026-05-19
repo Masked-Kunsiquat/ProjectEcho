@@ -43,16 +43,16 @@
 
 > The world moves entirely on its own. A drifting climate front crosses the grid without any player input, telegraphing its arrival in the Chronicle.
 
-- [ ] Add `WeatherType` enum to `domain/model/` with moisture delta values per type: `RainCloud` (+15 moisture/tick to affected column), `HeatWave` (-12 moisture/tick to affected column)
-- [ ] Add `WeatherFront.kt` to `domain/model/` — data class with: `type: WeatherType`, `column: Int` (current grid column, 0–15), `direction: Int` (+1 eastward or -1 westward)
-- [ ] Add optional `activeFront: WeatherFront?` field to `WorldState`
-- [ ] In `GameLoop.tick()`, add a `weatherStep()` sub-function:
-  - [ ] Every N ticks (configurable constant, e.g., 10), spawn a new `WeatherFront` on a random edge column with a random direction
-  - [ ] Each tick, advance `activeFront.column` by its `direction`; apply that front's moisture delta to all tiles in the current column
-  - [ ] When the front exits the grid (column < 0 or > 15), clear `activeFront`
-- [ ] On weather spawn, append a telegraphed warning to `eventHistory` (e.g., "Dark clouds gather on the eastern horizon…" for RainCloud; "A shimmering heat bends the horizon…" for HeatWave)
-- [ ] On weather exit, append a closing note to `eventHistory` (e.g., "The storm has passed. The land is still.")
-- [ ] Write unit tests: front spawns on edge, advances column correctly each tick, applies moisture delta only to current column's tiles, clears on grid exit
+- [x] Add `WeatherType` enum to `domain/model/` with moisture delta values per type: `RainCloud` (+15 moisture/tick to affected column), `HeatWave` (-12 moisture/tick to affected column)
+- [x] Add `WeatherFront.kt` to `domain/model/` — data class with: `type: WeatherType`, `column: Int` (current grid column, 0–15), `direction: Int` (+1 eastward or -1 westward)
+- [x] Add optional `activeFront: WeatherFront?` field to `WorldState`
+- [x] In `GameLoop.tick()`, add a `weatherStep()` sub-function:
+  - [x] Every N ticks (configurable constant, e.g., 10), spawn a new `WeatherFront` on a random edge column with a random direction
+  - [x] Each tick, advance `activeFront.column` by its `direction`; apply that front's moisture delta to all tiles in the current column
+  - [x] When the front exits the grid (column < 0 or > 15), clear `activeFront`
+- [x] On weather spawn, append a telegraphed warning to `eventHistory` (e.g., "Dark clouds gather on the eastern horizon…" for RainCloud; "A shimmering heat bends the horizon…" for HeatWave)
+- [x] On weather exit, append a closing note to `eventHistory` (e.g., "The storm has passed. The land is still.")
+- [x] Write unit tests: front spawns on edge, advances column correctly each tick, applies moisture delta only to current column's tiles, clears on grid exit
 - [ ] Smoke test: observe Chronicle ledger for weather warnings; confirm moisture values shift on the affected column's tiles each tick
 
 ---
