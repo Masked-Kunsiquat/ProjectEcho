@@ -4,17 +4,23 @@ import com.github.maskedkunisquat.projectecho.domain.model.DivineAction
 import com.github.maskedkunisquat.projectecho.domain.model.EnvironmentalPhase
 import com.github.maskedkunisquat.projectecho.domain.model.MapTile
 import com.github.maskedkunisquat.projectecho.domain.model.SimEvent
+import com.github.maskedkunisquat.projectecho.domain.model.WeatherFront
+import com.github.maskedkunisquat.projectecho.domain.model.WeatherType
 import com.github.maskedkunisquat.projectecho.domain.model.WorldState
+import com.github.maskedkunisquat.projectecho.domain.model.GRID_COLS
 import kotlin.math.roundToInt
+import kotlin.random.Random
 
 internal const val MOISTURE_BASELINE = 35
 internal const val DECAY_DELTA = 1
 private const val DELUGE_CASUALTY_RATE = 0.97
+internal const val WEATHER_SPAWN_INTERVAL = 10L
 
 fun tick(
     currentState: WorldState,
     action: DivineAction? = null,
     events: List<SimEvent> = emptyList(),
+    random: Random = Random.Default,
 ): WorldState {
     var state = currentState
 
@@ -86,7 +92,48 @@ fun tick(
         )
     }
 
-    return eventedState.copy(tiles = decayStep(eventedState.tiles))
+    val afterWeather = weatherStep(eventedState, random)
+    return afterWeather.copy(tiles = decayStep(afterWeather.tiles))
+}
+
+fun weatherStep(state: WorldState, random: Random = Random.Default): WorldState {
+    var working = state
+
+    if (working.activeFront == null &&
+        working.worldTimeTick > 0 &&
+        working.worldTimeTick % WEATHER_SPAWN_INTERVAL == 0L
+    ) {
+        val startEdge = if (random.nextBoolean()) 0 else GRID_COLS - 1
+        val direction = if (startEdge == 0) 1 else -1
+        val type = if (random.nextBoolean()) WeatherType.RainCloud else WeatherType.HeatWave
+        val horizonSide = if (direction > 0) "western" else "eastern"
+        val warning = when (type) {
+            WeatherType.RainCloud -> "Dark clouds gather on the $horizonSide horizon…"
+            WeatherType.HeatWave  -> "A shimmering heat bends the $horizonSide horizon…"
+        }
+        working = working.copy(
+            activeFront = WeatherFront(type = type, column = startEdge, direction = direction),
+            eventHistory = working.eventHistory + warning,
+        )
+    }
+
+    val front = working.activeFront ?: return working
+
+    val updatedTiles = working.tiles.map { tile ->
+        if (tile.col == front.column)
+            tile.copy(soilMoisture = (tile.soilMoisture + front.type.moistureDelta).coerceIn(0, 100))
+        else
+            tile
+    }
+
+    val nextColumn = front.column + front.direction
+    val exited = nextColumn < 0 || nextColumn >= GRID_COLS
+    return working.copy(
+        tiles = updatedTiles,
+        activeFront = if (exited) null else front.copy(column = nextColumn),
+        eventHistory = if (exited) working.eventHistory + "The storm has passed. The land is still."
+                       else working.eventHistory,
+    )
 }
 
 fun decayStep(tiles: List<MapTile>): List<MapTile> = tiles.map { tile ->
