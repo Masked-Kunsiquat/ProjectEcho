@@ -7,6 +7,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.tooling.preview.Preview
@@ -14,17 +15,22 @@ import androidx.compose.ui.unit.dp
 import com.github.maskedkunisquat.projectecho.domain.model.GRID_COLS
 import com.github.maskedkunisquat.projectecho.domain.model.GRID_ROWS
 import com.github.maskedkunisquat.projectecho.domain.model.MapTile
+import com.github.maskedkunisquat.projectecho.domain.model.WeatherFront
+import com.github.maskedkunisquat.projectecho.domain.model.WeatherType
 import com.github.maskedkunisquat.projectecho.domain.model.WorldState
 import com.github.maskedkunisquat.projectecho.ui.theme.ProjectEchoTheme
 
 @Composable
 internal fun TribalGridMap(
     tiles: List<MapTile>,
+    activeFront: WeatherFront? = null,
     modifier: Modifier = Modifier,
 ) {
     val occupiedColor  = MaterialTheme.colorScheme.primary
     val emptyColor     = MaterialTheme.colorScheme.surfaceVariant
     val separatorColor = MaterialTheme.colorScheme.background
+    val rainTint       = Color(0x5500AAFF)
+    val heatTint       = Color(0x55FF6600)
 
     val tileMap = remember(tiles) { tiles.associateBy { it.id } }
 
@@ -61,6 +67,13 @@ internal fun TribalGridMap(
 
                 drawPath(pathA, colorA)
                 drawPath(pathB, colorB)
+
+                if (activeFront != null && col == activeFront.column) {
+                    val tint = if (activeFront.type == WeatherType.RainCloud) rainTint else heatTint
+                    drawPath(pathA, tint)
+                    drawPath(pathB, tint)
+                }
+
                 drawPath(pathA, separatorColor, style = stroke)
                 drawPath(pathB, separatorColor, style = stroke)
             }

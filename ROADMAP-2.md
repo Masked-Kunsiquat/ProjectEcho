@@ -54,6 +54,7 @@
 - [x] On weather exit, append a closing note to `eventHistory` (e.g., "The storm has passed. The land is still.")
 - [x] Write unit tests: front spawns on edge, advances column correctly each tick, applies moisture delta only to current column's tiles, clears on grid exit
 - [x] Smoke test: observe Chronicle ledger for weather warnings; confirm moisture values shift on the affected column's tiles each tick
+- [x] **Post-smoke additions:** Replace fixed `tick % N` spawn interval with `nextSpawnTick: Long` on `WorldState`; on front exit, schedule next spawn at `currentTick + random(20, 40)` for unpredictable gaps; add semi-transparent column highlight to `TribalGridMap` (blue for RainCloud, orange for HeatWave)
 
 ---
 

@@ -125,6 +125,7 @@ fun DashboardScreen(
 
             TribalGridMap(
                 tiles = worldState.tiles,
+                activeFront = worldState.activeFront,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(120.dp),

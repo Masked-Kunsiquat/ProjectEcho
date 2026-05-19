@@ -6,7 +6,6 @@ import com.github.maskedkunisquat.projectecho.domain.model.MapTile
 import com.github.maskedkunisquat.projectecho.domain.model.WeatherFront
 import com.github.maskedkunisquat.projectecho.domain.model.WeatherType
 import com.github.maskedkunisquat.projectecho.domain.model.WorldState
-import com.github.maskedkunisquat.projectecho.domain.rules.WEATHER_SPAWN_INTERVAL
 import com.github.maskedkunisquat.projectecho.domain.rules.weatherStep
 import kotlin.random.Random
 import org.junit.Assert.assertEquals
@@ -27,12 +26,14 @@ class WeatherFrontTest {
         front: WeatherFront?,
         tick: Long = 0L,
         tiles: List<MapTile> = makeTiles(),
+        nextSpawnTick: Long = Long.MAX_VALUE,
     ) = WorldState(
         worldTimeTick = tick,
         divineFavor = 50,
         tiles = tiles,
         tribes = emptyMap(),
         activeFront = front,
+        nextSpawnTick = nextSpawnTick,
     )
 
     // --- Moisture delta application ---
@@ -114,14 +115,14 @@ class WeatherFrontTest {
     // --- Spawn logic ---
 
     @Test
-    fun `no front spawned before spawn interval`() {
-        val result = weatherStep(stateWithFront(null, tick = WEATHER_SPAWN_INTERVAL - 1))
+    fun `no front spawned before nextSpawnTick`() {
+        val result = weatherStep(stateWithFront(null, tick = 9L, nextSpawnTick = 10L))
         assertNull(result.activeFront)
     }
 
     @Test
-    fun `front spawns at spawn interval when no active front`() {
-        val result = weatherStep(stateWithFront(null, tick = WEATHER_SPAWN_INTERVAL), Random(42))
+    fun `front spawns when worldTimeTick reaches nextSpawnTick`() {
+        val result = weatherStep(stateWithFront(null, tick = 10L, nextSpawnTick = 10L), Random(42))
 
         assertNotNull(result.activeFront)
         // Spawn tick also advances the front: col 0 → 1 (eastward) or col 15 → 14 (westward)
@@ -130,31 +131,40 @@ class WeatherFrontTest {
     }
 
     @Test
-    fun `spawned front has direction matching its edge - west edge goes east`() {
-        // Seed Random so it picks col=0 (nextBoolean()=true → startEdge=0)
+    fun `spawned front direction matches its edge`() {
         val rng = Random(0)
-        val result = weatherStep(stateWithFront(null, tick = WEATHER_SPAWN_INTERVAL), rng)
+        val result = weatherStep(stateWithFront(null, tick = 10L, nextSpawnTick = 10L), rng)
 
         val front = result.activeFront
         if (front != null) {
-            if (front.column == 0) assertEquals(1, front.direction)
-            if (front.column == GRID_COLS - 1) assertEquals(-1, front.direction)
+            if (front.column <= 1) assertEquals(1, front.direction)
+            if (front.column >= GRID_COLS - 2) assertEquals(-1, front.direction)
         }
     }
 
     @Test
     fun `spawn appends warning to event history`() {
-        val result = weatherStep(stateWithFront(null, tick = WEATHER_SPAWN_INTERVAL), Random(42))
+        val result = weatherStep(stateWithFront(null, tick = 10L, nextSpawnTick = 10L), Random(42))
 
         assertTrue(result.eventHistory.isNotEmpty())
     }
 
     @Test
-    fun `no spawn when active front already exists at interval tick`() {
+    fun `no spawn when active front already exists`() {
         val existingFront = WeatherFront(type = WeatherType.RainCloud, column = 7, direction = 1)
-        val result = weatherStep(stateWithFront(existingFront, tick = WEATHER_SPAWN_INTERVAL), Random(42))
+        val result = weatherStep(stateWithFront(existingFront, tick = 10L, nextSpawnTick = 10L), Random(42))
 
-        // Existing front just advances — no new spawn, no extra event history
+        // Existing front just advances — no new spawn
         assertEquals(8, result.activeFront?.column)
+    }
+
+    @Test
+    fun `nextSpawnTick randomised on front exit`() {
+        val front = WeatherFront(type = WeatherType.RainCloud, column = 15, direction = 1)
+        val result = weatherStep(stateWithFront(front, tick = 50L), Random(42))
+
+        assertNull(result.activeFront)
+        // nextSpawnTick must be in range [50+20, 50+40] = [70, 90]
+        assertTrue(result.nextSpawnTick in 70L..90L)
     }
 }

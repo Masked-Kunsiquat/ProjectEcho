@@ -14,7 +14,6 @@ import kotlin.random.Random
 internal const val MOISTURE_BASELINE = 35
 internal const val DECAY_DELTA = 1
 private const val DELUGE_CASUALTY_RATE = 0.97
-internal const val WEATHER_SPAWN_INTERVAL = 10L
 
 fun tick(
     currentState: WorldState,
@@ -99,10 +98,7 @@ fun tick(
 fun weatherStep(state: WorldState, random: Random = Random.Default): WorldState {
     var working = state
 
-    if (working.activeFront == null &&
-        working.worldTimeTick > 0 &&
-        working.worldTimeTick % WEATHER_SPAWN_INTERVAL == 0L
-    ) {
+    if (working.activeFront == null && working.worldTimeTick >= working.nextSpawnTick) {
         val startEdge = if (random.nextBoolean()) 0 else GRID_COLS - 1
         val direction = if (startEdge == 0) 1 else -1
         val type = if (random.nextBoolean()) WeatherType.RainCloud else WeatherType.HeatWave
@@ -131,6 +127,7 @@ fun weatherStep(state: WorldState, random: Random = Random.Default): WorldState 
     return working.copy(
         tiles = updatedTiles,
         activeFront = if (exited) null else front.copy(column = nextColumn),
+        nextSpawnTick = if (exited) working.worldTimeTick + random.nextLong(20L, 41L) else working.nextSpawnTick,
         eventHistory = if (exited) working.eventHistory + "The storm has passed. The land is still."
                        else working.eventHistory,
     )
