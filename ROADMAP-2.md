@@ -18,7 +18,7 @@
 - [x] Update `WorldStateEntity.kt` and `RoomWorldStateRepository.kt` to serialize the expanded `WorldState` (tiles list + tribes map) via `kotlinx.serialization`
 - [x] Update `GameLoop.tick()` to accept and return the new `WorldState` structure; route tile-level reads/writes through the tile list
 - [x] Update `GameLoopTest.kt` and `GameViewModelTest.kt` for new model signatures
-- [ ] Smoke test: app launches, tribe renders on grid, tick advances without crash
+- [x] Smoke test: app launches, tribe renders on grid, tick advances without crash
 
 ---
 
@@ -35,7 +35,7 @@
 - [x] Wire `EnvironmentalPhase` resolution into the survival phase of `GameLoop.tick()` — per-tile phase determines each tile's food delta contribution for any tribe occupying it
 - [x] Add at least 2 new environmental trigger events to `assets/events.json` (e.g., "The fields lie scorched and cracked" for Parched; "The rivers spill their banks" for Deluge)
 - [x] Write unit tests covering each phase threshold, boundary conditions (e.g., exactly 81 = Deluge), and decay convergence
-- [ ] Smoke test: manually set tile moisture values in a test; confirm food output matches expected phase multipliers
+- [x] Smoke test: manually set tile moisture values in a test; confirm food output matches expected phase multipliers
 
 ---
 
@@ -43,24 +43,26 @@
 
 > The world moves entirely on its own. A drifting climate front crosses the grid without any player input, telegraphing its arrival in the Chronicle.
 
-- [ ] Add `WeatherType` enum to `domain/model/` with moisture delta values per type: `RainCloud` (+15 moisture/tick to affected column), `HeatWave` (-12 moisture/tick to affected column)
-- [ ] Add `WeatherFront.kt` to `domain/model/` — data class with: `type: WeatherType`, `column: Int` (current grid column, 0–15), `direction: Int` (+1 eastward or -1 westward)
-- [ ] Add optional `activeFront: WeatherFront?` field to `WorldState`
-- [ ] In `GameLoop.tick()`, add a `weatherStep()` sub-function:
-  - [ ] Every N ticks (configurable constant, e.g., 10), spawn a new `WeatherFront` on a random edge column with a random direction
-  - [ ] Each tick, advance `activeFront.column` by its `direction`; apply that front's moisture delta to all tiles in the current column
-  - [ ] When the front exits the grid (column < 0 or > 15), clear `activeFront`
-- [ ] On weather spawn, append a telegraphed warning to `eventHistory` (e.g., "Dark clouds gather on the eastern horizon…" for RainCloud; "A shimmering heat bends the horizon…" for HeatWave)
-- [ ] On weather exit, append a closing note to `eventHistory` (e.g., "The storm has passed. The land is still.")
-- [ ] Write unit tests: front spawns on edge, advances column correctly each tick, applies moisture delta only to current column's tiles, clears on grid exit
-- [ ] Smoke test: observe Chronicle ledger for weather warnings; confirm moisture values shift on the affected column's tiles each tick
+- [x] Add `WeatherType` enum to `domain/model/` with moisture delta values per type: `RainCloud` (+15 moisture/tick to affected column), `HeatWave` (-12 moisture/tick to affected column)
+- [x] Add `WeatherFront.kt` to `domain/model/` — data class with: `type: WeatherType`, `column: Int` (current grid column, 0–15), `direction: Int` (+1 eastward or -1 westward)
+- [x] Add optional `activeFront: WeatherFront?` field to `WorldState`
+- [x] In `GameLoop.tick()`, add a `weatherStep()` sub-function:
+  - [x] Every N ticks (configurable constant, e.g., 10), spawn a new `WeatherFront` on a random edge column with a random direction
+  - [x] Each tick, advance `activeFront.column` by its `direction`; apply that front's moisture delta to all tiles in the current column
+  - [x] When the front exits the grid (column < 0 or > 15), clear `activeFront`
+- [x] On weather spawn, append a telegraphed warning to `eventHistory` (e.g., "Dark clouds gather on the eastern horizon…" for RainCloud; "A shimmering heat bends the horizon…" for HeatWave)
+- [x] On weather exit, append a closing note to `eventHistory` (e.g., "The storm has passed. The land is still.")
+- [x] Write unit tests: front spawns on edge, advances column correctly each tick, applies moisture delta only to current column's tiles, clears on grid exit
+- [x] Smoke test: observe Chronicle ledger for weather warnings; confirm moisture values shift on the affected column's tiles each tick
+- [x] **Post-smoke additions:** Replace fixed `tick % N` spawn interval with `nextSpawnTick: Long` on `WorldState`; on front exit, schedule next spawn at `currentTick + random(20, 40)` for unpredictable gaps; add semi-transparent column highlight to `TribalGridMap` (blue for RainCloud, orange for HeatWave)
 
 ---
 
-## Phase 9 — Radial Splash Targeting (UX & Fat-Finger Fix)
+## Phase 9 — Radial Splash Targeting & UI Overhaul
 
-> Redesign divine interventions from single-tile pokes to spatial cluster actions with an on-screen halo indicator.
+> Redesign divine interventions from single-tile pokes to spatial cluster actions with an on-screen halo indicator. Simultaneously overhaul the dashboard layout so the map is the hero, tribe identity scales to multi-tribe, and the action panel is uniform.
 
+### Radial Splash Targeting
 - [ ] Add `TileNeighbors.kt` utility to `domain/rules/` — pure Kotlin function `getNeighbors(tileId: Int, cols: Int = 16): List<Int>` returning the geometric neighbors for a herringbone triangle tile (handles edge tiles, corner tiles, and interior tiles differently)
 - [ ] Update `TribalGridMap.kt` — add touch/pointer input handling on the `Canvas`; on finger press, calculate the touched tile using existing triangle geometry
 - [ ] Add `hoveredCluster: List<Int>` state to `TribalGridMap` — on each press, call `getNeighbors()` and redraw the touched tile plus its neighbors with a radial amber glow and white outline halo
@@ -68,6 +70,35 @@
 - [ ] Update the action phase in `GameLoop.tick()` — iterate over `targetCluster` tiles and apply stat modifications (moisture ±, volatility ±) to each; population/food effects scale proportionally by the number of occupied tiles in the cluster
 - [ ] Write unit tests for `getNeighbors()` covering: a center tile, a left-edge tile, a right-edge tile, a corner tile
 - [ ] Smoke test: touch a tile on-device; confirm radial halo highlights the correct neighbors; cast Rain, confirm moisture increases across the entire highlighted cluster
+
+### Dashboard UI Overhaul
+
+```
+┌─────────────────────────────────┐
+│ PROJECT ECHO      ⚡67   T:142  │  ← Divine Favor + Tick (global)
+├─────────────────────────────────┤
+│                                 │
+│                                 │
+│           M A P                 │  ← hero; fills available space
+│        (fills space)            │
+│                                 │
+├─────────────────────────────────┤
+│ ● The Iron-Wrought          ▸   │  ← legend chip; tap for detail sheet
+│   Pop 847  ·  Food 1,204        │
+├─────────────────────────────────┤
+│  [ Rain ] [Harvest] [Inspire]   │  ← fixed-size square chips
+│  [Famine] [Plague ]             │    ⚡cost badge, uniform size always
+├─────────────────────────────────┤
+│  [ Chronicle ]  [ Manual Tick ] │
+└─────────────────────────────────┘
+```
+
+- [ ] **Top bar** — global-only row: "PROJECT ECHO" left, Divine Favor (⚡icon + number) + Tick counter right; remove Divine Favor from the stats column
+- [ ] **Map promoted** — `TribalGridMap` fills the available vertical space between the top bar and tribe legend (remove fixed 120dp height); map is the visual centrepiece
+- [ ] **Tribe legend chip** — replace the plain `displayLarge` tribe name with a `TribeLegendRow`: colored dot + tribe name + inline micro-stats (population · food supply) on one line; tapping the chip opens a tribe detail bottom sheet; row is horizontally scrollable for future multi-tribe support
+- [ ] **Tribe detail bottom sheet** — shows full per-tribe stats (population, food supply, devotion progress bar, tiles occupied, current `EnvironmentalPhase`); dismissed by swipe
+- [ ] **Action panel** — replace variable-width `OutlinedButton` labels with fixed-size square chips; shorten labels to one word ("Rain", "Harvest", "Inspire", "Famine", "Plague"); show favor cost as a small ⚡badge; eliminates the oval/circle inconsistency
+- [ ] Smoke test: dashboard renders correctly at multiple screen sizes; tribe chip opens detail sheet; action chips are uniform; map fills available space
 
 ---
 
@@ -79,13 +110,68 @@
 - [ ] **Multiple text variants per event** — change `text: String` in `SimEvent` / `events.json` to `texts: List<String>`; at fire time pick one at random; update `EventParser` and all existing events to use the new array format (single-item arrays preserve current behaviour)
 - [ ] **Optional re-fire with cooldown** — add an optional `cooldownTicks: Int?` field to `SimEvent`; replace the blanket `firedEventIds: Set<String>` block with a `eventCooldowns: Map<String, Long>` map storing the tick the event last fired; an event may re-fire once `worldTimeTick >= lastFiredTick + cooldownTicks` (events without a cooldown remain one-and-done)
 - [ ] Update `events.json` — add `{{tribeName}}` to at least 5 existing event strings; add 2–3 variant strings to at least 3 high-frequency events (e.g. `famine_warning`, `tribe_grows`, `devotion_surge`); set a `cooldownTicks` on recurring-condition events (`famine_warning`, `faith_wavers`, `divine_power_wanes`)
+- [ ] **EventEngine stat resolver map** — replace the cascading `if/when` stat branches in `EventEngine.matches()` with a `Map<String, (WorldState) -> Double?>` dispatch table; adding a new triggerable stat becomes one line; unknown stat keys return `null` and log a warning instead of silently skipping
+- [ ] **Multi-condition triggers** — extend `SimEvent.Trigger` to support an optional `conditions: List<Trigger>` with a `logic: "AND" | "OR"` field alongside the existing single-condition shape; `EventParser` handles both; single-condition events in `events.json` require no changes
+- [ ] Add 2–3 multi-condition events to `events.json` exercising the new format (e.g. drought + starvation combo, high devotion + abundant food)
 - [ ] Update `WorldStateEntity` serialization for the new `eventCooldowns` map field
-- [ ] Write unit tests: template tokens resolve correctly, unknown tokens pass through unchanged, variant selection is within the texts array, cooldown blocks re-fire before expiry and allows it after, one-and-done events (no cooldown) still fire exactly once
+- [ ] Write unit tests: template tokens resolve correctly, unknown tokens pass through unchanged, variant selection is within the texts array, cooldown blocks re-fire before expiry and allows it after, one-and-done events (no cooldown) still fire exactly once, AND/OR multi-condition logic resolves correctly, unknown stat key returns null without crashing
 - [ ] Smoke test: run a session into starvation; confirm Chronicle shows the tribe's actual name and that `famine_warning` reappears after its cooldown elapses
 
 ---
 
-## Phase 11 — Future Runway (Placeholders)
+## Phase 11a — Biomes: Model & World Generation
+
+> Give each tile a permanent biome identity; update world generation to produce varied landscapes.
+
+- [ ] Add `BiomeType` enum to `domain/model/` with 5 variants and their properties:
+  - `Grassland` — moisture baseline 35, full weather effect, standard food (current default behaviour)
+  - `Forest` — moisture baseline 45, weather effect at 75%, buffers against Parched
+  - `Desert` — moisture baseline 15, weather effect at 50%, HeatWave raises `volatility`
+  - `Coast` — moisture baseline 35, full weather effect, flat fishing bonus added to per-tile food contribution
+  - `Water` — always `occupantTribeId = null` (impassable); no moisture or food logic
+- [ ] Add `biome: BiomeType` field to `MapTile` (default `Grassland` for backwards compatibility)
+- [ ] Update `WorldState.initial()` procedural generation:
+  - Stamp 1–2 water body blobs using the existing distance-weighted blob algorithm
+  - Mark all land tiles adjacent to `Water` as `Coast`
+  - Distribute remaining tiles between `Grassland`, `Forest`, and `Desert` by weighted random seeded from world hash
+- [ ] Write unit tests: `Water` tiles have `occupantTribeId = null`, coast adjacency marking is correct, biome distribution is seeded and repeatable
+- [ ] Smoke test: new world generates visible water bodies and coast tiles; `biome` field present on all tiles
+
+---
+
+## Phase 11b — Biomes: Simulation Integration
+
+> Wire biome properties into the active simulation pipeline and add unit test coverage.
+
+- [ ] Update `decayStep()` in `GameLoop` — use each tile's `BiomeType.moistureBaseline` instead of the hardcoded `MOISTURE_BASELINE = 35`
+- [ ] Update `weatherStep()` — scale moisture delta by `BiomeType.weatherResistance`; any weather front passing a tile raises its `volatility` by a fixed delta (completing the loop: `decayStep` already drains it downward)
+- [ ] Wire `volatility` as a weather intensity multiplier in `weatherStep()` — high volatility amplifies the moisture delta (`delta * (1 + volatility / 100f)`); creates emergent storms/droughts without a separate stat
+- [ ] Gate extreme Chronicle events on high volatility (e.g. "A great storm tears through the valley" when volatility > 70 during a RainCloud pass; "The land cracks and bleaches" during a HeatWave)
+- [ ] Update `EnvironmentalPhase` food contribution in `GameLoop.tick()` — `Coast` tiles add a flat fishing bonus on top of the phase multiplier
+- [ ] Write unit tests: biome moisture baseline used in decay, weather delta scaled by resistance, Coast fishing bonus applied, volatility amplifies weather delta correctly
+- [ ] Smoke test: Desert tiles dry out faster; Forest tiles stay greener; Coast tiles show fishing bonus in food output
+
+---
+
+## Phase 11c — Biomes: UI, Overlays & Action Rework
+
+> Surface biome data visually and rework CastRain to flow through the simulation.
+
+- [ ] Rework `DivineAction.CastRain` — instead of `+50 foodSupply` directly, push `soilMoisture` up on all occupied tiles (makes the action flow through the simulation rather than bypassing it)
+- [ ] Update `TribalGridMap` — colour tiles by biome when unoccupied (e.g. deep blue for Water, tan for Desert, dark green for Forest, teal for Coast, keep existing amber/charcoal for occupied/Grassland)
+- [ ] Add `MapOverlay` enum to the feature layer (`Default`, `Biome`, `Climate`, `Volatility`); add `overlay: MapOverlay` parameter to `TribalGridMap`:
+  - `Default` — current occupancy colouring (amber = occupied, grey = empty)
+  - `Biome` — tile coloured by `BiomeType` regardless of occupancy
+  - `Climate` — tile coloured on a moisture gradient (red=Parched → blue=Deluge)
+  - `Volatility` — greyscale intensity by `volatility` value
+- [ ] Add overlay toggle row above the map in `DashboardScreen` (small icon/label buttons; persists in `GameViewModel` as UI state, not `WorldState`)
+- [ ] Weather front column outline persists across all overlay modes (positional indicator, not data)
+- [ ] Write unit test: CastRain raises `soilMoisture` on occupied tiles instead of adding `foodSupply` directly
+- [ ] Smoke test: CastRain visibly shifts tile moisture in Chronicle; overlay toggle switches map colouring correctly
+
+---
+
+## Phase 12 — Future Runway (Placeholders)
 
 > Stubs for the next generation of social and civilizational mechanics. No implementation yet — just defined triggers and expected outputs.
 

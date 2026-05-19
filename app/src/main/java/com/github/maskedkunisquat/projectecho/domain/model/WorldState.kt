@@ -12,6 +12,8 @@ data class WorldState(
     val tribes: Map<String, Tribe>,
     val eventHistory: List<String> = emptyList(),
     val firedEventIds: Set<String> = emptySet(),
+    val activeFront: WeatherFront? = null,
+    val nextSpawnTick: Long = 10L,
 ) {
     companion object {
         fun initial(): WorldState {
