@@ -86,7 +86,32 @@
 
 ---
 
-## Phase 11 — Future Runway (Placeholders)
+## Phase 11 — Biomes & Procedural Landmass
+
+> Give the world a physical identity. Each tile gets a static biome type set at world generation; biome governs moisture baselines, weather resistance, and food rules — forming a permanent landscape layer beneath the dynamic moisture system.
+
+- [ ] Add `BiomeType` enum to `domain/model/` with 5 variants and their properties:
+  - `Grassland` — moisture baseline 35, full weather effect, standard food (current default behaviour)
+  - `Forest` — moisture baseline 45, weather effect at 75%, buffers against Parched
+  - `Desert` — moisture baseline 15, weather effect at 50%, HeatWave raises `volatility`
+  - `Coast` — moisture baseline 35, full weather effect, flat fishing bonus added to per-tile food contribution
+  - `Water` — always `occupantTribeId = null` (impassable); no moisture or food logic
+- [ ] Add `biome: BiomeType` field to `MapTile` (default `Grassland` for backwards compatibility)
+- [ ] Update `WorldState.initial()` procedural generation:
+  - Stamp 1–2 water body blobs using the existing distance-weighted blob algorithm
+  - Mark all land tiles adjacent to `Water` as `Coast`
+  - Distribute remaining tiles between `Grassland`, `Forest`, and `Desert` by weighted random seeded from world hash
+- [ ] Update `decayStep()` in `GameLoop` — use each tile's `BiomeType.moistureBaseline` instead of the hardcoded `MOISTURE_BASELINE = 35`
+- [ ] Update `weatherStep()` — scale moisture delta by `BiomeType.weatherResistance`; `HeatWave` over `Desert` or `Grassland` tiles also increments `volatility` by a fixed delta
+- [ ] Update `EnvironmentalPhase` food contribution in `GameLoop.tick()` — `Coast` tiles add a flat fishing bonus on top of the phase multiplier
+- [ ] Rework `DivineAction.CastRain` — instead of `+50 foodSupply` directly, push `soilMoisture` up on all occupied tiles (makes the action flow through the simulation rather than bypassing it)
+- [ ] Update `TribalGridMap` — colour tiles by biome when unoccupied (e.g. deep blue for Water, tan for Desert, dark green for Forest, teal for Coast, keep existing amber/charcoal for occupied/Grassland)
+- [ ] Write unit tests: biome moisture baseline used in decay, weather delta scaled by resistance, Coast fishing bonus applied, Water tiles remain unoccupied, CastRain rework raises moisture on occupied tiles
+- [ ] Smoke test: new world generates visible water bodies and coast tiles; Desert tiles dry out faster; Forest tiles stay greener; CastRain visibly shifts tile moisture in Chronicle
+
+---
+
+## Phase 12 — Future Runway (Placeholders)
 
 > Stubs for the next generation of social and civilizational mechanics. No implementation yet — just defined triggers and expected outputs.
 
