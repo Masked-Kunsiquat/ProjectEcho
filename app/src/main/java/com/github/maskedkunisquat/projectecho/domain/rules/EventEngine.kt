@@ -12,6 +12,13 @@ object EventEngine {
         if (trigger.stat == "divineFavor") {
             return compare(state.divineFavor, trigger.operator, trigger.threshold)
         }
+        // soilMoisture: average across all tribe-occupied tiles.
+        if (trigger.stat == "soilMoisture") {
+            val occupiedTiles = state.tiles.filter { it.occupantTribeId != null }
+            if (occupiedTiles.isEmpty()) return false
+            val avgMoisture = occupiedTiles.map { it.soilMoisture }.average().toInt()
+            return compare(avgMoisture, trigger.operator, trigger.threshold)
+        }
         // Tribe-level stats: fire if any tribe meets the condition.
         return state.tribes.values.any { tribe ->
             val value = when (trigger.stat) {
