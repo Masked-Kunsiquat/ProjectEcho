@@ -100,6 +100,13 @@
 - [x] **Action panel** — replace variable-width `OutlinedButton` labels with fixed-size square chips; shorten labels to one word ("Rain", "Harvest", "Inspire", "Famine", "Plague"); show favor cost as a small ⚡badge; eliminates the oval/circle inconsistency
 - [ ] Smoke test: dashboard renders correctly at multiple screen sizes; tribe chip opens detail sheet; action chips are uniform; map fills available space
 
+### Simulation Engine Fixes (landed during Phase 9)
+
+- [x] **Population growth guarantee** — `(pop * 1.02).roundToInt()` silently rounded back to the same integer at small populations (e.g. 10 * 1.02 = 10). Growth now guarantees ≥ +1/tick when fed; starvation guarantees ≥ −1/tick when hungry.
+- [x] **Fertile soil surplus** — `Fertile.foodMultiplier` raised from 1.0 → 1.5 so Fertile land produces a net food surplus (120 food per 100 people vs. 100 consumed). At the old value, tribes on baseline soil always drained food to zero and could never grow without divine intervention.
+- [x] **Territory expansion** — `territoryStep()` only shrank territory (population drop → release tiles). Expansion branch added: when population exceeds current tile count, the tribe claims adjacent unclaimed frontier tiles one at a time per tick.
+- [x] **Carrying capacity** — added `TILE_CAPACITY = 10` constant; farming output is now `min(population, tiles × TILE_CAPACITY) × 0.8 × soilMultiplier`. Population ceiling at full grid (192 tiles, Fertile soil) ≈ 2 300. Above that the food surplus goes neutral and growth halts naturally.
+
 ---
 
 ## Phase 10 — Dynamic Chronicle (Living Narrative)
@@ -179,6 +186,7 @@
   - Trigger: tile population density on a single `MapTile` exceeds a configurable threshold
   - Expected output: a new `Tribe` entry is inserted into `WorldState.tribes`; excess population density migrates to an adjacent unoccupied `MapTile` slot; Chronicle logs the schism
   - Status: *placeholder — no implementation*
+  - **Design note for multi-tribe:** The carrying capacity system (Phase 9) makes territory the scarce resource — a tribe at its ceiling *must* expand to grow, and expansion stops at another tribe's border. This is the right foundation for conflict. One thing to revisit before implementation: the current territory formula (`expected = population × 192 / 500`) makes territory *follow* population. With carrying capacity, causality is reversed — territory *determines* the population ceiling. At scale the formula always demands more tiles than the grid holds, so `territoryStep` perpetually tries to expand (harmless, just semantically odd). Multi-tribe will likely need territory to be driven by something other than raw population — devotion, strength, or divine favor — so that two tribes compete for finite land rather than each computing an uncapped "expected" tile count independently.
 
 - [ ] **Sophistication Progression**
   - Outline: a `sophisticationLevel: Int` counter on `Tribe` that rises as population and devotion milestones are crossed; higher levels unlock new narrative event categories, new `DivineAction` types, and unique Chronicle entries

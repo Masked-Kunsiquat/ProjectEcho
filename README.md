@@ -17,17 +17,18 @@ Built natively with Kotlin and Jetpack Compose. No game engine.
 Each tick the simulation resolves in three phases:
 
 1. **Divine action** — if you spent favor, it takes effect first
-2. **Survival** — the tribe farms 80% of what it consumes; shortfall causes starvation, surplus causes growth
+2. **Survival** — the tribe farms its territory; shortfall causes starvation, surplus causes growth; territory capacity is the natural ceiling
 3. **Events** — scripted narrative events fire once when their trigger condition is met
 
 ### Stats
 
 | Stat | Range | Effect |
 |---|---|---|
-| Population | 0 → ∞ | Grows ~2 % per tick when fed; shrinks ~5 % when starving |
-| Food Supply | 0 → ∞ | Consumed at 1 unit per person per tick; tribe farms back 80 % |
+| Population | 0 → ∞ | Guaranteed ≥ +1/tick when fed; guaranteed ≥ −1/tick when starving; hard ceiling set by territory (10 people per tile) |
+| Food Supply | 0 → ∞ | Consumed 1 unit/person/tick; tribe farms at 80 % efficiency × soil multiplier; output capped by `tiles owned × 10` |
 | Devotion | 0–100 | +1 when thriving, −3 when starving; drives favor regeneration |
 | Divine Favor | 0–100 | Passive regen = `devotion × 3 / 100` per tick; spent on interventions |
+| Territory | 0–192 tiles | Expands one frontier tile/tick as population grows; shrinks when population drops; full grid = ~2 300 pop equilibrium at Fertile soil |
 
 ### Divine Interventions
 
@@ -85,7 +86,7 @@ The dashboard is a single screen with a dark charcoal/amber palette:
 - **Tribe name** — large serif display font
 - **Stats** — Population and Food as plain rows; Devotion and Divine Favor as labelled progress bars
 - **Divine Interventions** — five amber `OutlinedButton`s in a 3 + 2 grid inside a Surface card; disabled when favor is insufficient
-- **Tribal Grid Map** — a 16 × 6 Canvas grid of 192 triangles; alternating ╲/╱ diagonal splits produce a herringbone texture; amber cells represent claimed territory spreading outward from a tribe-seeded homeland as population grows toward 500
+- **Tribal Grid Map** — a 16 × 6 Canvas grid of 192 triangles; alternating ╲/╱ diagonal splits produce a herringbone texture; amber cells represent claimed territory; territory expands outward one frontier tile per tick as population grows, and shrinks back as population falls; carrying capacity hard-caps at `tiles × 10` people
 - **Footer** — Chronicle button (opens `ModalBottomSheet` with full event history) and Manual Tick button
 
 ---
