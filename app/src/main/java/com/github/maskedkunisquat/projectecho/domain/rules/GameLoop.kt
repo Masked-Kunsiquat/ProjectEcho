@@ -46,7 +46,7 @@ fun tick(
         }
     }
 
-    val regenAmount = survivedTribes.values.first().devotion * 3 / 100
+    val regenAmount = (survivedTribes.values.maxOfOrNull { it.devotion } ?: 0) * 3 / 100
     val regenedFavor = minOf(100, state.divineFavor + regenAmount)
 
     val postTickState = state.copy(

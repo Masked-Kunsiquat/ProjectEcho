@@ -45,8 +45,6 @@ fun DashboardScreen(
     onDismissChronicle: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val tribe = worldState.tribes.values.first()
-
     LaunchedEffect(worldState.eventHistory.size) {
         if (worldState.eventHistory.isNotEmpty()) {
             snackbarHostState.showSnackbar(
@@ -76,6 +74,8 @@ fun DashboardScreen(
             )
         }
     }
+
+    val tribe = worldState.tribes.values.firstOrNull() ?: return
 
     Column(
         modifier = modifier

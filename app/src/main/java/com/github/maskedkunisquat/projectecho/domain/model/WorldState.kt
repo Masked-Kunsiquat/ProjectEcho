@@ -19,19 +19,21 @@ data class WorldState(
             val tribeName = "The Iron-Wrought"
             val population = 100
 
-            val rng = Random(tribeName.hashCode())
+            val rng = Random(tribeId.hashCode())
             val startRow = rng.nextInt(GRID_ROWS)
             val startCol = rng.nextInt(GRID_COLS)
             val claimedCount = (population * GRID_SIZE) / 500
 
-            val orderedIds = (0 until GRID_SIZE).sortedBy { idx ->
+            // Precompute one score per triangle so sortedBy reads each score exactly once.
+            val orderedIds = (0 until GRID_SIZE).map { idx ->
                 val cellIdx = idx / 2
                 val row = cellIdx / GRID_COLS
                 val col = cellIdx % GRID_COLS
                 val dRow = (row - startRow).toFloat()
                 val dCol = (col - startCol).toFloat()
-                sqrt((dRow * dRow + dCol * dCol).toDouble()).toFloat() + rng.nextFloat() * 1.5f
-            }
+                val score = sqrt((dRow * dRow + dCol * dCol).toDouble()).toFloat() + rng.nextFloat() * 1.5f
+                idx to score
+            }.sortedBy { (_, score) -> score }.map { (idx, _) -> idx }
             val occupiedIds = orderedIds.take(claimedCount).toHashSet()
 
             val tiles = (0 until GRID_SIZE).map { id ->

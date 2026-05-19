@@ -149,6 +149,13 @@ class GameLoopTest {
     }
 
     @Test
+    fun `tick with empty tribes map advances worldTimeTick without throwing`() {
+        val emptyState = stableState().copy(tribes = emptyMap())
+        val result = tick(emptyState)
+        assertEquals(1L, result.worldTimeTick)
+    }
+
+    @Test
     fun `favor clamped to hundred when above max`() {
         val state = stableState(divineFavor = 150)                         // above the [0,100] range
 
