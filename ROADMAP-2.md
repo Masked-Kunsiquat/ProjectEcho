@@ -130,18 +130,18 @@
 
 > Give each tile a permanent biome identity; update world generation to produce varied landscapes.
 
-- [ ] Add `BiomeType` enum to `domain/model/` with 5 variants and their properties:
+- [x] Add `BiomeType` enum to `domain/model/` with 5 variants and their properties:
   - `Grassland` — moisture baseline 35, full weather effect, standard food (current default behaviour)
   - `Forest` — moisture baseline 45, weather effect at 75%, buffers against Parched
   - `Desert` — moisture baseline 15, weather effect at 50%, HeatWave raises `volatility`
   - `Coast` — moisture baseline 35, full weather effect, flat fishing bonus added to per-tile food contribution
   - `Water` — always `occupantTribeId = null` (impassable); no moisture or food logic
-- [ ] Add `biome: BiomeType` field to `MapTile` (default `Grassland` for backwards compatibility)
-- [ ] Update `WorldState.initial()` procedural generation:
+- [x] Add `biome: BiomeType` field to `MapTile` (default `Grassland` for backwards compatibility)
+- [x] Update `WorldState.initial()` procedural generation:
   - Stamp 1–2 water body blobs using the existing distance-weighted blob algorithm
   - Mark all land tiles adjacent to `Water` as `Coast`
   - Distribute remaining tiles between `Grassland`, `Forest`, and `Desert` by weighted random seeded from world hash
-- [ ] Write unit tests: `Water` tiles have `occupantTribeId = null`, coast adjacency marking is correct, biome distribution is seeded and repeatable
+- [x] Write unit tests: `Water` tiles have `occupantTribeId = null`, coast adjacency marking is correct, biome distribution is seeded and repeatable
 - [ ] Smoke test: new world generates visible water bodies and coast tiles; `biome` field present on all tiles
 
 ---

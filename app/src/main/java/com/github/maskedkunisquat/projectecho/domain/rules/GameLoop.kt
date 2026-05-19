@@ -1,5 +1,6 @@
 package com.github.maskedkunisquat.projectecho.domain.rules
 
+import com.github.maskedkunisquat.projectecho.domain.model.BiomeType
 import com.github.maskedkunisquat.projectecho.domain.model.DivineAction
 import com.github.maskedkunisquat.projectecho.domain.model.EnvironmentalPhase
 import com.github.maskedkunisquat.projectecho.domain.model.MapTile
@@ -167,6 +168,7 @@ internal fun territoryStep(tiles: List<MapTile>, tribes: Map<String, Tribe>): Li
             val frontier = working.indices.filter { idx ->
                 val t = working[idx]
                 if (t.occupantTribeId != null) return@filter false
+                if (t.biome == BiomeType.Water) return@filter false
                 occupiedIndices.any { ownedIdx ->
                     val o = working[ownedIdx]
                     val dCol = abs(t.col - o.col)

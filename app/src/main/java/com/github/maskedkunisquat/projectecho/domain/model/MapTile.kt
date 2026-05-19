@@ -14,4 +14,5 @@ data class MapTile(
     val soilMoisture: Int = 50,
     val volatility: Int = 0,
     val occupantTribeId: String? = null,
+    val biome: BiomeType = BiomeType.Grassland,
 )
