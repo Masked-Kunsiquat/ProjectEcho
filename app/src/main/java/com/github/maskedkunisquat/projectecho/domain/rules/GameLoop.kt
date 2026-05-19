@@ -19,7 +19,6 @@ internal const val MOISTURE_BASELINE = 35
 internal const val DECAY_DELTA = 1
 private const val DELUGE_CASUALTY_RATE = 0.97
 internal const val TILE_CAPACITY = 10  // max people a single tile can feed at full multiplier
-internal const val WEATHER_VOLATILITY_GAIN = 5
 internal const val COAST_FISHING_BONUS = 5
 internal const val HIGH_VOLATILITY_THRESHOLD = 70
 
@@ -145,7 +144,7 @@ fun weatherStep(state: WorldState, random: Random = Random.Default): WorldState 
                 (1f + tile.volatility / 100f)).roundToInt()
         tile.copy(
             soilMoisture = (tile.soilMoisture + amplifiedDelta).coerceIn(0, 100),
-            volatility = minOf(100, tile.volatility + WEATHER_VOLATILITY_GAIN),
+            volatility = minOf(100, tile.volatility + tile.biome.volatilityGain),
         )
     }
 

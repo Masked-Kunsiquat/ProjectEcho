@@ -10,7 +10,6 @@ import com.github.maskedkunisquat.projectecho.domain.model.WeatherType
 import com.github.maskedkunisquat.projectecho.domain.model.WorldState
 import com.github.maskedkunisquat.projectecho.domain.rules.COAST_FISHING_BONUS
 import com.github.maskedkunisquat.projectecho.domain.rules.HIGH_VOLATILITY_THRESHOLD
-import com.github.maskedkunisquat.projectecho.domain.rules.WEATHER_VOLATILITY_GAIN
 import com.github.maskedkunisquat.projectecho.domain.rules.decayStep
 import com.github.maskedkunisquat.projectecho.domain.rules.tick
 import com.github.maskedkunisquat.projectecho.domain.rules.weatherStep
@@ -120,18 +119,28 @@ class BiomeSimTest {
         result.tiles.filter { it.col == 5 }.forEach { assertEquals(58, it.soilMoisture) }  // 35 + 23
     }
 
-    // --- volatility gain from weather ---
+    // --- per-biome volatility gain from weather ---
 
     @Test
-    fun `weather front increases volatility on land tiles in current column`() {
+    fun `weather front gives Grassland its biome volatility gain`() {
         val front = WeatherFront(type = WeatherType.RainCloud, column = 5, direction = 1)
         val result = weatherStep(stateWithFront(front, makeTiles(BiomeType.Grassland)))
         result.tiles.filter { it.col == 5 }.forEach {
-            assertEquals(WEATHER_VOLATILITY_GAIN, it.volatility)
+            assertEquals(BiomeType.Grassland.volatilityGain, it.volatility)
         }
-        result.tiles.filter { it.col != 5 }.forEach {
-            assertEquals(0, it.volatility)
-        }
+        result.tiles.filter { it.col != 5 }.forEach { assertEquals(0, it.volatility) }
+    }
+
+    @Test
+    fun `Desert gains more volatility per weather pass than Forest`() {
+        val front = WeatherFront(type = WeatherType.RainCloud, column = 5, direction = 1)
+        val desertResult = weatherStep(stateWithFront(front, makeTiles(BiomeType.Desert)))
+        val forestResult = weatherStep(stateWithFront(front, makeTiles(BiomeType.Forest)))
+        val desertVol = desertResult.tiles.first { it.col == 5 }.volatility
+        val forestVol = forestResult.tiles.first { it.col == 5 }.volatility
+        assertTrue("Desert volatility ($desertVol) should exceed Forest ($forestVol)", desertVol > forestVol)
+        assertEquals(BiomeType.Desert.volatilityGain, desertVol)
+        assertEquals(BiomeType.Forest.volatilityGain, forestVol)
     }
 
     @Test
@@ -146,7 +155,7 @@ class BiomeSimTest {
     @Test
     fun `extreme storm Chronicle entry fires when RainCloud passes high-volatility column`() {
         val front = WeatherFront(type = WeatherType.RainCloud, column = 5, direction = 1)
-        // Start at threshold; after WEATHER_VOLATILITY_GAIN the tile crosses > HIGH_VOLATILITY_THRESHOLD
+        // Start at threshold; after volatilityGain the tile crosses > HIGH_VOLATILITY_THRESHOLD
         val tiles = makeTiles(BiomeType.Grassland, volatility = HIGH_VOLATILITY_THRESHOLD)
         val result = weatherStep(stateWithFront(front, tiles))
         assertTrue(result.eventHistory.any { it == "A great storm tears through the valley." })
