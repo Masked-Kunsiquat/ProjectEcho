@@ -11,14 +11,14 @@ data class WorldState(
     val tiles: List<MapTile>,
     val tribes: Map<String, Tribe>,
     val eventHistory: List<String> = emptyList(),
-    val firedEventIds: Set<String> = emptySet(),
+    val eventCooldowns: Map<String, Long> = emptyMap(),
     val activeFront: WeatherFront? = null,
     val nextSpawnTick: Long = 10L,
 ) {
     companion object {
         fun initial(): WorldState {
             val tribeId = "iron-wrought"
-            val tribeName = "The Iron-Wrought"
+            val tribeName = TribeNameGenerator.generate(tribeId.hashCode())
             val population = 100
 
             val rng = Random(tribeId.hashCode())

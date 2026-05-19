@@ -36,11 +36,11 @@ class EventEngineTest {
         stat: String,
         operator: String,
         threshold: Int,
-        text: String = "Event: $id",
+        texts: List<String> = listOf("Event: $id"),
     ) = SimEvent(
         id = id,
-        trigger = SimEvent.Trigger(stat, operator, threshold),
-        text = text,
+        trigger = SimEvent.Trigger(stat = stat, operator = operator, threshold = threshold),
+        texts = texts,
     )
 
     @Test
