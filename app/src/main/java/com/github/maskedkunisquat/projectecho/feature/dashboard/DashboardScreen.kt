@@ -69,7 +69,7 @@ fun DashboardScreen(
     onShowChronicle: () -> Unit,
     onDismissChronicle: () -> Unit,
     mapOverlay: MapOverlay = MapOverlay.Default,
-    onOverlaySelected: (MapOverlay) -> Unit = {},
+    onOverlaySelected: (MapOverlay) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     LaunchedEffect(worldState.eventHistory.size) {
@@ -552,6 +552,7 @@ private fun DashboardScreenPreview() {
             isChronicleVisible = false,
             onShowChronicle = {},
             onDismissChronicle = {},
+            onOverlaySelected = {},
         )
     }
 }
