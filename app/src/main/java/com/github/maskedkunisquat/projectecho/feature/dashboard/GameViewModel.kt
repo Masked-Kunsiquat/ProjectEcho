@@ -33,6 +33,7 @@ class GameViewModel(
     val worldState: StateFlow<WorldState> = _worldState.asStateFlow()
 
     private var pendingAction: DivineAction? = null
+    private var pendingCluster: List<Int> = emptyList()
 
     @Volatile
     private var simEvents: List<SimEvent> = emptyList()
@@ -65,8 +66,9 @@ class GameViewModel(
      * Only one action can be pending at a time; a second call before the next tick
      * replaces the previous one.
      */
-    fun applyDivineAction(action: DivineAction) {
+    fun applyDivineAction(action: DivineAction, cluster: List<Int> = emptyList()) {
         pendingAction = action
+        pendingCluster = cluster
     }
 
     /**
@@ -76,8 +78,10 @@ class GameViewModel(
      */
     fun triggerTick() {
         val action = pendingAction
+        val cluster = pendingCluster
         pendingAction = null
-        val newState = tick(_worldState.value, action, simEvents)
+        pendingCluster = emptyList()
+        val newState = tick(_worldState.value, action, simEvents, cluster)
         _worldState.value = newState
         viewModelScope.launch(ioDispatcher) {
             runCatching { repository.save(newState) }

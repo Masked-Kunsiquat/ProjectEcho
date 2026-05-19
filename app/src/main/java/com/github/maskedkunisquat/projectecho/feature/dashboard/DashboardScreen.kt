@@ -48,6 +48,7 @@ import com.github.maskedkunisquat.projectecho.domain.model.GRID_COLS
 import com.github.maskedkunisquat.projectecho.domain.model.GRID_ROWS
 import com.github.maskedkunisquat.projectecho.domain.model.Tribe
 import com.github.maskedkunisquat.projectecho.domain.model.WorldState
+import com.github.maskedkunisquat.projectecho.domain.rules.getNeighbors
 import com.github.maskedkunisquat.projectecho.ui.theme.ProjectEchoTheme
 
 // U+26A1 + U+FE0E forces text presentation so the glyph inherits Compose color styling
@@ -58,7 +59,7 @@ private const val FAVOR_ICON = "⚡︎"
 fun DashboardScreen(
     worldState: WorldState,
     onTickPressed: () -> Unit,
-    onActionPressed: (DivineAction) -> Unit,
+    onActionPressed: (DivineAction, List<Int>) -> Unit,
     snackbarHostState: SnackbarHostState,
     isChronicleVisible: Boolean,
     onShowChronicle: () -> Unit,
@@ -95,6 +96,7 @@ fun DashboardScreen(
         }
     }
 
+    var hoveredTileId by remember { mutableStateOf<Int?>(null) }
     var detailTribeId by remember { mutableStateOf<String?>(null) }
     detailTribeId?.let { tribeId ->
         worldState.tribes[tribeId]?.let { tribe ->
@@ -145,6 +147,8 @@ fun DashboardScreen(
         TribalGridMap(
             tiles = worldState.tiles,
             activeFront = worldState.activeFront,
+            hoveredTileId = hoveredTileId,
+            onTilePressed = { hoveredTileId = it },
             modifier = Modifier
                 .fillMaxWidth()
                 .aspectRatio(GRID_COLS.toFloat() / GRID_ROWS.toFloat()),
@@ -173,7 +177,11 @@ fun DashboardScreen(
         // Action panel — uniform square chips with ⚡cost badge
         ActionPanel(
             divineFavor = worldState.divineFavor,
-            onActionPressed = onActionPressed,
+            onActionPressed = { action ->
+                val cluster = hoveredTileId?.let { id -> listOf(id) + getNeighbors(id) } ?: emptyList()
+                onActionPressed(action, cluster)
+                hoveredTileId = null
+            },
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 8.dp),
@@ -413,7 +421,7 @@ private fun DashboardScreenPreview() {
         DashboardScreen(
             worldState = WorldState.initial(),
             onTickPressed = {},
-            onActionPressed = {},
+            onActionPressed = { _, _ -> },
             snackbarHostState = remember { SnackbarHostState() },
             isChronicleVisible = false,
             onShowChronicle = {},

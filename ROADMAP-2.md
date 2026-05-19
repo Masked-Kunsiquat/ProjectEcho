@@ -63,12 +63,12 @@
 > Redesign divine interventions from single-tile pokes to spatial cluster actions with an on-screen halo indicator. Simultaneously overhaul the dashboard layout so the map is the hero, tribe identity scales to multi-tribe, and the action panel is uniform.
 
 ### Radial Splash Targeting
-- [ ] Add `TileNeighbors.kt` utility to `domain/rules/` — pure Kotlin function `getNeighbors(tileId: Int, cols: Int = 16): List<Int>` returning the geometric neighbors for a herringbone triangle tile (handles edge tiles, corner tiles, and interior tiles differently)
-- [ ] Update `TribalGridMap.kt` — add touch/pointer input handling on the `Canvas`; on finger press, calculate the touched tile using existing triangle geometry
-- [ ] Add `hoveredCluster: List<Int>` state to `TribalGridMap` — on each press, call `getNeighbors()` and redraw the touched tile plus its neighbors with a radial amber glow and white outline halo
-- [ ] Update `GameViewModel.kt` — replace single-tile `applyDivineAction(action)` with `applyDivineAction(action, targetCluster: List<Int>)` that accepts a tile ID list
-- [ ] Update the action phase in `GameLoop.tick()` — iterate over `targetCluster` tiles and apply stat modifications (moisture ±, volatility ±) to each; population/food effects scale proportionally by the number of occupied tiles in the cluster
-- [ ] Write unit tests for `getNeighbors()` covering: a center tile, a left-edge tile, a right-edge tile, a corner tile
+- [x] Add `TileNeighbors.kt` utility to `domain/rules/` — pure Kotlin function `getNeighbors(tileId: Int, cols: Int = 16): List<Int>` returning the geometric neighbors for a herringbone triangle tile (handles edge tiles, corner tiles, and interior tiles differently)
+- [x] Update `TribalGridMap.kt` — add touch/pointer input handling on the `Canvas`; on finger press, calculate the touched tile using existing triangle geometry
+- [x] Add `hoveredCluster: List<Int>` state to `TribalGridMap` — on each press, call `getNeighbors()` and redraw the touched tile plus its neighbors with a radial amber glow and white outline halo
+- [x] Update `GameViewModel.kt` — replace single-tile `applyDivineAction(action)` with `applyDivineAction(action, targetCluster: List<Int>)` that accepts a tile ID list
+- [x] Update the action phase in `GameLoop.tick()` — iterate over `targetCluster` tiles and apply stat modifications (moisture ±, volatility ±) to each; population/food effects scale proportionally by the number of occupied tiles in the cluster
+- [x] Write unit tests for `getNeighbors()` covering: a center tile, a left-edge tile, a right-edge tile, a corner tile
 - [ ] Smoke test: touch a tile on-device; confirm radial halo highlights the correct neighbors; cast Rain, confirm moisture increases across the entire highlighted cluster
 
 ### Dashboard UI Overhaul
@@ -98,7 +98,7 @@
 - [x] **Tribe legend chip** — replace the plain `displayLarge` tribe name with a `TribeLegendRow`: colored dot + tribe name + inline micro-stats (population · food supply) on one line; tapping the chip opens a tribe detail bottom sheet; row is horizontally scrollable for future multi-tribe support
 - [x] **Tribe detail bottom sheet** — shows full per-tribe stats (population, food supply, devotion progress bar, tiles occupied, current `EnvironmentalPhase`); dismissed by swipe
 - [x] **Action panel** — replace variable-width `OutlinedButton` labels with fixed-size square chips; shorten labels to one word ("Rain", "Harvest", "Inspire", "Famine", "Plague"); show favor cost as a small ⚡badge; eliminates the oval/circle inconsistency
-- [ ] Smoke test: dashboard renders correctly at multiple screen sizes; tribe chip opens detail sheet; action chips are uniform; map fills available space
+- [x] Smoke test: dashboard renders correctly at multiple screen sizes; tribe chip opens detail sheet; action chips are uniform; map fills available space
 
 ### Simulation Engine Fixes (landed during Phase 9)
 

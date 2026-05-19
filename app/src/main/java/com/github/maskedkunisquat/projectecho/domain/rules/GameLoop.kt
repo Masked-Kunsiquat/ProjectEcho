@@ -23,6 +23,7 @@ fun tick(
     currentState: WorldState,
     action: DivineAction? = null,
     events: List<SimEvent> = emptyList(),
+    targetCluster: List<Int> = emptyList(),
     random: Random = Random.Default,
 ): WorldState {
     var state = currentState.copy(tiles = decayStep(currentState.tiles))
@@ -40,6 +41,7 @@ fun tick(
         state = state.copy(
             tribes = updatedTribes,
             divineFavor = (state.divineFavor - action.favorCost).coerceIn(0, 100),
+            tiles = applyClusterTileEffect(state.tiles, targetCluster, action),
         )
     }
 
@@ -167,6 +169,24 @@ internal fun territoryStep(tiles: List<MapTile>, tribes: Map<String, Tribe>): Li
         }
     }
     return working
+}
+
+private fun applyClusterTileEffect(
+    tiles: List<MapTile>,
+    cluster: List<Int>,
+    action: DivineAction,
+): List<MapTile> {
+    if (cluster.isEmpty()) return tiles
+    val clusterSet = cluster.toHashSet()
+    return tiles.map { tile ->
+        if (tile.id !in clusterSet) tile
+        else when (action) {
+            DivineAction.CastRain     -> tile.copy(soilMoisture = (tile.soilMoisture + 15).coerceIn(0, 100))
+            DivineAction.BlessHarvest -> tile.copy(soilMoisture = (tile.soilMoisture + 8).coerceIn(0, 100))
+            DivineAction.CauseFamine  -> tile.copy(soilMoisture = (tile.soilMoisture - 15).coerceIn(0, 100))
+            else                      -> tile
+        }
+    }
 }
 
 fun decayStep(tiles: List<MapTile>): List<MapTile> = tiles.map { tile ->
