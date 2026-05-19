@@ -12,6 +12,7 @@ import kotlinx.serialization.Serializable
  */
 @Serializable
 data class Tribe(
+    val tribeId: String,
     val name: String,
     val population: Int,
     val devotion: Int,

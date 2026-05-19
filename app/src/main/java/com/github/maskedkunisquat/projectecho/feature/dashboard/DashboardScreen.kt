@@ -30,7 +30,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.github.maskedkunisquat.projectecho.domain.model.DivineAction
-import com.github.maskedkunisquat.projectecho.domain.model.Tribe
 import com.github.maskedkunisquat.projectecho.domain.model.WorldState
 import com.github.maskedkunisquat.projectecho.ui.theme.ProjectEchoTheme
 
@@ -46,8 +45,6 @@ fun DashboardScreen(
     onDismissChronicle: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    // Show latest event as a snackbar whenever a new entry lands in the history.
-    // LaunchedEffect cancels the previous snackbar if a newer event fires first.
     LaunchedEffect(worldState.eventHistory.size) {
         if (worldState.eventHistory.isNotEmpty()) {
             snackbarHostState.showSnackbar(
@@ -78,6 +75,8 @@ fun DashboardScreen(
         }
     }
 
+    val tribe = worldState.tribes.values.firstOrNull() ?: return
+
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -102,13 +101,13 @@ fun DashboardScreen(
                 )
             }
 
-            Text(text = worldState.tribe.name, style = MaterialTheme.typography.displayLarge)
+            Text(text = tribe.name, style = MaterialTheme.typography.displayLarge)
 
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                StatRow(label = "Population", value = worldState.tribe.population.toString())
-                StatRow(label = "Food Supply", value = worldState.tribe.foodSupply.toString())
-                ProgressStatRow(label = "Devotion",     value = worldState.tribe.devotion, maxValue = 100)
-                ProgressStatRow(label = "Divine Favor", value = worldState.divineFavor,   maxValue = 100)
+                StatRow(label = "Population", value = tribe.population.toString())
+                StatRow(label = "Food Supply", value = tribe.foodSupply.toString())
+                ProgressStatRow(label = "Devotion",     value = tribe.devotion,       maxValue = 100)
+                ProgressStatRow(label = "Divine Favor", value = worldState.divineFavor, maxValue = 100)
             }
 
             HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
@@ -125,8 +124,7 @@ fun DashboardScreen(
             }
 
             TribalGridMap(
-                tribeName  = worldState.tribe.name,
-                population = worldState.tribe.population,
+                tiles = worldState.tiles,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(120.dp),
@@ -268,21 +266,7 @@ private fun StatRow(label: String, value: String) {
 private fun DashboardScreenPreview() {
     ProjectEchoTheme {
         DashboardScreen(
-            worldState = WorldState(
-                worldTimeTick = 42L,
-                divineFavor = 65,
-                tribe = Tribe(
-                    name = "The Iron-Wrought",
-                    population = 134,
-                    devotion = 72,
-                    foodSupply = 310,
-                ),
-                eventHistory = listOf(
-                    "The tribe has grown.",
-                    "Famine begins.",
-                    "The gods watch.",
-                ),
-            ),
+            worldState = WorldState.initial(),
             onTickPressed = {},
             onActionPressed = {},
             snackbarHostState = remember { SnackbarHostState() },

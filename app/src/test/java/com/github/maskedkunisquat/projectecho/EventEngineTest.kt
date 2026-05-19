@@ -18,7 +18,16 @@ class EventEngineTest {
     ) = WorldState(
         worldTimeTick = 1L,
         divineFavor = divineFavor,
-        tribe = Tribe("Test Tribe", population, devotion, foodSupply),
+        tiles = emptyList(),
+        tribes = mapOf(
+            "test" to Tribe(
+                tribeId = "test",
+                name = "Test Tribe",
+                population = population,
+                devotion = devotion,
+                foodSupply = foodSupply,
+            )
+        ),
     )
 
     private fun event(
@@ -107,5 +116,34 @@ class EventEngineTest {
     fun `empty events list returns empty result`() {
         val result = EventEngine.evaluate(state(), emptyList())
         assertTrue(result.isEmpty())
+    }
+
+    @Test
+    fun `divineFavor trigger works when tribes map is empty`() {
+        val emptyTribeState = WorldState(
+            worldTimeTick = 1L,
+            divineFavor = 5,
+            tiles = emptyList(),
+            tribes = emptyMap(),
+        )
+        val events = listOf(event("favor_low", "divineFavor", "lte", 10))
+        assertEquals(1, EventEngine.evaluate(emptyTribeState, events).size)
+    }
+
+    @Test
+    fun `tribe stat trigger matches the tribe that meets condition in a multi-tribe world`() {
+        val multiTribeState = WorldState(
+            worldTimeTick = 1L,
+            divineFavor = 50,
+            tiles = emptyList(),
+            tribes = mapOf(
+                "a" to Tribe(tribeId = "a", name = "Tribe A", population = 20,  devotion = 50, foodSupply = 300),
+                "b" to Tribe(tribeId = "b", name = "Tribe B", population = 200, devotion = 50, foodSupply = 300),
+            ),
+        )
+        val events = listOf(event("pop_low", "population", "lt", 50))
+        val result = EventEngine.evaluate(multiTribeState, events)
+        assertEquals(1, result.size)
+        assertEquals("pop_low", result[0].id)
     }
 }
