@@ -116,6 +116,15 @@ Add a computed function to derive a tribe's needs from stats that already exist:
   | SendPlague | `UnderThreat` (on aggressor) | — |
   | CauseFamine | — (punitive) | — |
 
+### Split viability guard
+
+Tribes can currently split into critically underfunded children (2 population, near-zero food) that linger for ticks before starving out. Extinction cleanup (added Phase 14) removes them eventually, but the upstream fix is to not allow the split in the first place.
+
+- [ ] In `splitStep()`, after computing `childFood` and `childPopulation`, add a viability check: skip the split if `childFood < childPopulation * SPLIT_MIN_FOOD_TICKS`; define `SPLIT_MIN_FOOD_TICKS = 5` as a named constant in `GameLoop.kt`
+- [ ] Write unit test: split is suppressed when projected child food falls below the viability threshold; split proceeds when food is sufficient
+
+*Note: once the RL Tribe policy (Phase 18+) controls expansion decisions, it will naturally learn not to split into unviable positions. This guard is a heuristic safety net until training is in place.*
+
 ### Need indicator UI
 
 - [ ] Add small need icons to `TribeLegendChip` in `DashboardScreen.kt` — rendered as Unicode glyphs styled with Compose color (droplet 💧 for Parched, skull ☠ for Starving, sword ⚔ for UnderThreat, etc.); use U+FE0E text variation selector on glyphs that need Compose color styling (per existing UI pattern in `feedback_ui_patterns.md`)
@@ -220,8 +229,9 @@ A freshly split tribe (sophistication 0, no history) should behave differently f
 ### Reward calculator & training init
 
 - [ ] Add `WorldState.reward(prev: WorldState, tribeId: String): Float` — `(newPop - prevPop) + (newTiles - prevTiles)` diffing two consecutive states; used by both headless batch runner and Python env
+  - **Extinction penalty:** if `tribeId` is absent from `next.tribes` (removed by the extinction filter in `tick()`), return a large fixed penalty (e.g. `−10f`) and mark the episode `done`; this is the hardest signal in training — a tribe that goes extinct unambiguously lost
 - [ ] Add `WorldState.initialForTraining(numTribes: Int, seed: Long): WorldState` — places 4–6 tribes in randomized starting positions with seeded RNG; production path (`WorldState.initial()`) unchanged
-- [ ] Write unit tests: vectorizer output length matches `STATE_VECTOR_LABELS` length, all values in [0, 1], reward is positive after growth tick, negative after territory loss
+- [ ] Write unit tests: vectorizer output length matches `STATE_VECTOR_LABELS` length, all values in [0, 1], reward is positive after growth tick, negative after territory loss, extinction returns the large penalty
 
 ---
 
