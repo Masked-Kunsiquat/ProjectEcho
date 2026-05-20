@@ -363,6 +363,8 @@ private fun TribeLegendChip(
     }
 }
 
+@Suppress("DEPRECATION")
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ActionPanel(
     divineFavor: Int,
@@ -389,7 +391,7 @@ private fun ActionPanel(
             ) {
                 row.forEach { (action, label, description) ->
                     TooltipBox(
-                        positionProvider = TooltipDefaults.rememberPlainTooltipPositionProvider(),
+                        positionProvider = TooltipDefaults.rememberTooltipPositionProvider(),
                         tooltip = { PlainTooltip { Text(description) } },
                         state = rememberTooltipState(),
                         modifier = Modifier.weight(1f),
