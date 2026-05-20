@@ -173,9 +173,19 @@ fun tick(
         }
     }
 
+    // Extinction: remove tribes that starved to zero population
+    val extinctIds = survivedTribes.filterValues { it.population <= 0 }.keys.toSet()
+    val extinctEntries = extinctIds.map { id -> "The ${survivedTribes[id]!!.name} have perished from the land." }
+    val livingTribes = if (extinctIds.isEmpty()) survivedTribes else survivedTribes.filterKeys { it !in extinctIds }
+    if (extinctIds.isNotEmpty()) {
+        state = state.copy(tiles = state.tiles.map { t ->
+            if (t.occupantTribeId in extinctIds) t.copy(occupantTribeId = null) else t
+        })
+    }
+
     // Sophistication milestones
     val sophisticationEntries = mutableListOf<String>()
-    val withSophistication = survivedTribes.mapValues { (_, tribe) ->
+    val withSophistication = livingTribes.mapValues { (_, tribe) ->
         val popMet = SOPHISTICATION_POP_MILESTONES.count { it <= tribe.population }
         val devMet = SOPHISTICATION_DEVOTION_MILESTONES.count { it <= tribe.devotion }
         val expectedSoph = popMet + devMet
@@ -232,7 +242,7 @@ fun tick(
         divineFavor = regenedFavor,
         tribes = withPrayerDecay,
         tiles = territoryStep(state.tiles, withPrayerDecay),
-        eventHistory = state.eventHistory + generationEntries + sophisticationEntries + prayerChronicleEntries + inspireDevoutEntries,
+        eventHistory = state.eventHistory + generationEntries + extinctEntries + sophisticationEntries + prayerChronicleEntries + inspireDevoutEntries,
         eventCooldowns = if (devoutExpectationsFired)
             state.eventCooldowns + ("devout_expectations" to state.worldTimeTick + 1L)
         else state.eventCooldowns,

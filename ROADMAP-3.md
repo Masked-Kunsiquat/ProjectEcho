@@ -317,6 +317,22 @@ Non-aggression pacts between low-mutual-aggression tribes; coordinated expansion
 
 A small on-device LM generating dynamic Chronicle text instead of template strings. Gemma E4B is the candidate. This is a separate feature from the policy network (different architecture, different purpose) and should be designed after Phase 21 to avoid conflating the two.
 
+### World as adaptive AI (Option A — reactive climate)
+
+**Design philosophy:** The World is a closed system in dynamic tension with its inhabitants. Tribes behave like a virus — expanding, consuming, pushing soil moisture above its natural baseline. The World's decay system is the immune response, constantly pulling conditions back toward equilibrium. High collective sophistication lets tribes resist that pull (the `SOPH_MOISTURE_CEILING` mechanic), but the World can escalate.
+
+God sits between both systems as mediator. Divine actions don't override the World — they *bias* it. CastRain shifts weather generation probabilities; the World runs its own logic from there. The outcome is never fully certain, which is closer to how most theological traditions describe divine action than a direct miracle would be.
+
+**Technical direction (post-Phase 21):**
+
+- Train a small generative model (not a policy — no action selection) that observes aggregate `WorldState` signals (total population, average sophistication, territorial coverage, mean soil moisture) and outputs a probability distribution over weather front types and spawn rates for the next N ticks
+- Training signal: keep tribal population in a "productive tension" band — not thriving so easily that God becomes irrelevant, not dying so fast that intervention is pointless
+- God's divine actions become inputs to the World model's context at inference time — CastRain on a region slightly increases the model's rain-front probability for that column cluster; it doesn't guarantee rain
+- The result: the World responds to civilisational pressure the way climate responds to human activity — feedback loops, lag, partial reversibility
+- Separate from the Tribe RL policy (different architecture, different training objective); both run at inference time on-device, neither knows about the other directly
+
+**Why this is worth building:** It makes the training environment for the Tribe policy richer (tribes can't memorise fixed weather patterns) and gives the player's divine role genuine weight — they are managing the relationship between two adaptive systems, not just keeping a tribe's health bar up.
+
 ---
 
 ## Summary
