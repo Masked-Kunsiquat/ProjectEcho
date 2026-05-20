@@ -1,0 +1,42 @@
+[
+  {
+    "archetypeId": "agrarian",
+    "aggression": 0.2,
+    "caution": 0.7,
+    "skepticismRate": 0.6,
+    "traditionalism": 0.7,
+    "biomeAffinity": {"Forest": 1.5, "Grassland": 1.2, "Desert": 0.3, "Coast": 1.0, "Water": 0.0}
+  },
+  {
+    "archetypeId": "nomadic",
+    "aggression": 0.5,
+    "caution": 0.3,
+    "skepticismRate": 0.8,
+    "traditionalism": 0.3,
+    "biomeAffinity": {"Forest": 0.7, "Grassland": 1.0, "Desert": 1.4, "Coast": 0.8, "Water": 0.0}
+  },
+  {
+    "archetypeId": "warlike",
+    "aggression": 0.9,
+    "caution": 0.2,
+    "skepticismRate": 1.4,
+    "traditionalism": 0.4,
+    "biomeAffinity": {"Forest": 0.9, "Grassland": 1.1, "Desert": 0.8, "Coast": 0.7, "Water": 0.0}
+  },
+  {
+    "archetypeId": "maritime",
+    "aggression": 0.3,
+    "caution": 0.5,
+    "skepticismRate": 0.5,
+    "traditionalism": 0.6,
+    "biomeAffinity": {"Forest": 0.8, "Grassland": 1.0, "Desert": 0.4, "Coast": 2.0, "Water": 0.0}
+  },
+  {
+    "archetypeId": "reclusive",
+    "aggression": 0.1,
+    "caution": 0.9,
+    "skepticismRate": 1.2,
+    "traditionalism": 0.9,
+    "biomeAffinity": {"Forest": 1.8, "Grassland": 0.9, "Desert": 0.2, "Coast": 0.6, "Water": 0.0}
+  }
+]

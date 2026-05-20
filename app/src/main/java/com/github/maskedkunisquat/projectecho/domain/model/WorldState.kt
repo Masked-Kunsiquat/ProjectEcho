@@ -105,12 +105,14 @@ data class WorldState(
                 )
             }
 
+            val personality = TribePersonality.ALL_ARCHETYPES[rng.nextInt(TribePersonality.ALL_ARCHETYPES.size)]
             val tribe = Tribe(
                 tribeId = tribeId,
                 name = tribeName,
                 population = population,
                 devotion = 50,
                 foodSupply = 500,
+                personality = personality,
             )
 
             return WorldState(

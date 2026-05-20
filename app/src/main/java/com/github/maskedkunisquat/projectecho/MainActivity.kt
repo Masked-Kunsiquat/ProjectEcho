@@ -20,6 +20,7 @@ import androidx.lifecycle.lifecycleScope
 import com.github.maskedkunisquat.projectecho.data.db.AppDatabase
 import com.github.maskedkunisquat.projectecho.data.repository.RoomWorldStateRepository
 import com.github.maskedkunisquat.projectecho.domain.rules.EventParser
+import com.github.maskedkunisquat.projectecho.domain.rules.PersonalityParser
 import com.github.maskedkunisquat.projectecho.feature.dashboard.DashboardScreen
 import com.github.maskedkunisquat.projectecho.feature.dashboard.GameViewModel
 import com.github.maskedkunisquat.projectecho.feature.dashboard.GameViewModelFactory
@@ -44,12 +45,17 @@ class MainActivity : ComponentActivity() {
         lifecycleScope.launch {
             val events = withContext(Dispatchers.IO) {
                 runCatching {
-                    assets.open("events.json").bufferedReader().use { reader ->
-                        EventParser.parse(reader.readText())
-                    }
+                    assets.open("events.json").bufferedReader().use { EventParser.parse(it.readText()) }
                 }.getOrDefault(emptyList())
             }
             viewModel.setSimEvents(events)
+
+            val personalityList = withContext(Dispatchers.IO) {
+                runCatching {
+                    assets.open("personalities.json").bufferedReader().use { PersonalityParser.parse(it.readText()) }
+                }.getOrDefault(emptyList())
+            }
+            viewModel.setPersonalities(personalityList)
         }
 
         setContent {

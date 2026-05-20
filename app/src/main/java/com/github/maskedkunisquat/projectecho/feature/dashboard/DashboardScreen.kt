@@ -275,7 +275,10 @@ private fun TribeDetailSheet(
             StatRow(label = "Food Supply",    value = tribe.foodSupply.toString())
             StatRow(label = "Tiles Occupied", value = tilesOccupied.toString())
             StatRow(label = "Environment",    value = environmentalPhase.displayName())
-            ProgressStatRow(label = "Devotion", value = tribe.devotion, maxValue = 100)
+            StatRow(label = "Archetype",      value = tribe.personality.archetypeId.replaceFirstChar { it.uppercase() })
+            ProgressStatRow(label = "Devotion",       value = tribe.devotion,                   maxValue = 100)
+            ProgressStatRow(label = "Sophistication", value = tribe.personality.sophistication, maxValue = 10)
+            ProgressStatRow(label = "Skepticism",     value = tribe.personality.skepticism,     maxValue = 100)
         }
     }
 }

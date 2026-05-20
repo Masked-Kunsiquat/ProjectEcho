@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.github.maskedkunisquat.projectecho.domain.model.DivineAction
 import com.github.maskedkunisquat.projectecho.domain.model.SimEvent
+import com.github.maskedkunisquat.projectecho.domain.model.TribePersonality
 import com.github.maskedkunisquat.projectecho.domain.model.WorldState
 import com.github.maskedkunisquat.projectecho.domain.repository.WorldStateRepository
 import com.github.maskedkunisquat.projectecho.domain.rules.getNeighbors
@@ -43,6 +44,9 @@ class GameViewModel(
     @Volatile
     private var simEvents: List<SimEvent> = emptyList()
 
+    @Volatile
+    private var personalities: List<TribePersonality> = emptyList()
+
     init {
         viewModelScope.launch {
             // Restore saved state before the first tick fires.
@@ -63,6 +67,10 @@ class GameViewModel(
      */
     fun setSimEvents(events: List<SimEvent>) {
         simEvents = events
+    }
+
+    fun setPersonalities(list: List<TribePersonality>) {
+        personalities = list
     }
 
     /** Switches the map overlay mode. */
@@ -89,7 +97,7 @@ class GameViewModel(
         val cluster = pendingCluster
         pendingAction = null
         pendingCluster = emptyList()
-        val newState = tick(_worldState.value, action, simEvents, cluster)
+        val newState = tick(_worldState.value, action, simEvents, cluster, personalities)
         _worldState.value = newState
         viewModelScope.launch(ioDispatcher) {
             runCatching { repository.save(newState) }
