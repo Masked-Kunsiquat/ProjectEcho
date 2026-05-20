@@ -153,35 +153,35 @@ Tribes can currently split into critically underfunded children (2 population, n
 
 The policy sees a snapshot per tick. It cannot compute derivatives. "Population = 300 and rising" and "population = 300 and falling" look identical without trend data.
 
-- [ ] Add `populationDelta: Int = 0` and `territoryDelta: Int = 0` to `Tribe.kt` (both serialized, backward-compatible defaults)
-- [ ] At the **top** of `GameLoop.tick()`, before any simulation steps, compute deltas from the previous tick:
+- [x] Add `populationDelta: Int = 0` and `territoryDelta: Int = 0` to `Tribe.kt` (both serialized, backward-compatible defaults)
+- [x] At the **top** of `GameLoop.tick()`, before any simulation steps, compute deltas from the previous tick:
   ```kotlin
   val prevPop = state.tribes[tribe.tribeId]?.population ?: tribe.population
   val prevTiles = state.tiles.count { it.occupantTribeId == tribe.tribeId }
   // after steps complete, set:
   // tribe.copy(populationDelta = newPop - prevPop, territoryDelta = newTiles - prevTiles)
   ```
-- [ ] Write unit tests: delta is positive after a growth tick, negative after starvation, zero when stable
+- [x] Write unit tests: delta is positive after a growth tick, negative after starvation, zero when stable
 
 ### Inter-tribe hostility tracking — HIGH
 
 The conflict model is currently stateless — aggression vs. caution is evaluated from scratch each tick with no memory of history. The policy can't learn "tribe B keeps raiding us; expand away from them."
 
-- [ ] Add `hostility: Map<String, Float> = emptyMap()` to `Tribe.kt` (keyed by tribeId; serialized; default empty)
-- [ ] In `conflictStep()`, when aggressor successfully transfers a tile: `aggressor.hostility[defender.tribeId] += 0.1f`; `defender.hostility[aggressor.tribeId] += 0.15f` (defender remembers harder)
-- [ ] In `tick()`, decay all hostility values each tick: `hostility[id] *= 0.98f`; remove entries that drop below `0.01f`
-- [ ] When a tribe is removed (absorbed or extinct), clean its id from all remaining tribes' hostility maps
-- [ ] Wire the Phase 13 devotion hook: when `tribe.devotion > 70`, decay hostility slightly faster (`*= 0.96f` instead of `0.98f`)
-- [ ] Write unit tests: hostility increments on raid, decays toward zero over time, removed tribe ids are cleaned up
+- [x] Add `hostility: Map<String, Float> = emptyMap()` to `Tribe.kt` (keyed by tribeId; serialized; default empty)
+- [x] In `conflictStep()`, when aggressor successfully transfers a tile: `aggressor.hostility[defender.tribeId] += 0.1f`; `defender.hostility[aggressor.tribeId] += 0.15f` (defender remembers harder)
+- [x] In `tick()`, decay all hostility values each tick: `hostility[id] *= 0.98f`; remove entries that drop below `0.01f`
+- [x] When a tribe is removed (absorbed or extinct), clean its id from all remaining tribes' hostility maps
+- [x] Wire the Phase 13 devotion hook: when `tribe.devotion > 70`, decay hostility slightly faster (`*= 0.96f` instead of `0.98f`)
+- [x] Write unit tests: hostility increments on raid, decays toward zero over time, removed tribe ids are cleaned up
 
 ### Tribe age — MEDIUM
 
 A freshly split tribe (sophistication 0, no history) should behave differently from a centuries-old civilisation at the same population. `sophistication` resets to 0 on split; `foundedTick` separates them.
 
-- [ ] Add `foundedTick: Long = 0L` to `Tribe.kt` (serialized; 0 for the first tribe)
-- [ ] Set `foundedTick = worldTimeTick` when creating a child tribe in `splitStep()`
-- [ ] Expose tribe age (`worldTimeTick - foundedTick`) in `TribeDetailSheet` for player visibility
-- [ ] Write unit test: child tribe's `foundedTick` equals the tick on which the split fires; original tribe's `foundedTick` remains 0
+- [x] Add `foundedTick: Long = 0L` to `Tribe.kt` (serialized; 0 for the first tribe)
+- [x] Set `foundedTick = worldTimeTick` when creating a child tribe in `splitStep()`
+- [x] Expose tribe age (`worldTimeTick - foundedTick`) in `TribeDetailSheet` for player visibility
+- [x] Write unit test: child tribe's `foundedTick` equals the tick on which the split fires; original tribe's `foundedTick` remains 0
 
 ---
 

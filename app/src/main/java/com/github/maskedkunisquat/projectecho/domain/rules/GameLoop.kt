@@ -54,6 +54,11 @@ fun tick(
     targetTribeId: String? = null,
     random: Random = Random.Default,
 ): WorldState {
+    val prevPopulations = currentState.tribes.mapValues { (_, t) -> t.population }
+    val prevTileCounts  = currentState.tribes.mapValues { (id, _) ->
+        currentState.tiles.count { it.occupantTribeId == id }
+    }
+
     var state = currentState.copy(tiles = decayStep(currentState.tiles, currentState.tribes))
 
     val inspireDevoutEntries = mutableListOf<String>()
@@ -201,9 +206,19 @@ fun tick(
         })
     }
 
+    // Hostility: decay all values and remove extinct tribe IDs
+    val livingTribesDecayed = livingTribes.mapValues { (_, tribe) ->
+        val decayFactor = if (tribe.devotion > 70) 0.96f else 0.98f
+        val newHostility = tribe.hostility
+            .filterKeys { it !in extinctIds }
+            .mapValues { (_, v) -> v * decayFactor }
+            .filterValues { it >= 0.01f }
+        tribe.copy(hostility = newHostility)
+    }
+
     // Sophistication milestones
     val sophisticationEntries = mutableListOf<String>()
-    val withSophistication = livingTribes.mapValues { (_, tribe) ->
+    val withSophistication = livingTribesDecayed.mapValues { (_, tribe) ->
         val popMet = SOPHISTICATION_POP_MILESTONES.count { it <= tribe.population }
         val devMet = SOPHISTICATION_DEVOTION_MILESTONES.count { it <= tribe.devotion }
         val expectedSoph = popMet + devMet
@@ -296,7 +311,18 @@ fun tick(
         )
     }
 
-    return weatherStep(eventedState, random)
+    val finalState = weatherStep(eventedState, random)
+    return finalState.copy(
+        tribes = finalState.tribes.mapValues { (id, tribe) ->
+            val prevPop       = prevPopulations[id] ?: tribe.population
+            val prevTileCount = prevTileCounts[id]  ?: 0
+            val newTileCount  = finalState.tiles.count { it.occupantTribeId == id }
+            tribe.copy(
+                populationDelta = tribe.population - prevPop,
+                territoryDelta  = newTileCount - prevTileCount,
+            )
+        }
+    )
 }
 
 fun weatherStep(state: WorldState, random: Random = Random.Default): WorldState {
@@ -471,6 +497,7 @@ internal fun splitStep(
                 foodSupply     = childFood,
                 personality    = childPersonality,
                 generationDeaths = 0,
+                foundedTick    = state.worldTimeTick,
             )
         }
         return state.copy(
@@ -490,6 +517,7 @@ internal fun conflictStep(state: WorldState, random: Random = Random.Default): W
     val tribeIds = state.tribes.keys.toList()
     val chronicleEntries = mutableListOf<String>()
     val raidedTribeIds = mutableSetOf<String>()
+    val hostilityChanges = mutableMapOf<String, MutableMap<String, Float>>()
     var tiles = state.tiles
 
     for (aggressorId in tribeIds) {
@@ -519,6 +547,10 @@ internal fun conflictStep(state: WorldState, random: Random = Random.Default): W
                     if (t.id == target.id) t.copy(occupantTribeId = aggressorId) else t
                 }
                 raidedTribeIds += defenderId
+                hostilityChanges.getOrPut(aggressorId) { mutableMapOf() }
+                    .merge(defenderId, 0.1f, Float::plus)
+                hostilityChanges.getOrPut(defenderId) { mutableMapOf() }
+                    .merge(aggressorId, 0.15f, Float::plus)
                 chronicleEntries += "The ${aggressor.name} raid the ${defender.name} frontier."
             }
         }
@@ -527,8 +559,20 @@ internal fun conflictStep(state: WorldState, random: Random = Random.Default): W
     return if (chronicleEntries.isEmpty() && raidedTribeIds.isEmpty()) state
     else state.copy(
         tiles = tiles,
-        tribes = if (raidedTribeIds.isEmpty()) state.tribes else state.tribes.mapValues { (id, tribe) ->
-            if (id in raidedTribeIds) tribe.copy(lastRaidTick = state.worldTimeTick) else tribe
+        tribes = state.tribes.mapValues { (id, tribe) ->
+            val wasRaided = id in raidedTribeIds
+            val changes = hostilityChanges[id]
+            val newHostility = if (changes == null) tribe.hostility else {
+                val map = tribe.hostility.toMutableMap()
+                for ((otherId, delta) in changes) {
+                    map[otherId] = (map.getOrDefault(otherId, 0f) + delta).coerceAtMost(1f)
+                }
+                map.toMap()
+            }
+            tribe.copy(
+                lastRaidTick = if (wasRaided) state.worldTimeTick else tribe.lastRaidTick,
+                hostility = newHostility,
+            )
         },
         eventHistory = state.eventHistory + chronicleEntries,
     )

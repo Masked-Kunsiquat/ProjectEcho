@@ -151,6 +151,7 @@ fun DashboardScreen(
                 tribe = tribe,
                 tilesOccupied = occupiedTiles.size,
                 environmentalPhase = EnvironmentalPhase.from(avgMoisture),
+                tribeAge = worldState.worldTimeTick - tribe.foundedTick,
                 onDismiss = { detailTribeId = null },
             )
         }
@@ -286,6 +287,7 @@ private fun TribeDetailSheet(
     tribe: Tribe,
     tilesOccupied: Int,
     environmentalPhase: EnvironmentalPhase,
+    tribeAge: Long,
     onDismiss: () -> Unit,
 ) {
     ModalBottomSheet(
@@ -306,6 +308,7 @@ private fun TribeDetailSheet(
             StatRow(label = "Food Supply",    value = tribe.foodSupply.toString())
             StatRow(label = "Tiles Occupied", value = tilesOccupied.toString())
             StatRow(label = "Environment",    value = environmentalPhase.displayName())
+            StatRow(label = "Age",            value = "$tribeAge ticks")
             StatRow(label = "Archetype",      value = tribe.personality.archetypeId.replaceFirstChar { it.uppercase() })
             ProgressStatRow(label = "Devotion",       value = tribe.devotion,                   maxValue = 100)
             ProgressStatRow(label = "Sophistication", value = tribe.personality.sophistication, maxValue = 10)
