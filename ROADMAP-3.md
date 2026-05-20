@@ -81,22 +81,24 @@ Add a computed function to derive a tribe's needs from stats that already exist:
 | Need | Derived from | Condition |
 |---|---|---|
 | `Parched` | tile avg moisture | avg soil moisture of owned tiles < 25 |
-| `Hungry` | `foodSupply`, `population` | foodSupply < population × 0.5 |
-| `Starving` | `foodSupply` | foodSupply == 0 (checked via survival phase output) |
+| `Hungry` | `foodSupply`, `population` | foodSupply < population × 3 (< 3 ticks of reserves) |
+| `Starving` | `foodSupply` | foodSupply == 0; co-occurs with Hungry — both fire simultaneously |
+| `Endangered` | `population` | population < `MIN_VIABLE_POPULATION` (= 20); fragile tribe near extinction |
 | `UnderThreat` | tile loss in last 5 ticks | lost ≥ 1 tile to a raid in the last 5 ticks* |
-| `SpirituallyDepleted` | `skepticism`, `devotion` | skepticism > 60 && devotion < 40 |
+| `SpirituallyDepleted` | `skepticism`, `devotion` | personality.skepticism > 60 && devotion < 40 |
 | `Overcrowded` | pop / tile density | population / ownedTiles.size > `SPLIT_DENSITY_THRESHOLD` |
 | `Thriving` | none of the above | fallback — all needs met |
 
 *`UnderThreat` requires a `lastRaidTick: Long = -1L` field on `Tribe` (small addition, serialized with default). Update in `conflictStep()` when a tile is transferred.
 
-- [ ] Add `lastRaidTick: Long = -1L` to `Tribe.kt` (the only new stored field in this phase; backward-compatible default)
-- [ ] Add a pure function `Tribe.needs(ownedTiles: List<MapTile>, currentTick: Long): Set<TribeNeed>` to `Tribe.kt` — derived from existing fields, no Android context
-- [ ] Define `enum class TribeNeed` in `domain/model/` with the 7 variants above
+- [x] Add `lastRaidTick: Long = -1L` to `Tribe.kt` (the only new stored field in this phase; backward-compatible default)
+- [x] Add `MIN_VIABLE_POPULATION = 20` as a named constant in `Tribe.kt` (alongside `needs()`)
+- [x] Add a pure function `Tribe.needs(ownedTiles: List<MapTile>, currentTick: Long): Set<TribeNeed>` to `Tribe.kt` — derived from existing fields, no Android context
+- [x] Define `enum class TribeNeed` in `domain/model/` with the 8 variants above
 
 ### Relevance scoring
 
-- [ ] In `GameLoop.kt`, replace the flat `prayerPressure *= 0.5f` in the divine action block with a relevance-scaled reset:
+- [x] In `GameLoop.kt`, replace the flat `prayerPressure *= 0.5f` in the divine action block with a relevance-scaled reset:
   ```kotlin
   val relevance = when {
       tribe.needs(...).contains(action.primaryNeed) -> 1.0f
@@ -106,16 +108,16 @@ Add a computed function to derive a tribe's needs from stats that already exist:
   val pressureReset = tribe.prayerPressure * (0.3f + 0.5f * relevance)  // 30–80% range
   tribe.prayerPressure -= pressureReset
   ```
-- [ ] Define the primary/secondary need mapping per action (in `DivineAction.kt` or a companion object):
+- [x] Define the primary/secondary need mapping per action (in `DivineAction.kt` or a companion object):
 
   | Action | Primary need | Secondary need |
   |---|---|---|
   | CastRain | `Parched` | `Hungry` |
-  | BlessHarvest | `Hungry` / `Starving` | `Thriving` |
+  | BlessHarvest | `Hungry` (covers Starving — co-occurs) | `Endangered` (small tribe needs food most) |
   | InspireDevout | `SpirituallyDepleted` | any |
   | SendPlague | `UnderThreat` (on aggressor) | — |
   | CauseFamine | — (punitive) | — |
-  | Fortify | `UnderThreat` | `Overcrowded` |
+  | Fortify | `UnderThreat` | `Endangered` (protect fragile tribe from raids) |
   | Blight | — (punitive, environmental) | — |
   | Revelation | `SpirituallyDepleted` | `Thriving` (faith maintained even when flourishing) |
   | Smite | — (punitive, territorial) | — |
@@ -124,16 +126,18 @@ Add a computed function to derive a tribe's needs from stats that already exist:
 
 Tribes can currently split into critically underfunded children (2 population, near-zero food) that linger for ticks before starving out. Extinction cleanup (added Phase 14) removes them eventually, but the upstream fix is to not allow the split in the first place.
 
-- [ ] In `splitStep()`, after computing `childFood` and `childPopulation`, add a viability check: skip the split if `childFood < childPopulation * SPLIT_MIN_FOOD_TICKS`; define `SPLIT_MIN_FOOD_TICKS = 5` as a named constant in `GameLoop.kt`
-- [ ] Write unit test: split is suppressed when projected child food falls below the viability threshold; split proceeds when food is sufficient
+- [x] In `splitStep()`, after computing `childFood` and `childPopulation`, add a viability check: skip the split if `childFood < childPopulation * SPLIT_MIN_FOOD_TICKS`; define `SPLIT_MIN_FOOD_TICKS = 5` as a named constant in `GameLoop.kt`
+- [x] Write unit test: split is suppressed when projected child food falls below the viability threshold; split proceeds when food is sufficient
 
 *Note: once the RL Tribe policy (Phase 18+) controls expansion decisions, it will naturally learn not to split into unviable positions. This guard is a heuristic safety net until training is in place.*
 
 ### Need indicator UI
 
-- [ ] Add small need icons to `TribeLegendChip` in `DashboardScreen.kt` — rendered as Unicode glyphs styled with Compose color (droplet 💧 for Parched, skull ☠ for Starving, sword ⚔ for UnderThreat, etc.); use U+FE0E text variation selector on glyphs that need Compose color styling (per existing UI pattern in `feedback_ui_patterns.md`)
-- [ ] Icons only appear when the need is active; `Thriving` shows nothing
-- [ ] Write unit tests: each need state derives correctly from its condition, boundary cases (exactly at threshold), relevance scoring matches expected 1.0/0.6/0.2 values
+- [x] Add small need icons to `TribeLegendChip` in `DashboardScreen.kt` — rendered as Unicode glyphs styled with Compose color:
+  - ☀︎ Parched · ⊙ Hungry · ☠︎ Starving · ⚠︎ Endangered · ⚔︎ UnderThreat · ✦ SpirituallyDepleted · ⊕ Overcrowded
+  - U+FE0E text variation selector applied on glyphs that need Compose color styling
+- [x] Icons only appear when the need is active; `Thriving` shows nothing
+- [x] Write unit tests: each of the 8 need states derives correctly from its condition, boundary cases (exactly at threshold), relevance scoring matches expected 1.0/0.6/0.2 values
 
 ---
 

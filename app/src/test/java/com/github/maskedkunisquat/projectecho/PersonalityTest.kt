@@ -145,7 +145,7 @@ class PersonalityTest {
             tribes = mapOf(
                 "alpha" to Tribe(
                     tribeId = "alpha", name = "Alpha", population = 600,
-                    devotion = 50, foodSupply = 1000,
+                    devotion = 50, foodSupply = 3000,
                     personality = TribePersonality.warlike(),
                 )
             ),
@@ -177,7 +177,7 @@ class PersonalityTest {
             tribes = mapOf(
                 "alpha" to Tribe(
                     tribeId = "alpha", name = "Alpha", population = 600,
-                    devotion = 50, foodSupply = 1000, personality = parentPersonality,
+                    devotion = 50, foodSupply = 3000, personality = parentPersonality,
                 )
             ),
             lastSplitTick = 0L,

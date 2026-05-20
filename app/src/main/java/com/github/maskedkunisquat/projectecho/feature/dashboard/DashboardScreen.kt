@@ -31,10 +31,14 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.PlainTooltip
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TooltipBox
+import androidx.compose.material3.TooltipDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -52,12 +56,33 @@ import com.github.maskedkunisquat.projectecho.domain.model.EnvironmentalPhase
 import com.github.maskedkunisquat.projectecho.domain.model.GRID_COLS
 import com.github.maskedkunisquat.projectecho.domain.model.GRID_ROWS
 import com.github.maskedkunisquat.projectecho.domain.model.Tribe
+import com.github.maskedkunisquat.projectecho.domain.model.TribeNeed
 import com.github.maskedkunisquat.projectecho.domain.model.WorldState
 import com.github.maskedkunisquat.projectecho.ui.theme.TRIBE_COLORS
 import com.github.maskedkunisquat.projectecho.ui.theme.ProjectEchoTheme
 
 // U+26A1 + U+FE0E forces text presentation so the glyph inherits Compose color styling
 private const val FAVOR_ICON = "⚡︎"
+
+// Need indicator glyphs — U+FE0E forces text presentation where needed
+private const val ICON_PARCHED    = "☀︎"  // U+2600 + U+FE0E
+private const val ICON_HUNGRY     = "⊙"   // U+2299
+private const val ICON_STARVING   = "☠︎"  // U+2620 + U+FE0E
+private const val ICON_ENDANGERED = "⚠︎"  // U+26A0 + U+FE0E
+private const val ICON_THREAT     = "⚔︎"  // U+2694 + U+FE0E
+private const val ICON_SPIRITUAL  = "✦"   // U+2726
+private const val ICON_CROWDED    = "⊕"   // U+2295
+
+private fun TribeNeed.icon(): String? = when (this) {
+    TribeNeed.Parched            -> ICON_PARCHED
+    TribeNeed.Hungry             -> ICON_HUNGRY
+    TribeNeed.Starving           -> ICON_STARVING
+    TribeNeed.Endangered         -> ICON_ENDANGERED
+    TribeNeed.UnderThreat        -> ICON_THREAT
+    TribeNeed.SpirituallyDepleted -> ICON_SPIRITUAL
+    TribeNeed.Overcrowded        -> ICON_CROWDED
+    TribeNeed.Thriving           -> null
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -184,16 +209,6 @@ fun DashboardScreen(
                 .aspectRatio(GRID_COLS.toFloat() / GRID_ROWS.toFloat()),
         )
 
-        // Overlay colour legend
-        MapOverlayLegend(
-            overlay = mapOverlay,
-            tribeColorMap = tribeColorMap,
-            tribeNames = worldState.tribes.mapValues { it.value.name },
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 4.dp),
-        )
-
         // Tribe legend strip — scrollable for future multi-tribe support
         LazyRow(
             modifier = Modifier
@@ -202,9 +217,12 @@ fun DashboardScreen(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             items(worldState.tribes.values.toList(), key = { it.tribeId }) { tribe ->
+                val ownedTiles = worldState.tiles.filter { it.occupantTribeId == tribe.tribeId }
+                val needs = tribe.needs(ownedTiles, worldState.worldTimeTick)
                 TribeLegendChip(
                     tribe = tribe,
                     tribeColor = tribeColorMap[tribe.tribeId] ?: TRIBE_COLORS[0],
+                    needs = needs,
                     selected = selectedTribeId == tribe.tribeId,
                     onSelect = {
                         selectedTribeId = if (selectedTribeId == tribe.tribeId) null else tribe.tribeId
@@ -300,6 +318,7 @@ private fun TribeDetailSheet(
 private fun TribeLegendChip(
     tribe: Tribe,
     tribeColor: Color,
+    needs: Set<TribeNeed>,
     selected: Boolean,
     onSelect: () -> Unit,
     onOpenDetail: () -> Unit,
@@ -308,6 +327,7 @@ private fun TribeLegendChip(
     val borderColor = if (selected) MaterialTheme.colorScheme.primary
                       else MaterialTheme.colorScheme.surfaceVariant
     val borderWidth = if (selected) 2.dp else 1.dp
+    val needIcons = needs.mapNotNull { it.icon() }.joinToString("")
     Row(
         modifier = modifier
             .clip(RoundedCornerShape(8.dp))
@@ -327,6 +347,13 @@ private fun TribeLegendChip(
             style = MaterialTheme.typography.labelMedium,
             fontWeight = FontWeight.SemiBold,
         )
+        if (needIcons.isNotEmpty()) {
+            Text(
+                text = needIcons,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.error,
+            )
+        }
         Text(
             text = "▸",
             style = MaterialTheme.typography.labelSmall,
@@ -336,6 +363,7 @@ private fun TribeLegendChip(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ActionPanel(
     divineFavor: Int,
@@ -343,52 +371,47 @@ private fun ActionPanel(
     modifier: Modifier = Modifier,
 ) {
     val actions = listOf(
-        DivineAction.CastRain      to "Rain",
-        DivineAction.BlessHarvest  to "Harvest",
-        DivineAction.InspireDevout to "Inspire",
-        DivineAction.CauseFamine   to "Famine",
-        DivineAction.SendPlague    to "Plague",
+        Triple(DivineAction.CastRain,      "Rain",       "+25 moisture on target tiles"),
+        Triple(DivineAction.BlessHarvest,  "Harvest",    "+200 food, +8 moisture on cluster"),
+        Triple(DivineAction.InspireDevout, "Inspire",    "+15 devotion, no skepticism penalty"),
+        Triple(DivineAction.CauseFamine,   "Famine",     "-80 food, -15 moisture on cluster"),
+        Triple(DivineAction.SendPlague,    "Plague",     "-20% population"),
+        Triple(DivineAction.Fortify,       "Fortify",    "5-tick raid immunity"),
+        Triple(DivineAction.Blight,        "Blight",     "-30 moisture, triggers natural famine"),
+        Triple(DivineAction.Revelation,    "Revelation", "-20 skepticism, +10 devotion"),
+        Triple(DivineAction.Smite,         "Smite",      "Clears tiles, kills 15% of occupants"),
     )
 
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            actions.take(3).forEach { (action, label) ->
-                ActionChip(
-                    label = label,
-                    cost = action.favorCost,
-                    enabled = divineFavor >= action.favorCost,
-                    onClick = { onActionPressed(action) },
-                    modifier = Modifier.weight(1f),
-                )
+        actions.chunked(3).forEach { row ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                row.forEach { (action, label, description) ->
+                    ActionChip(
+                        label = label,
+                        cost = action.favorCost,
+                        enabled = divineFavor >= action.favorCost,
+                        onClick = { onActionPressed(action) },
+                        tooltip = description,
+                        modifier = Modifier.weight(1f),
+                    )
+                }
             }
-        }
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            actions.drop(3).forEach { (action, label) ->
-                ActionChip(
-                    label = label,
-                    cost = action.favorCost,
-                    enabled = divineFavor >= action.favorCost,
-                    onClick = { onActionPressed(action) },
-                    modifier = Modifier.weight(1f),
-                )
-            }
-            Spacer(modifier = Modifier.weight(1f))
         }
     }
 }
 
+@Suppress("DEPRECATION")
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ActionChip(
     label: String,
     cost: Int,
     enabled: Boolean,
     onClick: () -> Unit,
+    tooltip: String,
     modifier: Modifier = Modifier,
 ) {
     val containerColor = if (enabled) MaterialTheme.colorScheme.primaryContainer
@@ -398,22 +421,36 @@ private fun ActionChip(
     val borderColor = if (enabled) MaterialTheme.colorScheme.primary
                       else MaterialTheme.colorScheme.surfaceVariant
 
+    // Outer Box owns the layout — weight(1f).aspectRatio(1f) unchanged from pre-tooltip code.
+    // TooltipBox sits inside as a pure interaction layer and never touches the size constraints.
     Box(
         modifier = modifier
-            .aspectRatio(1f)
-            .clip(RoundedCornerShape(8.dp))
-            .background(containerColor)
-            .border(1.dp, borderColor, RoundedCornerShape(8.dp))
-            .then(if (enabled) Modifier.clickable(onClick = onClick) else Modifier),
-        contentAlignment = Alignment.Center,
+            .aspectRatio(1f),
     ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
+        TooltipBox(
+            positionProvider = TooltipDefaults.rememberTooltipPositionProvider(),
+            tooltip = { PlainTooltip { Text(tooltip) } },
+            state = rememberTooltipState(),
+            modifier = Modifier.fillMaxSize(),
         ) {
-            Text(text = label, style = MaterialTheme.typography.labelMedium, color = contentColor)
-            Spacer(modifier = Modifier.height(2.dp))
-            Text(text = "$FAVOR_ICON$cost", style = MaterialTheme.typography.labelSmall, color = contentColor)
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(containerColor)
+                    .border(1.dp, borderColor, RoundedCornerShape(8.dp))
+                    .then(if (enabled) Modifier.clickable(onClick = onClick) else Modifier),
+                contentAlignment = Alignment.Center,
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center,
+                ) {
+                    Text(text = label, style = MaterialTheme.typography.labelMedium, color = contentColor)
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(text = "$FAVOR_ICON$cost", style = MaterialTheme.typography.labelSmall, color = contentColor)
+                }
+            }
         }
     }
 }
@@ -462,63 +499,6 @@ private fun EnvironmentalPhase.displayName(): String = when (this) {
     is EnvironmentalPhase.Parched   -> "Parched"
 }
 
-@Composable
-private fun MapOverlayLegend(
-    overlay: MapOverlay,
-    tribeColorMap: Map<String, Color> = emptyMap(),
-    tribeNames: Map<String, String> = emptyMap(),
-    modifier: Modifier = Modifier,
-) {
-    val empty = MaterialTheme.colorScheme.surfaceVariant
-
-    val items: List<Pair<Color, String>> = when (overlay) {
-        MapOverlay.Default -> {
-            val tribeItems = tribeColorMap.entries.map { (id, color) -> color to (tribeNames[id] ?: id) }
-            tribeItems + listOf(empty to "Empty")
-        }
-        MapOverlay.Biome      -> listOf(
-            empty            to "Grassland",
-            biomeColorForest to "Forest",
-            biomeColorDesert to "Desert",
-            biomeColorCoast  to "Coast",
-            biomeColorWater  to "Water",
-        )
-        MapOverlay.Climate    -> listOf(
-            climateParched to "Parched",
-            climateFertile to "Fertile",
-            climateDeluge  to "Deluge",
-        )
-        MapOverlay.Volatility -> listOf(
-            Color(0.25f, 0.25f, 0.25f) to "Low",
-            Color(0.60f, 0.60f, 0.60f) to "Mid",
-            Color(0.95f, 0.95f, 0.95f) to "High",
-        )
-    }
-
-    Row(
-        modifier = modifier,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        items.forEach { (color, label) ->
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(8.dp)
-                        .background(color, CircleShape),
-                )
-                Text(
-                    text = label,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        }
-    }
-}
 
 @Composable
 private fun OverlayToggleRow(
