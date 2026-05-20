@@ -363,7 +363,6 @@ private fun TribeLegendChip(
     }
 }
 
-@Suppress("DEPRECATION")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ActionPanel(
@@ -390,32 +389,29 @@ private fun ActionPanel(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 row.forEach { (action, label, description) ->
-                    TooltipBox(
-                        positionProvider = TooltipDefaults.rememberTooltipPositionProvider(),
-                        tooltip = { PlainTooltip { Text(description) } },
-                        state = rememberTooltipState(),
+                    ActionChip(
+                        label = label,
+                        cost = action.favorCost,
+                        enabled = divineFavor >= action.favorCost,
+                        onClick = { onActionPressed(action) },
+                        tooltip = description,
                         modifier = Modifier.weight(1f),
-                    ) {
-                        ActionChip(
-                            label = label,
-                            cost = action.favorCost,
-                            enabled = divineFavor >= action.favorCost,
-                            onClick = { onActionPressed(action) },
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                    }
+                    )
                 }
             }
         }
     }
 }
 
+@Suppress("DEPRECATION")
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ActionChip(
     label: String,
     cost: Int,
     enabled: Boolean,
     onClick: () -> Unit,
+    tooltip: String,
     modifier: Modifier = Modifier,
 ) {
     val containerColor = if (enabled) MaterialTheme.colorScheme.primaryContainer
@@ -425,22 +421,30 @@ private fun ActionChip(
     val borderColor = if (enabled) MaterialTheme.colorScheme.primary
                       else MaterialTheme.colorScheme.surfaceVariant
 
-    Box(
-        modifier = modifier
-            .aspectRatio(1f)
-            .clip(RoundedCornerShape(8.dp))
-            .background(containerColor)
-            .border(1.dp, borderColor, RoundedCornerShape(8.dp))
-            .then(if (enabled) Modifier.clickable(onClick = onClick) else Modifier),
-        contentAlignment = Alignment.Center,
+    TooltipBox(
+        positionProvider = TooltipDefaults.rememberTooltipPositionProvider(),
+        tooltip = { PlainTooltip { Text(tooltip) } },
+        state = rememberTooltipState(),
+        modifier = modifier,
     ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(1f)
+                .clip(RoundedCornerShape(8.dp))
+                .background(containerColor)
+                .border(1.dp, borderColor, RoundedCornerShape(8.dp))
+                .then(if (enabled) Modifier.clickable(onClick = onClick) else Modifier),
+            contentAlignment = Alignment.Center,
         ) {
-            Text(text = label, style = MaterialTheme.typography.labelMedium, color = contentColor)
-            Spacer(modifier = Modifier.height(2.dp))
-            Text(text = "$FAVOR_ICON$cost", style = MaterialTheme.typography.labelSmall, color = contentColor)
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center,
+            ) {
+                Text(text = label, style = MaterialTheme.typography.labelMedium, color = contentColor)
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(text = "$FAVOR_ICON$cost", style = MaterialTheme.typography.labelSmall, color = contentColor)
+            }
         }
     }
 }
