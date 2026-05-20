@@ -15,6 +15,7 @@ data class WorldState(
     val eventCooldowns: Map<String, Long> = emptyMap(),
     val activeFront: WeatherFront? = null,
     val nextSpawnTick: Long = 10L,
+    val lastSplitTick: Long = 0L,
 ) {
     companion object {
         fun initial(): WorldState {

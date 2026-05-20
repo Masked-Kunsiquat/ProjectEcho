@@ -42,10 +42,10 @@ internal fun TribalGridMap(
     activeFront: WeatherFront? = null,
     hoveredTileId: Int? = null,
     overlay: MapOverlay = MapOverlay.Default,
+    tribeColors: Map<String, Color> = emptyMap(),
     onTilePressed: (Int) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
-    val occupiedColor  = MaterialTheme.colorScheme.primary
     val emptyColor     = MaterialTheme.colorScheme.surfaceVariant
     val separatorColor = MaterialTheme.colorScheme.background
     val rainOutline    = Color(0xFF4499FF)
@@ -85,8 +85,8 @@ internal fun TribalGridMap(
                 val pathA = trianglePath(idxA, x0, x1, y0, y1, row, col)
                 val pathB = trianglePath(idxB, x0, x1, y0, y1, row, col)
 
-                val colorA = tileDisplayColor(tileMap[idxA], overlay, occupiedColor, emptyColor)
-                val colorB = tileDisplayColor(tileMap[idxB], overlay, occupiedColor, emptyColor)
+                val colorA = tileDisplayColor(tileMap[idxA], overlay, tribeColors, emptyColor)
+                val colorB = tileDisplayColor(tileMap[idxB], overlay, tribeColors, emptyColor)
 
                 drawPath(pathA, colorA)
                 drawPath(pathB, colorB)
@@ -128,12 +128,12 @@ internal fun TribalGridMap(
 private fun tileDisplayColor(
     tile: MapTile?,
     overlay: MapOverlay,
-    occupiedColor: Color,
+    tribeColors: Map<String, Color>,
     emptyColor: Color,
 ): Color {
     if (tile == null) return emptyColor
     return when (overlay) {
-        MapOverlay.Default    -> if (tile.occupantTribeId != null) occupiedColor else emptyColor
+        MapOverlay.Default    -> tribeColors[tile.occupantTribeId] ?: emptyColor
         MapOverlay.Biome      -> biomeColor(tile.biome, emptyColor)
         MapOverlay.Climate    -> climateColor(tile.soilMoisture)
         MapOverlay.Volatility -> volatilityColor(tile.volatility)

@@ -53,6 +53,7 @@ import com.github.maskedkunisquat.projectecho.domain.model.GRID_COLS
 import com.github.maskedkunisquat.projectecho.domain.model.GRID_ROWS
 import com.github.maskedkunisquat.projectecho.domain.model.Tribe
 import com.github.maskedkunisquat.projectecho.domain.model.WorldState
+import com.github.maskedkunisquat.projectecho.ui.theme.TRIBE_COLORS
 import com.github.maskedkunisquat.projectecho.ui.theme.ProjectEchoTheme
 
 // U+26A1 + U+FE0E forces text presentation so the glyph inherits Compose color styling
@@ -100,6 +101,12 @@ fun DashboardScreen(
                     .padding(horizontal = 16.dp),
             )
         }
+    }
+
+    val tribeColorMap = remember(worldState.tribes) {
+        worldState.tribes.keys.sorted()
+            .mapIndexed { idx, id -> id to TRIBE_COLORS.getOrElse(idx) { TRIBE_COLORS.last() } }
+            .toMap()
     }
 
     var hoveredTileId by remember { mutableStateOf<Int?>(null) }
@@ -164,6 +171,7 @@ fun DashboardScreen(
             activeFront = worldState.activeFront,
             hoveredTileId = hoveredTileId,
             overlay = mapOverlay,
+            tribeColors = tribeColorMap,
             onTilePressed = { hoveredTileId = it },
             modifier = Modifier
                 .fillMaxWidth()
@@ -188,6 +196,7 @@ fun DashboardScreen(
             items(worldState.tribes.values.toList(), key = { it.tribeId }) { tribe ->
                 TribeLegendChip(
                     tribe = tribe,
+                    tribeColor = tribeColorMap[tribe.tribeId] ?: TRIBE_COLORS[0],
                     onClick = { detailTribeId = tribe.tribeId },
                 )
             }
@@ -274,6 +283,7 @@ private fun TribeDetailSheet(
 @Composable
 private fun TribeLegendChip(
     tribe: Tribe,
+    tribeColor: Color,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -289,7 +299,7 @@ private fun TribeLegendChip(
         Box(
             modifier = Modifier
                 .size(10.dp)
-                .background(MaterialTheme.colorScheme.primary, CircleShape),
+                .background(tribeColor, CircleShape),
         )
         Column {
             Text(

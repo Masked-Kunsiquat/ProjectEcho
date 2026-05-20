@@ -11,6 +11,7 @@ import com.github.maskedkunisquat.projectecho.domain.model.WorldState
 import com.github.maskedkunisquat.projectecho.domain.model.GRID_COLS
 import com.github.maskedkunisquat.projectecho.domain.model.GRID_SIZE
 import com.github.maskedkunisquat.projectecho.domain.model.Tribe
+import com.github.maskedkunisquat.projectecho.domain.model.TribeNameGenerator
 import kotlin.math.abs
 import kotlin.math.roundToInt
 import kotlin.random.Random
@@ -21,6 +22,11 @@ private const val DELUGE_CASUALTY_RATE = 0.97
 internal const val TILE_CAPACITY = 10  // max people a single tile can feed at full multiplier
 internal const val COAST_FISHING_BONUS = 5
 internal const val HIGH_VOLATILITY_THRESHOLD = 70
+
+internal const val SPLIT_DENSITY_THRESHOLD = 8    // pop-per-tile to trigger split
+internal const val SPLIT_MIN_POPULATION    = 400   // tribe must be at least this large
+internal const val SPLIT_COOLDOWN_TICKS    = 100L  // ticks between any two splits
+private  const val SPLIT_PARENT_SHARE      = 0.60  // parent keeps 60%, child gets 40%
 
 fun tick(
     currentState: WorldState,
@@ -89,12 +95,13 @@ fun tick(
     val regenAmount = (survivedTribes.values.maxOfOrNull { it.devotion } ?: 0) * 3 / 100
     val regenedFavor = minOf(100, state.divineFavor + regenAmount)
 
-    val postTickState = state.copy(
+    val postTerritoryState = state.copy(
         worldTimeTick = state.worldTimeTick + 1,
         divineFavor = regenedFavor,
         tribes = survivedTribes,
         tiles = territoryStep(state.tiles, survivedTribes),
     )
+    val postTickState = splitStep(postTerritoryState, random)
 
     val currentTick = postTickState.worldTimeTick
     val eligibleEvents = events.filter { event ->
@@ -177,7 +184,8 @@ internal fun territoryStep(tiles: List<MapTile>, tribes: Map<String, Tribe>): Li
         val expected = maxOf(0, tribe.population * GRID_SIZE / 500)
         val occupiedIndices = working.indices.filter { working[it].occupantTribeId == tribeId }
         val excess = occupiedIndices.size - expected
-        if (excess > 0) {
+        // Multi-tribe: suppress release so territory is sticky until conflict mechanics land (Phase 12b)
+        if (excess > 0 && tribes.size == 1) {
             occupiedIndices.takeLast(excess).forEach { idx ->
                 working[idx] = working[idx].copy(occupantTribeId = null)
             }
@@ -221,6 +229,56 @@ private fun applyClusterTileEffect(
             else                      -> tile
         }
     }
+}
+
+internal fun splitStep(state: WorldState, random: Random = Random.Default): WorldState {
+    if (state.worldTimeTick < state.lastSplitTick + SPLIT_COOLDOWN_TICKS) return state
+
+    for ((tribeId, tribe) in state.tribes) {
+        val occupiedTiles = state.tiles.filter {
+            it.occupantTribeId == tribeId && it.biome != BiomeType.Water
+        }
+        if (tribe.population < SPLIT_MIN_POPULATION) continue
+        if (occupiedTiles.isEmpty()) continue
+        if (tribe.population / occupiedTiles.size <= SPLIT_DENSITY_THRESHOLD) continue
+
+        val centroidCol = occupiedTiles.map { it.col }.average()
+        val centroidRow = occupiedTiles.map { it.row }.average()
+        val sortedByDist = occupiedTiles.sortedBy { tile ->
+            val dCol = tile.col - centroidCol
+            val dRow = tile.row - centroidRow
+            dCol * dCol + dRow * dRow
+        }
+        val parentCount  = (sortedByDist.size * SPLIT_PARENT_SHARE).roundToInt()
+        val childTileIds = sortedByDist.drop(parentCount).map { it.id }.toHashSet()
+
+        val childId   = "$tribeId-${state.worldTimeTick}"
+        val childName = TribeNameGenerator.generate(childId.hashCode())
+        val parentPop  = (tribe.population  * SPLIT_PARENT_SHARE).roundToInt()
+        val parentFood = (tribe.foodSupply  * SPLIT_PARENT_SHARE).roundToInt()
+
+        val updatedTiles  = state.tiles.map { tile ->
+            if (tile.id in childTileIds) tile.copy(occupantTribeId = childId) else tile
+        }
+        val updatedTribes = state.tribes.toMutableMap().also { m ->
+            m[tribeId] = tribe.copy(population = parentPop, foodSupply = parentFood)
+            m[childId] = Tribe(
+                tribeId   = childId,
+                name      = childName,
+                population = tribe.population - parentPop,
+                devotion   = tribe.devotion,
+                foodSupply = tribe.foodSupply - parentFood,
+            )
+        }
+        return state.copy(
+            tiles         = updatedTiles,
+            tribes        = updatedTribes,
+            lastSplitTick = state.worldTimeTick,
+            eventHistory  = state.eventHistory +
+                "The ${tribe.name} fractures. The dissenters call themselves $childName.",
+        )
+    }
+    return state
 }
 
 fun decayStep(tiles: List<MapTile>): List<MapTile> = tiles.map { tile ->

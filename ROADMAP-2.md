@@ -178,23 +178,49 @@
 
 ---
 
-## Phase 12 — Future Runway (Placeholders)
+## Phase 12a — Tribal Splitting
 
-> Stubs for the next generation of social and civilizational mechanics. No implementation yet — just defined triggers and expected outputs.
+> A dense tribe fractures: a splinter group breaks away, claims the frontier tiles, and from that point the two tribes compete on the same finite grid.
 
-- [ ] **Tribal Splitting**
-  - Trigger: tile population density on a single `MapTile` exceeds a configurable threshold
-  - Expected output: a new `Tribe` entry is inserted into `WorldState.tribes`; excess population density migrates to an adjacent unoccupied `MapTile` slot; Chronicle logs the schism
-  - Status: *placeholder — no implementation*
-  - **Design note for multi-tribe:** The carrying capacity system (Phase 9) makes territory the scarce resource — a tribe at its ceiling *must* expand to grow, and expansion stops at another tribe's border. This is the right foundation for conflict. One thing to revisit before implementation: the current territory formula (`expected = population × 192 / 500`) makes territory *follow* population. With carrying capacity, causality is reversed — territory *determines* the population ceiling. At scale the formula always demands more tiles than the grid holds, so `territoryStep` perpetually tries to expand (harmless, just semantically odd). Multi-tribe will likely need territory to be driven by something other than raw population — devotion, strength, or divine favor — so that two tribes compete for finite land rather than each computing an uncapped "expected" tile count independently.
+### Territory logic change
+The single-tribe `territoryStep` formula (`expected = population × 192 / 500`) makes territory *follow* population. For multi-tribe this is dangerous: a tribe weakened by plague or drought releases tiles via the formula, which the neighbour immediately claims, deepening the starvation spiral. Proper conflict mechanics don't exist yet, so tile-capture must not happen passively.
 
+Fix: suppress the **release** branch of `territoryStep` when `tribes.size > 1`. Territory becomes sticky — tribes keep their land even when weakened. The **expansion** branch stays active so genuinely unclaimed tiles (near water bodies) are still contested organically. Inter-tribe competition in Phase 12a is via population and food dynamics. Tile-capture (raids, battle outcomes) is Phase 12b.
+
+### Checklist
+- [x] Add `lastSplitTick: Long = 0L` to `WorldState` (serialized, backward-compatible default)
+- [x] Add constants to `GameLoop`: `SPLIT_DENSITY_THRESHOLD = 8`, `SPLIT_MIN_POPULATION = 400`, `SPLIT_COOLDOWN_TICKS = 100L`
+- [x] Modify `territoryStep()` — suppress the release branch (`excess > 0`) when `tribes.size > 1`; single-tribe behaviour unchanged
+- [x] Add `splitStep(state, random)` to `GameLoop`:
+  - Cooldown guard: skip if `worldTimeTick < lastSplitTick + SPLIT_COOLDOWN_TICKS`
+  - Per-tribe: skip if pop < `SPLIT_MIN_POPULATION` or density ≤ `SPLIT_DENSITY_THRESHOLD`
+  - Partition tiles by distance from centroid: parent keeps near 60%, child gets outer 40%
+  - Create child `Tribe` with 40% pop + food, same devotion; generate name via `TribeNameGenerator`
+  - Child `tribeId = "${parentId}-${worldTimeTick}"`
+  - Update `occupantTribeId` on child's tiles; update parent tribe with reduced pop + food
+  - Append Chronicle: `"The ${tribe.name} fractures. The dissenters call themselves ${childName}."`
+  - Set `lastSplitTick = worldTimeTick`; return after first split (one split per tick)
+- [x] Wire `splitStep` into `tick()` — after `territoryStep`, before the event engine
+- [x] Add `TRIBE_COLORS` list to `ui/theme/Color.kt` (6-slot palette; slot 0 = existing Amber)
+- [x] Update `TribalGridMap` — add `tribeColors: Map<String, Color>` param; `Default` overlay uses `tribeColors[tile.occupantTribeId] ?: emptyColor` instead of single `occupiedColor`
+- [x] Update `DashboardScreen` — compute `tribeColorMap` from `worldState.tribes.keys.sorted()` → palette index; pass to `TribalGridMap` and `TribeLegendChip`; add `tribeColor: Color` param to `TribeLegendChip` for the legend dot
+- [x] Write unit tests: split trigger, min-pop guard, density guard, tile + pop + food conservation, cooldown, `territoryStep` release suppressed in multi-tribe
+- [ ] Smoke test: simulate to pop ~1300; observe Chronicle schism entry; verify two distinct tile colors and two tribe chips in the legend
+
+---
+
+## Phase 12b — Future Runway (Placeholders)
+
+> Stubs for the next generation of social and civilizational mechanics. No implementation yet.
+
+- [ ] **Tribal Conflict** — tile-capture mechanic (raids, battle outcomes) that transfers tiles between neighbouring tribes; prerequisite for the territory logic to become fully contested rather than sticky
 - [ ] **Sophistication Progression**
   - Outline: a `sophisticationLevel: Int` counter on `Tribe` that rises as population and devotion milestones are crossed; higher levels unlock new narrative event categories, new `DivineAction` types, and unique Chronicle entries
   - Status: *placeholder — no implementation*
-
 - [ ] **Skepticism / Defiance System**
   - Outline: a `skepticism: Int` counter on `Tribe` that increments when interventions are too frequent or too dramatic; high skepticism reduces devotion regen rate, eventually triggering defiance events that drain divine favor automatically
   - Status: *placeholder — no implementation*
+- [ ] **Per-tribe divine targeting** — `applyDivineAction` currently affects all tribes; add `targetTribeId` so actions like `SendPlague` and `InspireDevout` can be directed at a specific tribe
 
 ---
 
