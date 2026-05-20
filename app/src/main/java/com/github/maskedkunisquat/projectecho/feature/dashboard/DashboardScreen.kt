@@ -205,16 +205,6 @@ fun DashboardScreen(
                 .aspectRatio(GRID_COLS.toFloat() / GRID_ROWS.toFloat()),
         )
 
-        // Overlay colour legend
-        MapOverlayLegend(
-            overlay = mapOverlay,
-            tribeColorMap = tribeColorMap,
-            tribeNames = worldState.tribes.mapValues { it.value.name },
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 4.dp),
-        )
-
         // Tribe legend strip — scrollable for future multi-tribe support
         LazyRow(
             modifier = Modifier
@@ -381,37 +371,28 @@ private fun ActionPanel(
         DivineAction.InspireDevout to "Inspire",
         DivineAction.CauseFamine   to "Famine",
         DivineAction.SendPlague    to "Plague",
+        DivineAction.Fortify       to "Fortify",
+        DivineAction.Blight        to "Blight",
+        DivineAction.Revelation    to "Revelation",
+        DivineAction.Smite         to "Smite",
     )
 
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            actions.take(3).forEach { (action, label) ->
-                ActionChip(
-                    label = label,
-                    cost = action.favorCost,
-                    enabled = divineFavor >= action.favorCost,
-                    onClick = { onActionPressed(action) },
-                    modifier = Modifier.weight(1f),
-                )
+        actions.chunked(3).forEach { row ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                row.forEach { (action, label) ->
+                    ActionChip(
+                        label = label,
+                        cost = action.favorCost,
+                        enabled = divineFavor >= action.favorCost,
+                        onClick = { onActionPressed(action) },
+                        modifier = Modifier.weight(1f),
+                    )
+                }
             }
-        }
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            actions.drop(3).forEach { (action, label) ->
-                ActionChip(
-                    label = label,
-                    cost = action.favorCost,
-                    enabled = divineFavor >= action.favorCost,
-                    onClick = { onActionPressed(action) },
-                    modifier = Modifier.weight(1f),
-                )
-            }
-            Spacer(modifier = Modifier.weight(1f))
         }
     }
 }
@@ -495,63 +476,6 @@ private fun EnvironmentalPhase.displayName(): String = when (this) {
     is EnvironmentalPhase.Parched   -> "Parched"
 }
 
-@Composable
-private fun MapOverlayLegend(
-    overlay: MapOverlay,
-    tribeColorMap: Map<String, Color> = emptyMap(),
-    tribeNames: Map<String, String> = emptyMap(),
-    modifier: Modifier = Modifier,
-) {
-    val empty = MaterialTheme.colorScheme.surfaceVariant
-
-    val items: List<Pair<Color, String>> = when (overlay) {
-        MapOverlay.Default -> {
-            val tribeItems = tribeColorMap.entries.map { (id, color) -> color to (tribeNames[id] ?: id) }
-            tribeItems + listOf(empty to "Empty")
-        }
-        MapOverlay.Biome      -> listOf(
-            empty            to "Grassland",
-            biomeColorForest to "Forest",
-            biomeColorDesert to "Desert",
-            biomeColorCoast  to "Coast",
-            biomeColorWater  to "Water",
-        )
-        MapOverlay.Climate    -> listOf(
-            climateParched to "Parched",
-            climateFertile to "Fertile",
-            climateDeluge  to "Deluge",
-        )
-        MapOverlay.Volatility -> listOf(
-            Color(0.25f, 0.25f, 0.25f) to "Low",
-            Color(0.60f, 0.60f, 0.60f) to "Mid",
-            Color(0.95f, 0.95f, 0.95f) to "High",
-        )
-    }
-
-    Row(
-        modifier = modifier,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        items.forEach { (color, label) ->
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(8.dp)
-                        .background(color, CircleShape),
-                )
-                Text(
-                    text = label,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        }
-    }
-}
 
 @Composable
 private fun OverlayToggleRow(
