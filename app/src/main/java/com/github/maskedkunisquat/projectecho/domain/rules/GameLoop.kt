@@ -42,7 +42,6 @@ fun tick(
     action: DivineAction? = null,
     events: List<SimEvent> = emptyList(),
     targetCluster: List<Int> = emptyList(),
-    personalities: List<TribePersonality> = emptyList(),
     targetTribeId: String? = null,
     random: Random = Random.Default,
 ): WorldState {

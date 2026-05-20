@@ -57,7 +57,7 @@ Each divine action has a primary and secondary matching need. The prayer pressur
 | SendPlague | `UnderThreat` (cast on aggressor) | none — harmful to target |
 | CauseFamine | none (purely punitive) | none |
 
-```
+```kotlin
 // rough formula
 val relevance = when {
     tribe.needs.contains(action.primaryNeed) -> 1.0f   // full match
@@ -196,7 +196,7 @@ Hardcoding a trigger ("merge when population > 3× opponent") replaces one heuri
 
 **Variable tribe count** — mergers decrease tribe count mid-episode. Handle with padding + action masking (same mechanism already planned for raids):
 
-```
+```text
 Action space (padded to MAX_TRIBES slots):
   expand_N/S/E/W
   raid_tribe_0 … raid_tribe_N      ← masked if not adjacent

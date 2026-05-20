@@ -108,7 +108,8 @@ fun DashboardScreen(
     colorAssignments.keys.retainAll(worldState.tribes.keys)
     worldState.tribes.keys.forEach { id ->
         if (id !in colorAssignments) {
-            colorAssignments[id] = TRIBE_COLORS.getOrElse(colorAssignments.size) { TRIBE_COLORS.last() }
+            val usedColors = colorAssignments.values.toSet()
+            colorAssignments[id] = TRIBE_COLORS.firstOrNull { it !in usedColors } ?: TRIBE_COLORS.last()
         }
     }
     val tribeColorMap: Map<String, Color> = colorAssignments

@@ -21,7 +21,6 @@ import androidx.lifecycle.lifecycleScope
 import com.github.maskedkunisquat.projectecho.data.db.AppDatabase
 import com.github.maskedkunisquat.projectecho.data.repository.RoomWorldStateRepository
 import com.github.maskedkunisquat.projectecho.domain.rules.EventParser
-import com.github.maskedkunisquat.projectecho.domain.rules.PersonalityParser
 import com.github.maskedkunisquat.projectecho.feature.dashboard.DashboardScreen
 import com.github.maskedkunisquat.projectecho.feature.dashboard.GameViewModel
 import com.github.maskedkunisquat.projectecho.feature.dashboard.GameViewModelFactory
@@ -50,13 +49,6 @@ class MainActivity : ComponentActivity() {
                 }.getOrElse { e -> Log.e("MainActivity", "Failed to load events.json", e); emptyList() }
             }
             viewModel.setSimEvents(events)
-
-            val personalityList = withContext(Dispatchers.IO) {
-                runCatching {
-                    assets.open("personalities.json").bufferedReader().use { PersonalityParser.parse(it.readText()) }
-                }.getOrElse { e -> Log.e("MainActivity", "Failed to load personalities.json", e); emptyList() }
-            }
-            viewModel.setPersonalities(personalityList)
         }
 
         setContent {
