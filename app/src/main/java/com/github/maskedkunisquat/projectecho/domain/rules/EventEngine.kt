@@ -22,6 +22,9 @@ object EventEngine {
         "foodSupply" to { state ->
             state.tribes.values.map { it.foodSupply.toDouble() }.takeIf { it.isNotEmpty() }
         },
+        "skepticism" to { state ->
+            state.tribes.values.map { it.personality.skepticism.toDouble() }.takeIf { it.isNotEmpty() }
+        },
     )
 
     fun evaluate(state: WorldState, events: List<SimEvent>): List<SimEvent> =

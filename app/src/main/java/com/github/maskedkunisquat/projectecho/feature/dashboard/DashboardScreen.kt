@@ -53,6 +53,7 @@ import com.github.maskedkunisquat.projectecho.domain.model.GRID_COLS
 import com.github.maskedkunisquat.projectecho.domain.model.GRID_ROWS
 import com.github.maskedkunisquat.projectecho.domain.model.Tribe
 import com.github.maskedkunisquat.projectecho.domain.model.WorldState
+import com.github.maskedkunisquat.projectecho.ui.theme.TRIBE_COLORS
 import com.github.maskedkunisquat.projectecho.ui.theme.ProjectEchoTheme
 
 // U+26A1 + U+FE0E forces text presentation so the glyph inherits Compose color styling
@@ -63,7 +64,7 @@ private const val FAVOR_ICON = "⚡︎"
 fun DashboardScreen(
     worldState: WorldState,
     onTickPressed: () -> Unit,
-    onActionPressed: (DivineAction, Int?) -> Unit,
+    onActionPressed: (DivineAction, Int?, String?) -> Unit,
     snackbarHostState: SnackbarHostState,
     isChronicleVisible: Boolean,
     onShowChronicle: () -> Unit,
@@ -102,8 +103,20 @@ fun DashboardScreen(
         }
     }
 
+    // Stable color assignment: existing IDs keep their slot; stale IDs are pruned; new IDs get the next slot.
+    val colorAssignments = remember { mutableMapOf<String, Color>() }
+    colorAssignments.keys.retainAll(worldState.tribes.keys)
+    worldState.tribes.keys.forEach { id ->
+        if (id !in colorAssignments) {
+            val usedColors = colorAssignments.values.toSet()
+            colorAssignments[id] = TRIBE_COLORS.firstOrNull { it !in usedColors } ?: TRIBE_COLORS.last()
+        }
+    }
+    val tribeColorMap: Map<String, Color> = colorAssignments
+
     var hoveredTileId by remember { mutableStateOf<Int?>(null) }
     var detailTribeId by remember { mutableStateOf<String?>(null) }
+    var selectedTribeId by remember { mutableStateOf<String?>(null) }
     detailTribeId?.let { tribeId ->
         worldState.tribes[tribeId]?.let { tribe ->
             val occupiedTiles = worldState.tiles.filter { it.occupantTribeId == tribeId }
@@ -164,6 +177,7 @@ fun DashboardScreen(
             activeFront = worldState.activeFront,
             hoveredTileId = hoveredTileId,
             overlay = mapOverlay,
+            tribeColors = tribeColorMap,
             onTilePressed = { hoveredTileId = it },
             modifier = Modifier
                 .fillMaxWidth()
@@ -173,6 +187,8 @@ fun DashboardScreen(
         // Overlay colour legend
         MapOverlayLegend(
             overlay = mapOverlay,
+            tribeColorMap = tribeColorMap,
+            tribeNames = worldState.tribes.mapValues { it.value.name },
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 4.dp),
@@ -188,7 +204,12 @@ fun DashboardScreen(
             items(worldState.tribes.values.toList(), key = { it.tribeId }) { tribe ->
                 TribeLegendChip(
                     tribe = tribe,
-                    onClick = { detailTribeId = tribe.tribeId },
+                    tribeColor = tribeColorMap[tribe.tribeId] ?: TRIBE_COLORS[0],
+                    selected = selectedTribeId == tribe.tribeId,
+                    onSelect = {
+                        selectedTribeId = if (selectedTribeId == tribe.tribeId) null else tribe.tribeId
+                    },
+                    onOpenDetail = { detailTribeId = tribe.tribeId },
                 )
             }
         }
@@ -202,8 +223,9 @@ fun DashboardScreen(
         ActionPanel(
             divineFavor = worldState.divineFavor,
             onActionPressed = { action ->
-                onActionPressed(action, hoveredTileId)
+                onActionPressed(action, hoveredTileId, selectedTribeId)
                 hoveredTileId = null
+                selectedTribeId = null
             },
             modifier = Modifier
                 .fillMaxWidth()
@@ -266,7 +288,10 @@ private fun TribeDetailSheet(
             StatRow(label = "Food Supply",    value = tribe.foodSupply.toString())
             StatRow(label = "Tiles Occupied", value = tilesOccupied.toString())
             StatRow(label = "Environment",    value = environmentalPhase.displayName())
-            ProgressStatRow(label = "Devotion", value = tribe.devotion, maxValue = 100)
+            StatRow(label = "Archetype",      value = tribe.personality.archetypeId.replaceFirstChar { it.uppercase() })
+            ProgressStatRow(label = "Devotion",       value = tribe.devotion,                   maxValue = 100)
+            ProgressStatRow(label = "Sophistication", value = tribe.personality.sophistication, maxValue = 10)
+            ProgressStatRow(label = "Skepticism",     value = tribe.personality.skepticism,     maxValue = 100)
         }
     }
 }
@@ -274,39 +299,39 @@ private fun TribeDetailSheet(
 @Composable
 private fun TribeLegendChip(
     tribe: Tribe,
-    onClick: () -> Unit,
+    tribeColor: Color,
+    selected: Boolean,
+    onSelect: () -> Unit,
+    onOpenDetail: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val borderColor = if (selected) MaterialTheme.colorScheme.primary
+                      else MaterialTheme.colorScheme.surfaceVariant
+    val borderWidth = if (selected) 2.dp else 1.dp
     Row(
         modifier = modifier
             .clip(RoundedCornerShape(8.dp))
-            .border(1.dp, MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(8.dp))
-            .clickable(onClick = onClick)
-            .padding(horizontal = 12.dp, vertical = 8.dp),
+            .border(borderWidth, borderColor, RoundedCornerShape(8.dp))
+            .clickable(onClick = onSelect)
+            .padding(horizontal = 10.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         Box(
             modifier = Modifier
-                .size(10.dp)
-                .background(MaterialTheme.colorScheme.primary, CircleShape),
+                .size(8.dp)
+                .background(tribeColor, CircleShape),
         )
-        Column {
-            Text(
-                text = tribe.name,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.SemiBold,
-            )
-            Text(
-                text = "Pop ${tribe.population} · Food ${tribe.foodSupply}",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
+        Text(
+            text = tribe.name,
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.SemiBold,
+        )
         Text(
             text = "▸",
-            style = MaterialTheme.typography.bodyMedium,
+            style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.clickable(onClick = onOpenDetail),
         )
     }
 }
@@ -440,13 +465,17 @@ private fun EnvironmentalPhase.displayName(): String = when (this) {
 @Composable
 private fun MapOverlayLegend(
     overlay: MapOverlay,
+    tribeColorMap: Map<String, Color> = emptyMap(),
+    tribeNames: Map<String, String> = emptyMap(),
     modifier: Modifier = Modifier,
 ) {
-    val occupied = MaterialTheme.colorScheme.primary
-    val empty    = MaterialTheme.colorScheme.surfaceVariant
+    val empty = MaterialTheme.colorScheme.surfaceVariant
 
     val items: List<Pair<Color, String>> = when (overlay) {
-        MapOverlay.Default    -> listOf(occupied to "Occupied", empty to "Empty")
+        MapOverlay.Default -> {
+            val tribeItems = tribeColorMap.entries.map { (id, color) -> color to (tribeNames[id] ?: id) }
+            tribeItems + listOf(empty to "Empty")
+        }
         MapOverlay.Biome      -> listOf(
             empty            to "Grassland",
             biomeColorForest to "Forest",
@@ -547,7 +576,7 @@ private fun DashboardScreenPreview() {
         DashboardScreen(
             worldState = WorldState.initial(),
             onTickPressed = {},
-            onActionPressed = { _, _ -> },  // preview stub
+            onActionPressed = { _, _, _ -> },  // preview stub
             snackbarHostState = remember { SnackbarHostState() },
             isChronicleVisible = false,
             onShowChronicle = {},

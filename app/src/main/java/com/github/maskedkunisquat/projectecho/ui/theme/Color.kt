@@ -11,3 +11,13 @@ val EchoGold           = Color(0xFFFFD54F)
 val EchoOnBackground   = Color(0xFFE8DCC8)
 val EchoOnSurface      = Color(0xFFD4C5A9)
 val EchoOnSurfaceMuted = Color(0xFF7A6E5F)
+
+val TRIBE_COLORS = listOf(
+    Color(0xFFFFB300),  // Amber  — original tribe slot
+    Color(0xFF4DB6AC),  // Teal
+    Color(0xFFE57373),  // Soft Red
+    Color(0xFF9575CD),  // Purple
+    Color(0xFF81C784),  // Green
+    Color(0xFF4FC3F7),  // Light Blue
+    Color(0xFFFF8A65),  // Deep Orange
+)

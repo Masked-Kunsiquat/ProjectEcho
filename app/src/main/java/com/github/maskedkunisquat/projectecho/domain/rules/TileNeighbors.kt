@@ -2,6 +2,16 @@ package com.github.maskedkunisquat.projectecho.domain.rules
 
 import com.github.maskedkunisquat.projectecho.domain.model.GRID_COLS
 import com.github.maskedkunisquat.projectecho.domain.model.GRID_ROWS
+import com.github.maskedkunisquat.projectecho.domain.model.MapTile
+
+fun getBorderTiles(tileId: Int, tiles: List<MapTile>): List<Int> {
+    val tileMap = tiles.associateBy { it.id }
+    val ownerId = tileMap[tileId]?.occupantTribeId ?: return emptyList()
+    return getNeighbors(tileId).filter { neighborId ->
+        val neighbor = tileMap[neighborId]
+        neighbor?.occupantTribeId != null && neighbor.occupantTribeId != ownerId
+    }
+}
 
 fun getNeighbors(
     tileId: Int,

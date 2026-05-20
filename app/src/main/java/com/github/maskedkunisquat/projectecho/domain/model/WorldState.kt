@@ -15,6 +15,7 @@ data class WorldState(
     val eventCooldowns: Map<String, Long> = emptyMap(),
     val activeFront: WeatherFront? = null,
     val nextSpawnTick: Long = 10L,
+    val lastSplitTick: Long = 0L,
 ) {
     companion object {
         fun initial(): WorldState {
@@ -104,12 +105,14 @@ data class WorldState(
                 )
             }
 
+            val personality = TribePersonality.ALL_ARCHETYPES[rng.nextInt(TribePersonality.ALL_ARCHETYPES.size)]
             val tribe = Tribe(
                 tribeId = tribeId,
                 name = tribeName,
                 population = population,
                 devotion = 50,
                 foodSupply = 500,
+                personality = personality,
             )
 
             return WorldState(

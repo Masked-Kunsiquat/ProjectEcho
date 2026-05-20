@@ -148,6 +148,22 @@
     ]
   },
   {
+    "id": "tribal_wariness",
+    "trigger": { "stat": "skepticism", "operator": "gt", "threshold": 60 },
+    "texts": [
+      "The {{tribeName}} grow wary of divine signs. Whispers question the gods' intent.",
+      "Doubt spreads through {{tribeName}} like smoke. The old rites feel hollow."
+    ]
+  },
+  {
+    "id": "tribal_apostasy",
+    "trigger": { "stat": "skepticism", "operator": "gt", "threshold": 85 },
+    "texts": [
+      "The {{tribeName}} renounce the old gods. The temples stand empty and silent.",
+      "The {{tribeName}} have turned their backs on the divine. A cold age begins."
+    ]
+  },
+  {
     "id": "dying_faith_or_favor",
     "cooldownTicks": 35,
     "trigger": {

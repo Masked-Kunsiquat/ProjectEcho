@@ -2,11 +2,18 @@ package com.github.maskedkunisquat.projectecho
 
 import com.github.maskedkunisquat.projectecho.domain.model.BiomeType
 import com.github.maskedkunisquat.projectecho.domain.model.DivineAction
+import com.github.maskedkunisquat.projectecho.domain.model.GRID_COLS
 import com.github.maskedkunisquat.projectecho.domain.model.MapTile
 import com.github.maskedkunisquat.projectecho.domain.model.Tribe
 import com.github.maskedkunisquat.projectecho.domain.model.WorldState
+import com.github.maskedkunisquat.projectecho.domain.rules.SPLIT_COOLDOWN_TICKS
+import com.github.maskedkunisquat.projectecho.domain.rules.SPLIT_DENSITY_THRESHOLD
+import com.github.maskedkunisquat.projectecho.domain.rules.SPLIT_MIN_POPULATION
+import com.github.maskedkunisquat.projectecho.domain.rules.splitStep
+import com.github.maskedkunisquat.projectecho.domain.rules.territoryStep
 import com.github.maskedkunisquat.projectecho.domain.rules.tick
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class GameLoopTest {
@@ -189,5 +196,166 @@ class GameLoopTest {
 
         assertEquals(1L, result.worldTimeTick)
         assertEquals(100, result.divineFavor)
+    }
+
+    // --- Phase 12A: Tribal Splitting ---
+
+    private fun makeTile(id: Int, tribeId: String?, biome: BiomeType = BiomeType.Grassland): MapTile {
+        val cellIdx = id / 2
+        return MapTile(
+            id = id,
+            col = cellIdx % GRID_COLS,
+            row = cellIdx / GRID_COLS,
+            biome = biome,
+            occupantTribeId = tribeId,
+        )
+    }
+
+    private fun splitReadyState(
+        tribeId: String = "alpha",
+        population: Int = 500,
+        foodSupply: Int = 1000,
+        tileCount: Int = 50,
+        currentTick: Long = 200L,
+        lastSplitTick: Long = 0L,
+    ): WorldState {
+        val tiles = (0 until tileCount).map { i -> makeTile(i, tribeId) }
+        return WorldState(
+            worldTimeTick = currentTick,
+            divineFavor = 50,
+            tiles = tiles,
+            tribes = mapOf(
+                tribeId to Tribe(
+                    tribeId = tribeId,
+                    name = "The Alpha",
+                    population = population,
+                    devotion = 50,
+                    foodSupply = foodSupply,
+                )
+            ),
+            lastSplitTick = lastSplitTick,
+        )
+    }
+
+    @Test
+    fun `splitStep - split triggers when population and density conditions met`() {
+        // 500 pop / 50 tiles = density 10 > SPLIT_DENSITY_THRESHOLD(8); pop ≥ SPLIT_MIN_POPULATION(400)
+        val state = splitReadyState()
+
+        val result = splitStep(state)
+
+        assertEquals(2, result.tribes.size)
+        assertTrue(result.eventHistory.any { "fractures" in it })
+    }
+
+    @Test
+    fun `splitStep - blocked when population is below minimum`() {
+        // density = 399 / 10 = 39 > threshold, but pop < SPLIT_MIN_POPULATION
+        val state = splitReadyState(population = SPLIT_MIN_POPULATION - 1, tileCount = 10)
+
+        val result = splitStep(state)
+
+        assertEquals(1, result.tribes.size)
+    }
+
+    @Test
+    fun `splitStep - blocked when density is at or below threshold`() {
+        // 400 / 50 = 8 == SPLIT_DENSITY_THRESHOLD → condition is <=, so no split
+        val state = splitReadyState(population = SPLIT_MIN_POPULATION, tileCount = 50)
+
+        val result = splitStep(state)
+
+        assertEquals(1, result.tribes.size)
+    }
+
+    @Test
+    fun `splitStep - all tiles accounted for with no overlap`() {
+        val tribeId = "alpha"
+        val state = splitReadyState(tribeId = tribeId)
+
+        val result = splitStep(state)
+
+        assertEquals(2, result.tribes.size)
+        val childId = result.tribes.keys.first { it != tribeId }
+        val parentTileIds = result.tiles.filter { it.occupantTribeId == tribeId }.map { it.id }.toSet()
+        val childTileIds  = result.tiles.filter { it.occupantTribeId == childId  }.map { it.id }.toSet()
+        val originalIds   = state.tiles.map { it.id }.toSet()
+        assertEquals(originalIds, parentTileIds + childTileIds)
+        assertTrue((parentTileIds intersect childTileIds).isEmpty())
+    }
+
+    @Test
+    fun `splitStep - population is conserved across the split`() {
+        val tribeId = "alpha"
+        val originalPop = 500
+        val state = splitReadyState(tribeId = tribeId, population = originalPop)
+
+        val result = splitStep(state)
+
+        val childId   = result.tribes.keys.first { it != tribeId }
+        val parentPop = result.tribes[tribeId]!!.population
+        val childPop  = result.tribes[childId]!!.population
+        // allow ±1 for integer rounding
+        assertTrue(kotlin.math.abs((parentPop + childPop) - originalPop) <= 1)
+    }
+
+    @Test
+    fun `splitStep - food supply is conserved across the split`() {
+        val tribeId = "alpha"
+        val originalFood = 1000
+        val state = splitReadyState(tribeId = tribeId, foodSupply = originalFood)
+
+        val result = splitStep(state)
+
+        val childId    = result.tribes.keys.first { it != tribeId }
+        val parentFood = result.tribes[tribeId]!!.foodSupply
+        val childFood  = result.tribes[childId]!!.foodSupply
+        assertTrue(kotlin.math.abs((parentFood + childFood) - originalFood) <= 1)
+    }
+
+    @Test
+    fun `splitStep - cooldown blocks split within window`() {
+        // lastSplitTick=100, currentTick=150: 150 < 100 + SPLIT_COOLDOWN_TICKS(100) → blocked
+        val state = splitReadyState(currentTick = 150L, lastSplitTick = 100L)
+
+        val result = splitStep(state)
+
+        assertEquals(1, result.tribes.size)
+    }
+
+    @Test
+    fun `splitStep - split allowed after cooldown has expired`() {
+        // lastSplitTick=100, currentTick=200: 200 >= 100 + 100 → allowed
+        val state = splitReadyState(currentTick = 200L, lastSplitTick = 100L)
+
+        val result = splitStep(state)
+
+        assertEquals(2, result.tribes.size)
+    }
+
+    @Test
+    fun `territoryStep - release branch runs in single-tribe world`() {
+        // pop=10 → expected = 10 * 192 / 500 = 3; tribe has 20 tiles → 17 released
+        val tiles  = (0 until 20).map { i -> makeTile(i, "alpha") }
+        val tribes = mapOf("alpha" to Tribe("alpha", "Alpha", population = 10, devotion = 50, foodSupply = 100))
+
+        val result = territoryStep(tiles, tribes)
+
+        assertEquals(3, result.count { it.occupantTribeId == "alpha" })
+    }
+
+    @Test
+    fun `territoryStep - release branch runs in multi-tribe world`() {
+        // Phase 12c restores release for multi-tribe; same excess as single-tribe case → 17 released
+        val tilesA = (0 until 20).map { i -> makeTile(i,  "alpha") }
+        val tilesB = (20 until 30).map { i -> makeTile(i, "beta") }
+        val tribes = mapOf(
+            "alpha" to Tribe("alpha", "Alpha", population = 10, devotion = 50, foodSupply = 100),
+            "beta"  to Tribe("beta",  "Beta",  population = 10, devotion = 50, foodSupply = 100),
+        )
+
+        val result = territoryStep(tilesA + tilesB, tribes)
+
+        assertEquals(3, result.count { it.occupantTribeId == "alpha" })
     }
 }

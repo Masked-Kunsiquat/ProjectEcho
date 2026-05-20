@@ -178,23 +178,161 @@
 
 ---
 
-## Phase 12 — Future Runway (Placeholders)
+## Phase 12a — Tribal Splitting
 
-> Stubs for the next generation of social and civilizational mechanics. No implementation yet — just defined triggers and expected outputs.
+> A dense tribe fractures: a splinter group breaks away, claims the frontier tiles, and from that point the two tribes compete on the same finite grid.
 
-- [ ] **Tribal Splitting**
-  - Trigger: tile population density on a single `MapTile` exceeds a configurable threshold
-  - Expected output: a new `Tribe` entry is inserted into `WorldState.tribes`; excess population density migrates to an adjacent unoccupied `MapTile` slot; Chronicle logs the schism
-  - Status: *placeholder — no implementation*
-  - **Design note for multi-tribe:** The carrying capacity system (Phase 9) makes territory the scarce resource — a tribe at its ceiling *must* expand to grow, and expansion stops at another tribe's border. This is the right foundation for conflict. One thing to revisit before implementation: the current territory formula (`expected = population × 192 / 500`) makes territory *follow* population. With carrying capacity, causality is reversed — territory *determines* the population ceiling. At scale the formula always demands more tiles than the grid holds, so `territoryStep` perpetually tries to expand (harmless, just semantically odd). Multi-tribe will likely need territory to be driven by something other than raw population — devotion, strength, or divine favor — so that two tribes compete for finite land rather than each computing an uncapped "expected" tile count independently.
+### Territory logic change
+The single-tribe `territoryStep` formula (`expected = population × 192 / 500`) makes territory *follow* population. For multi-tribe this is dangerous: a tribe weakened by plague or drought releases tiles via the formula, which the neighbour immediately claims, deepening the starvation spiral. Proper conflict mechanics don't exist yet, so tile-capture must not happen passively.
 
-- [ ] **Sophistication Progression**
-  - Outline: a `sophisticationLevel: Int` counter on `Tribe` that rises as population and devotion milestones are crossed; higher levels unlock new narrative event categories, new `DivineAction` types, and unique Chronicle entries
-  - Status: *placeholder — no implementation*
+Fix: suppress the **release** branch of `territoryStep` when `tribes.size > 1`. Territory becomes sticky — tribes keep their land even when weakened. The **expansion** branch stays active so genuinely unclaimed tiles (near water bodies) are still contested organically. Inter-tribe competition in Phase 12a is via population and food dynamics. Tile-capture (raids, battle outcomes) is Phase 12c.
 
-- [ ] **Skepticism / Defiance System**
-  - Outline: a `skepticism: Int` counter on `Tribe` that increments when interventions are too frequent or too dramatic; high skepticism reduces devotion regen rate, eventually triggering defiance events that drain divine favor automatically
-  - Status: *placeholder — no implementation*
+### Checklist
+- [x] Add `lastSplitTick: Long = 0L` to `WorldState` (serialized, backward-compatible default)
+- [x] Add constants to `GameLoop`: `SPLIT_DENSITY_THRESHOLD = 8`, `SPLIT_MIN_POPULATION = 400`, `SPLIT_COOLDOWN_TICKS = 100L`
+- [x] Modify `territoryStep()` — suppress the release branch (`excess > 0`) when `tribes.size > 1`; single-tribe behaviour unchanged
+- [x] Add `splitStep(state, random)` to `GameLoop`:
+  - Cooldown guard: skip if `worldTimeTick < lastSplitTick + SPLIT_COOLDOWN_TICKS`
+  - Per-tribe: skip if pop < `SPLIT_MIN_POPULATION` or density ≤ `SPLIT_DENSITY_THRESHOLD`
+  - Partition tiles by distance from centroid: parent keeps near 60%, child gets outer 40%
+  - Create child `Tribe` with 40% pop + food, same devotion; generate name via `TribeNameGenerator`
+  - Child `tribeId = "${parentId}-${worldTimeTick}"`
+  - Update `occupantTribeId` on child's tiles; update parent tribe with reduced pop + food
+  - Append Chronicle: `"The ${tribe.name} fractures. The dissenters call themselves ${childName}."`
+  - Set `lastSplitTick = worldTimeTick`; return after first split (one split per tick)
+- [x] Wire `splitStep` into `tick()` — after `territoryStep`, before the event engine
+- [x] Add `TRIBE_COLORS` list to `ui/theme/Color.kt` (6-slot palette; slot 0 = existing Amber)
+- [x] Update `TribalGridMap` — add `tribeColors: Map<String, Color>` param; `Default` overlay uses `tribeColors[tile.occupantTribeId] ?: emptyColor` instead of single `occupiedColor`
+- [x] Update `DashboardScreen` — compute `tribeColorMap` from `worldState.tribes.keys.sorted()` → palette index; pass to `TribalGridMap` and `TribeLegendChip`; add `tribeColor: Color` param to `TribeLegendChip` for the legend dot
+- [x] Write unit tests: split trigger, min-pop guard, density guard, tile + pop + food conservation, cooldown, `territoryStep` release suppressed in multi-tribe
+- [ ] Smoke test: simulate to pop ~1300; observe Chronicle schism entry; verify two distinct tile colors and two tribe chips in the legend
+
+---
+
+## Phase 12b — Tribal Personality & Intelligent Expansion
+
+> Give each tribe a persistent personality that shapes where it expands and how it behaves — and that evolves over time as the tribe grows, splits, and is meddled with. Tribes stop being identical agents and start feeling like distinct civilisations.
+
+### Design
+
+Each tribe carries a `TribePersonality` struct with four layers:
+
+1. **Archetype weights** — biome affinities, aggression, caution, skepticismRate, traditionalism. Loaded from `assets/personalities.json` (same pattern as `events.json`). Set at birth, mutated on each split so personalities drift across generations.
+2. **Sophistication** — rises with population and devotion milestones. Does not give generic bonuses; instead it *amplifies the archetype*. A sophisticated `agrarian` farms more efficiently (higher effective yield on preferred biomes). A sophisticated `warlike` tribe picks raid targets more precisely (Phase 12c). Sophistication is the tribe getting better at being itself. Long-term this is also the bridge to Option C — at very high sophistication, the weighted-utility expansion logic could be replaced by a trained policy network.
+3. **Skepticism** — rises when divine interventions are too frequent or too dramatic. The *rate* is personality-modulated: `warlike` tribes accrue skepticism fast (they resent outside interference); `reclusive` tribes distrust the divine by nature; `maritime` tribes are relatively indifferent to rain. High skepticism reduces devotion regen and eventually triggers defiance Chronicle events.
+4. **Generational turnover** — a generation is not measured in ticks but in *cumulative deaths*. When enough of the current population has died and been replaced (tracked via `generationDeaths: Int` on `Tribe`), a generation turns over. On turnover, skepticism and devotion partially revert toward the archetype baseline — the new generation didn't live through what the old one did. How much reverts is controlled by `traditionalism`: a `reclusive` tribe with strong oral tradition passes memories down faithfully; a `nomadic` tribe lives in the present and resets fast. Sophistication is fully retained (accumulated knowledge survives the generation). A Chronicle entry marks each turnover.
+
+All four layers interact. A sophisticated warlike tribe that has gone skeptical is a different narrative from a naive agrarian that has never been touched. A high-traditionalism tribe that has been meddled with will carry that skepticism for many generations; a low-traditionalism tribe forgets quickly.
+
+### Archetype table (`personalities.json`)
+
+Behavioral traits:
+
+| id | aggression | caution | skepticismRate | traditionalism |
+| --- | --- | --- | --- | --- |
+| `agrarian` | 0.2 | 0.7 | 0.6 | 0.7 |
+| `nomadic` | 0.5 | 0.3 | 0.8 | 0.3 |
+| `warlike` | 0.9 | 0.2 | 1.4 | 0.4 |
+| `maritime` | 0.3 | 0.5 | 0.5 | 0.6 |
+| `reclusive` | 0.1 | 0.9 | 1.2 | 0.9 |
+
+Biome affinities:
+
+| id | Forest | Grassland | Desert | Coast |
+| --- | --- | --- | --- | --- |
+| `agrarian` | 1.5 | 1.2 | 0.3 | 1.0 |
+| `nomadic` | 0.7 | 1.0 | 1.4 | 0.8 |
+| `warlike` | 0.9 | 1.1 | 0.8 | 0.7 |
+| `maritime` | 0.8 | 1.0 | 0.4 | 2.0 |
+| `reclusive` | 1.8 | 0.9 | 0.2 | 0.6 |
+
+### Checklist
+- [x] Add `TribePersonality.kt` to `domain/model/` — `@Serializable` data class with `archetypeId: String`, `aggression: Float`, `caution: Float`, `skepticismRate: Float`, `traditionalism: Float`, `biomeAffinity: Map<String, Float>`, `sophistication: Int = 0`, `skepticism: Int = 0`; include a `default()` companion for backward-compatible deserialization
+- [x] Add `assets/personalities.json` — array of archetype objects matching the tables above; parsed by a new `PersonalityParser` in `domain/rules/` (mirrors `EventParser` pattern)
+- [x] Add `personality: TribePersonality = TribePersonality.default()` and `generationDeaths: Int = 0` fields to `Tribe.kt`
+- [x] Update `WorldState.initial()` — pick a random archetype from `TribePersonality.ALL_ARCHETYPES` (seeded from world RNG); assign to the starting tribe
+- [x] Update `splitStep()` — child inherits parent's archetype weights with each float mutated by `±random(0.0, 0.15)`; clamp scalars to `[0.0, 1.0]`, biome affinities to `[0.1, 3.0]`; child starts with `sophistication = 0`, `skepticism = 0`, `generationDeaths = 0` (clean slate)
+- [x] Add **sophistication milestones** in `tick()` — after survival step, check if tribe crossed a population or devotion threshold (pop 500, 1000, 1500; devotion 75, 90); if so increment `sophistication` and append a Chronicle entry; milestone thresholds defined as constant lists
+- [x] Wire sophistication into food output — tiles matching the tribe's top biome affinity gain `(1 + sophistication * 0.02)` yield multiplier (caps at `sophistication = 10`)
+- [x] Add **skepticism accumulation** in `tick()` — each time a divine action is applied to a tribe, increment `tribe.personality.skepticism` by `(action.favorCost / 10f * personality.skepticismRate).roundToInt()`; clamp to 100
+- [x] Wire skepticism into devotion regen — reduce the regen multiplier by `skepticism / 200f` (at max skepticism, regen halved)
+- [x] Add **generational drift** in `tick()` — accumulate deaths each tick into `generationDeaths`; when `generationDeaths >= tribe.population / 2`, revert `skepticism` by `skepticism * (1 - traditionalism)`, nudge `devotion` toward 50 by `(1 - traditionalism) * 10`, reset `generationDeaths = 0`, append Chronicle entry
+- [x] Add skepticism-driven Chronicle events to `events.json` — `tribal_wariness` triggers at `skepticism > 60`; `tribal_apostasy` at `skepticism > 85`; wired through EventEngine stat resolver
+- [x] Update `territoryStep()` expansion scoring — score each frontier tile: `score = personality.affinityFor(tile.biome) * (tile.soilMoisture / 100f)`; claim highest-scoring tiles first
+- [x] Expose `archetypeId`, `sophistication`, `skepticism` in `TribeDetailSheet`
+- [x] Write unit tests: archetype parsed correctly, default used when absent, expansion prefers high-affinity biomes, child personality mutates within bounds, sophistication milestone increments, skepticism accrues at personality-modulated rate, devotion regen reduced at high skepticism, generational turnover fires at correct death threshold, high-traditionalism tribe retains more skepticism than low-traditionalism tribe after turnover — 162 tests pass
+- [ ] Smoke test: two tribes post-split with different archetypes; Biome overlay confirms preferred terrain colonisation; cast divine actions repeatedly and observe skepticism rising; let a tribe starve and recover and observe generational Chronicle entry fire
+
+---
+
+## Phase 12b-2 — Skepticism: Dual-Force Model & Decay
+
+> Skepticism currently only rises (via divine intervention). This phase adds the opposing forces — passive decay and the unanswered-prayer pressure — so the stat becomes a living tension rather than a one-way ratchet.
+
+### Design
+
+Two forces push skepticism **up**, one pulls it **down**:
+
+| Force | Trigger | Direction |
+|---|---|---|
+| Divine meddling | Player applies an action (already implemented) | ↑ |
+| Unanswered prayer | Tribe is devout but ignored | ↑ |
+| Passive decay | Every tick, personality-modulated | ↓ |
+
+The intended equilibrium: occasional, measured intervention keeps skepticism stable. Spam → overexposure rises. Ignore a faithful tribe → unanswered-prayer pressure builds. The player finds the middle path.
+
+**Unanswered prayer — pressure accumulator approach**
+
+`devotion - PRAYER_THRESHOLD` (where `PRAYER_THRESHOLD ≈ 60`) represents how intensely the tribe is praying that tick. Add this to a running float `prayerPressure` on `Tribe`. When `prayerPressure` crosses `PRAYER_PRESSURE_CAP`, convert to `skepticism += 1`, reset `prayerPressure = 0f`, and append a Chronicle entry (e.g. *"The prayers of {{tribeName}} go unanswered. Doubt spreads among the faithful."*). This avoids the "every-tick" sensitivity problem — at devotion 70 (pressure 10/tick), skepticism gains 1 roughly every 20 ticks; at devotion 100 (pressure 40/tick), every 5 ticks.
+
+Accumulation rules:
+- Only increments when `tribe.devotion > PRAYER_THRESHOLD` **and** no divine action was applied to this tribe this tick.
+- **Freezes** (neither grows nor drains) when devotion drops below `PRAYER_THRESHOLD` mid-accumulation — the backlog is banked, not erased.
+- **Carries through generational turnover** — the grievance lives in the oral tradition.
+
+When a divine action **is** applied: halve `prayerPressure` on the targeted tribe (`prayerPressure *= 0.5f`). A partial answer eases the backlog but doesn't erase it. *(Future enhancement: scale the halving by action relevance to current tribal need — e.g. CastRain on a Parched tribe resets more pressure than a Plague cast elsewhere. Requires explicit tribe-level need states; out of scope for 12c-2.)*
+
+> **Open question — tick granularity:** A tick is intentionally vague (could be days, weeks, or seasons). Exact thresholds (`PRAYER_THRESHOLD`, `PRAYER_PRESSURE_CAP`) and decay intervals should be tuned against observed session feel rather than locked in upfront.
+
+**Passive decay — personality-modulated interval**
+
+Rather than −1 every tick (too fast), decay fires every `SKEPTICISM_DECAY_BASE * skepticismRate` ticks, where `SKEPTICISM_DECAY_BASE ≈ 10`. Tribes with low `skepticismRate` (agrarian 0.6, maritime 0.5) forget quickly — decay fires ~every 6–7 ticks. Warlike (1.4) and reclusive (1.2) hold grudges — decay fires ~every 14 ticks. Implementation: `skepticismDecayBuffer += 1f / tribe.personality.skepticismRate` each tick; when buffer ≥ `SKEPTICISM_DECAY_BASE`, decrement skepticism and reset buffer (mirrors prayerPressure pattern).
+
+### Checklist
+- [x] Add `prayerPressure: Float = 0f` and `skepticismDecayBuffer: Float = 0f` to `Tribe` (both serialized, backward-compatible defaults)
+- [x] In `applyDivineAction`: halve `prayerPressure` on the targeted tribe (`tribe.prayerPressure *= 0.5f`) — partial answer, not full reset. Until Phase 12c adds `targetTribeId`, apply to **all** tribes as a temporary simplification (god acted; everyone feels it)
+- [x] In `tick()`, after survival phase, if `tribe.devotion > PRAYER_THRESHOLD` and no divine action was applied to this tribe this tick: `prayerPressure += (tribe.devotion - PRAYER_THRESHOLD).toFloat()`; if devotion ≤ `PRAYER_THRESHOLD`, leave `prayerPressure` unchanged (freeze); when `prayerPressure >= PRAYER_PRESSURE_CAP`: `skepticism = min(100, skepticism + 1)`, `prayerPressure = 0f`, append Chronicle entry
+- [x] In `tick()`, accumulate `skepticismDecayBuffer += 1f / tribe.personality.skepticismRate` each tick; when buffer ≥ `SKEPTICISM_DECAY_BASE`: `skepticism = max(0, skepticism - 1)`, reset buffer
+- [x] Tune `PRAYER_THRESHOLD`, `PRAYER_PRESSURE_CAP`, and `SKEPTICISM_DECAY_BASE` against a live session; document chosen values as named constants in `GameLoop.kt`
+- [x] Add unanswered-prayer Chronicle event text to `events.json` (or inline in `GameLoop` if one-off) — e.g. *"The prayers of {{tribeName}} go unanswered. Doubt spreads among the faithful."*
+- [x] Write unit tests: prayerPressure accumulates only when devout and no action applied, freezes when devotion drops below threshold, halves on divine action, converts correctly at cap with Chronicle appended, skepticism decays faster for low-skepticismRate archetypes, prayerPressure survives generational turnover unchanged — 172 tests pass
+- [ ] Smoke test: leave a high-devotion tribe unattended; observe skepticism climbing in Chronicle with "unanswered prayer" entries; intervene occasionally; observe pressure halving and stabilisation
+
+---
+
+## Phase 12c — Tribal Conflict & Raids
+
+> Tribes with contested borders and high aggression initiate raids. Successful raids transfer tiles and generate Chronicle drama. This is when the map becomes truly contested.
+
+### Design
+
+The `aggression` weight from Phase 12b drives raid initiation probability. Border tiles — tiles owned by tribe A adjacent to tiles owned by tribe B — are conflict candidates. Each tick, for each pair of neighbouring tribes, a raid roll is made weighted by the aggressor's `aggression` and the defender's `caution`. On success, one border tile transfers. This replaces the current sticky-territory workaround from Phase 12a.
+
+- [x] **Border detection** — utility function `getBorderTiles(tileId, tiles): List<Int>` returning tiles owned by a different tribe adjacent to the given tile; add to `TileNeighbors.kt`
+- [x] **Raid resolution** — new `conflictStep(state, random)` in `GameLoop.kt` after `territoryStep`; for each pair of neighbouring tribes, roll `random.nextFloat() < aggressor.personality.aggression * (1 - defender.personality.caution)`; on success transfer one contested tile, append Chronicle entry (e.g., *"The Ironborn raid the Ashwood frontier."*)
+- [x] **`territoryStep` release restored** — once conflict can transfer tiles, the Phase 12a sticky-territory suppression can be removed; weakened tribes now lose territory to neighbours organically rather than to the unclaimed pool
+- [x] **Per-tribe divine targeting** — add `targetTribeId: String?` to `applyDivineAction` so `SendPlague` and `InspireDevout` can be directed at a specific tribe; UI: tapping a tribe's legend chip before pressing an action sets the target; also replaces the Phase 12b-2 "halve all tribes" simplification — `prayerPressure *= 0.5f` now applies only to the targeted tribe
+- [x] Write unit tests: border tile detection correct, raid roll fires only between neighbours, tile transfer updates `occupantTribeId`, Chronicle entry generated on raid — 182 tests pass
+- [ ] Smoke test: two tribes share a border; observe raid entries in Chronicle; map tiles change colour at the contested edge
+
+---
+
+## Phase 13+ — Future Runway (Placeholders)
+
+> Long-range ideas. No design work started.
+
+- [ ] **Tribe mergers / vassalage** — the reverse of splitting: a weakened tribe absorbed by a dominant neighbour, Chronicle entry, territory transfer
+- [ ] **Option C — Reinforcement Learning agent** *(future research track)* — replace the weighted-utility personality with a small policy network trained via Q-learning; each tick is a step, reward signal is population growth or territory size; requires a headless fast-forward simulation mode for training convergence (~10 000+ ticks); TensorFlow Lite for on-device inference; revisit after Phase 12c conflict mechanics give the reward signal meaning
 
 ---
 

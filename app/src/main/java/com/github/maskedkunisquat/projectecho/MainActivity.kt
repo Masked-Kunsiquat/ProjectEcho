@@ -1,6 +1,7 @@
 package com.github.maskedkunisquat.projectecho
 
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -44,10 +45,8 @@ class MainActivity : ComponentActivity() {
         lifecycleScope.launch {
             val events = withContext(Dispatchers.IO) {
                 runCatching {
-                    assets.open("events.json").bufferedReader().use { reader ->
-                        EventParser.parse(reader.readText())
-                    }
-                }.getOrDefault(emptyList())
+                    assets.open("events.json").bufferedReader().use { EventParser.parse(it.readText()) }
+                }.getOrElse { e -> Log.e("MainActivity", "Failed to load events.json", e); emptyList() }
             }
             viewModel.setSimEvents(events)
         }
@@ -66,7 +65,7 @@ class MainActivity : ComponentActivity() {
                     DashboardScreen(
                         worldState = worldState,
                         onTickPressed = { viewModel.triggerTick() },
-                        onActionPressed = { action, tileId -> viewModel.applyDivineAction(action, tileId) },
+                        onActionPressed = { action, tileId, tribeId -> viewModel.applyDivineAction(action, tileId, tribeId) },
                         snackbarHostState = snackbarHostState,
                         isChronicleVisible = isChronicleVisible,
                         onShowChronicle = { isChronicleVisible = true },
