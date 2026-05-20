@@ -265,6 +265,51 @@ Biome affinities:
 
 ---
 
+## Phase 12b-2 — Skepticism: Dual-Force Model & Decay
+
+> Skepticism currently only rises (via divine intervention). This phase adds the opposing forces — passive decay and the unanswered-prayer pressure — so the stat becomes a living tension rather than a one-way ratchet.
+
+### Design
+
+Two forces push skepticism **up**, one pulls it **down**:
+
+| Force | Trigger | Direction |
+|---|---|---|
+| Divine meddling | Player applies an action (already implemented) | ↑ |
+| Unanswered prayer | Tribe is devout but ignored | ↑ |
+| Passive decay | Every tick, personality-modulated | ↓ |
+
+The intended equilibrium: occasional, measured intervention keeps skepticism stable. Spam → overexposure rises. Ignore a faithful tribe → unanswered-prayer pressure builds. The player finds the middle path.
+
+**Unanswered prayer — pressure accumulator approach**
+
+`devotion - PRAYER_THRESHOLD` (where `PRAYER_THRESHOLD ≈ 60`) represents how intensely the tribe is praying that tick. Add this to a running float `prayerPressure` on `Tribe`. When `prayerPressure` crosses `PRAYER_PRESSURE_CAP`, convert to `skepticism += 1`, reset `prayerPressure = 0f`, and append a Chronicle entry (e.g. *"The prayers of {{tribeName}} go unanswered. Doubt spreads among the faithful."*). This avoids the "every-tick" sensitivity problem — at devotion 70 (pressure 10/tick), skepticism gains 1 roughly every 20 ticks; at devotion 100 (pressure 40/tick), every 5 ticks.
+
+Accumulation rules:
+- Only increments when `tribe.devotion > PRAYER_THRESHOLD` **and** no divine action was applied to this tribe this tick.
+- **Freezes** (neither grows nor drains) when devotion drops below `PRAYER_THRESHOLD` mid-accumulation — the backlog is banked, not erased.
+- **Carries through generational turnover** — the grievance lives in the oral tradition.
+
+When a divine action **is** applied: halve `prayerPressure` on the targeted tribe (`prayerPressure *= 0.5f`). A partial answer eases the backlog but doesn't erase it. *(Future enhancement: scale the halving by action relevance to current tribal need — e.g. CastRain on a Parched tribe resets more pressure than a Plague cast elsewhere. Requires explicit tribe-level need states; out of scope for 12c-2.)*
+
+> **Open question — tick granularity:** A tick is intentionally vague (could be days, weeks, or seasons). Exact thresholds (`PRAYER_THRESHOLD`, `PRAYER_PRESSURE_CAP`) and decay intervals should be tuned against observed session feel rather than locked in upfront.
+
+**Passive decay — personality-modulated interval**
+
+Rather than −1 every tick (too fast), decay fires every `SKEPTICISM_DECAY_BASE * skepticismRate` ticks, where `SKEPTICISM_DECAY_BASE ≈ 10`. Tribes with low `skepticismRate` (agrarian 0.6, maritime 0.5) forget quickly — decay fires ~every 6–7 ticks. Warlike (1.4) and reclusive (1.2) hold grudges — decay fires ~every 14 ticks. Implementation: `skepticismDecayBuffer += 1f / tribe.personality.skepticismRate` each tick; when buffer ≥ `SKEPTICISM_DECAY_BASE`, decrement skepticism and reset buffer (mirrors prayerPressure pattern).
+
+### Checklist
+- [ ] Add `prayerPressure: Float = 0f` and `skepticismDecayBuffer: Float = 0f` to `Tribe` (both serialized, backward-compatible defaults)
+- [ ] In `applyDivineAction`: halve `prayerPressure` on the targeted tribe (`tribe.prayerPressure *= 0.5f`) — partial answer, not full reset
+- [ ] In `tick()`, after survival phase, if `tribe.devotion > PRAYER_THRESHOLD` and no divine action was applied to this tribe this tick: `prayerPressure += (tribe.devotion - PRAYER_THRESHOLD).toFloat()`; if devotion ≤ `PRAYER_THRESHOLD`, leave `prayerPressure` unchanged (freeze); when `prayerPressure >= PRAYER_PRESSURE_CAP`: `skepticism = min(100, skepticism + 1)`, `prayerPressure = 0f`, append Chronicle entry
+- [ ] In `tick()`, accumulate `skepticismDecayBuffer += 1f / tribe.personality.skepticismRate` each tick; when buffer ≥ `SKEPTICISM_DECAY_BASE`: `skepticism = max(0, skepticism - 1)`, reset buffer
+- [ ] Tune `PRAYER_THRESHOLD`, `PRAYER_PRESSURE_CAP`, and `SKEPTICISM_DECAY_BASE` against a live session; document chosen values as named constants in `GameLoop.kt`
+- [ ] Add unanswered-prayer Chronicle event text to `events.json` (or inline in `GameLoop` if one-off) — e.g. *"The prayers of {{tribeName}} go unanswered. Doubt spreads among the faithful."*
+- [ ] Write unit tests: prayerPressure accumulates only when devout and no action applied, freezes when devotion drops below threshold, halves on divine action, converts correctly at cap with Chronicle appended, skepticism decays faster for low-skepticismRate archetypes, prayerPressure survives generational turnover unchanged
+- [ ] Smoke test: leave a high-devotion tribe unattended; observe skepticism climbing in Chronicle with "unanswered prayer" entries; intervene occasionally; observe pressure halving and stabilisation
+
+---
+
 ## Phase 12c — Tribal Conflict & Raids
 
 > Tribes with contested borders and high aggression initiate raids. Successful raids transfer tiles and generate Chronicle drama. This is when the map becomes truly contested.
