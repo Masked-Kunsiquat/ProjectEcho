@@ -130,18 +130,18 @@
 
 > Give each tile a permanent biome identity; update world generation to produce varied landscapes.
 
-- [ ] Add `BiomeType` enum to `domain/model/` with 5 variants and their properties:
+- [x] Add `BiomeType` enum to `domain/model/` with 5 variants and their properties:
   - `Grassland` — moisture baseline 35, full weather effect, standard food (current default behaviour)
   - `Forest` — moisture baseline 45, weather effect at 75%, buffers against Parched
   - `Desert` — moisture baseline 15, weather effect at 50%, HeatWave raises `volatility`
   - `Coast` — moisture baseline 35, full weather effect, flat fishing bonus added to per-tile food contribution
   - `Water` — always `occupantTribeId = null` (impassable); no moisture or food logic
-- [ ] Add `biome: BiomeType` field to `MapTile` (default `Grassland` for backwards compatibility)
-- [ ] Update `WorldState.initial()` procedural generation:
+- [x] Add `biome: BiomeType` field to `MapTile` (default `Grassland` for backwards compatibility)
+- [x] Update `WorldState.initial()` procedural generation:
   - Stamp 1–2 water body blobs using the existing distance-weighted blob algorithm
   - Mark all land tiles adjacent to `Water` as `Coast`
   - Distribute remaining tiles between `Grassland`, `Forest`, and `Desert` by weighted random seeded from world hash
-- [ ] Write unit tests: `Water` tiles have `occupantTribeId = null`, coast adjacency marking is correct, biome distribution is seeded and repeatable
+- [x] Write unit tests: `Water` tiles have `occupantTribeId = null`, coast adjacency marking is correct, biome distribution is seeded and repeatable
 - [ ] Smoke test: new world generates visible water bodies and coast tiles; `biome` field present on all tiles
 
 ---
@@ -150,12 +150,12 @@
 
 > Wire biome properties into the active simulation pipeline and add unit test coverage.
 
-- [ ] Update `decayStep()` in `GameLoop` — use each tile's `BiomeType.moistureBaseline` instead of the hardcoded `MOISTURE_BASELINE = 35`
-- [ ] Update `weatherStep()` — scale moisture delta by `BiomeType.weatherResistance`; any weather front passing a tile raises its `volatility` by a fixed delta (completing the loop: `decayStep` already drains it downward)
-- [ ] Wire `volatility` as a weather intensity multiplier in `weatherStep()` — high volatility amplifies the moisture delta (`delta * (1 + volatility / 100f)`); creates emergent storms/droughts without a separate stat
-- [ ] Gate extreme Chronicle events on high volatility (e.g. "A great storm tears through the valley" when volatility > 70 during a RainCloud pass; "The land cracks and bleaches" during a HeatWave)
-- [ ] Update `EnvironmentalPhase` food contribution in `GameLoop.tick()` — `Coast` tiles add a flat fishing bonus on top of the phase multiplier
-- [ ] Write unit tests: biome moisture baseline used in decay, weather delta scaled by resistance, Coast fishing bonus applied, volatility amplifies weather delta correctly
+- [x] Update `decayStep()` in `GameLoop` — use each tile's `BiomeType.moistureBaseline` instead of the hardcoded `MOISTURE_BASELINE = 35`
+- [x] Update `weatherStep()` — scale moisture delta by `BiomeType.weatherResistance`; any weather front passing a tile raises its `volatility` by a fixed delta (completing the loop: `decayStep` already drains it downward)
+- [x] Wire `volatility` as a weather intensity multiplier in `weatherStep()` — high volatility amplifies the moisture delta (`delta * (1 + volatility / 100f)`); creates emergent storms/droughts without a separate stat
+- [x] Gate extreme Chronicle events on high volatility (e.g. "A great storm tears through the valley" when volatility > 70 during a RainCloud pass; "The land cracks and bleaches" during a HeatWave)
+- [x] Update `EnvironmentalPhase` food contribution in `GameLoop.tick()` — `Coast` tiles add a flat fishing bonus on top of the phase multiplier
+- [x] Write unit tests: biome moisture baseline used in decay, weather delta scaled by resistance, Coast fishing bonus applied, volatility amplifies weather delta correctly
 - [ ] Smoke test: Desert tiles dry out faster; Forest tiles stay greener; Coast tiles show fishing bonus in food output
 
 ---
@@ -164,16 +164,16 @@
 
 > Surface biome data visually and rework CastRain to flow through the simulation.
 
-- [ ] Rework `DivineAction.CastRain` — instead of `+50 foodSupply` directly, push `soilMoisture` up on all occupied tiles (makes the action flow through the simulation rather than bypassing it)
-- [ ] Update `TribalGridMap` — colour tiles by biome when unoccupied (e.g. deep blue for Water, tan for Desert, dark green for Forest, teal for Coast, keep existing amber/charcoal for occupied/Grassland)
-- [ ] Add `MapOverlay` enum to the feature layer (`Default`, `Biome`, `Climate`, `Volatility`); add `overlay: MapOverlay` parameter to `TribalGridMap`:
+- [x] Rework `DivineAction.CastRain` — instead of `+50 foodSupply` directly, push `soilMoisture` up on all occupied tiles (makes the action flow through the simulation rather than bypassing it); also raise `volatility` on those tiles by a small fixed amount — restoring the original divine-overreach mechanic: meddling charges the land so the next natural weather front hits harder than it should
+- [x] Update `TribalGridMap` — colour tiles by biome when unoccupied (e.g. deep blue for Water, tan for Desert, dark green for Forest, teal for Coast, keep existing amber/charcoal for occupied/Grassland)
+- [x] Add `MapOverlay` enum to the feature layer (`Default`, `Biome`, `Climate`, `Volatility`); add `overlay: MapOverlay` parameter to `TribalGridMap`:
   - `Default` — current occupancy colouring (amber = occupied, grey = empty)
   - `Biome` — tile coloured by `BiomeType` regardless of occupancy
   - `Climate` — tile coloured on a moisture gradient (red=Parched → blue=Deluge)
   - `Volatility` — greyscale intensity by `volatility` value
-- [ ] Add overlay toggle row above the map in `DashboardScreen` (small icon/label buttons; persists in `GameViewModel` as UI state, not `WorldState`)
-- [ ] Weather front column outline persists across all overlay modes (positional indicator, not data)
-- [ ] Write unit test: CastRain raises `soilMoisture` on occupied tiles instead of adding `foodSupply` directly
+- [x] Add overlay toggle row above the map in `DashboardScreen` (small icon/label buttons; persists in `GameViewModel` as UI state, not `WorldState`)
+- [x] Weather front column outline persists across all overlay modes (positional indicator, not data)
+- [x] Write unit test: CastRain raises `soilMoisture` on occupied tiles instead of adding `foodSupply` directly
 - [ ] Smoke test: CastRain visibly shifts tile moisture in Chronicle; overlay toggle switches map colouring correctly
 
 ---

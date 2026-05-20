@@ -55,6 +55,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             ProjectEchoTheme {
                 val worldState by viewModel.worldState.collectAsState()
+                val mapOverlay by viewModel.mapOverlay.collectAsState()
                 val snackbarHostState = remember { SnackbarHostState() }
                 var isChronicleVisible by remember { mutableStateOf(false) }
 
@@ -70,6 +71,8 @@ class MainActivity : ComponentActivity() {
                         isChronicleVisible = isChronicleVisible,
                         onShowChronicle = { isChronicleVisible = true },
                         onDismissChronicle = { isChronicleVisible = false },
+                        mapOverlay = mapOverlay,
+                        onOverlaySelected = { viewModel.setMapOverlay(it) },
                         modifier = Modifier.padding(innerPadding),
                     )
                 }

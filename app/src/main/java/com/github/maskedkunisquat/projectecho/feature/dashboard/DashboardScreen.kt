@@ -5,6 +5,10 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -19,6 +23,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.graphics.Color
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -63,6 +68,8 @@ fun DashboardScreen(
     isChronicleVisible: Boolean,
     onShowChronicle: () -> Unit,
     onDismissChronicle: () -> Unit,
+    mapOverlay: MapOverlay = MapOverlay.Default,
+    onOverlaySelected: (MapOverlay) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     LaunchedEffect(worldState.eventHistory.size) {
@@ -142,15 +149,33 @@ fun DashboardScreen(
             }
         }
 
+        // Overlay toggle row
+        OverlayToggleRow(
+            selected = mapOverlay,
+            onSelect = onOverlaySelected,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 4.dp),
+        )
+
         // Aspect-ratio constrained so cells stay square (16×6 grid)
         TribalGridMap(
             tiles = worldState.tiles,
             activeFront = worldState.activeFront,
             hoveredTileId = hoveredTileId,
+            overlay = mapOverlay,
             onTilePressed = { hoveredTileId = it },
             modifier = Modifier
                 .fillMaxWidth()
                 .aspectRatio(GRID_COLS.toFloat() / GRID_ROWS.toFloat()),
+        )
+
+        // Overlay colour legend
+        MapOverlayLegend(
+            overlay = mapOverlay,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 4.dp),
         )
 
         // Tribe legend strip — scrollable for future multi-tribe support
@@ -412,6 +437,109 @@ private fun EnvironmentalPhase.displayName(): String = when (this) {
     is EnvironmentalPhase.Parched   -> "Parched"
 }
 
+@Composable
+private fun MapOverlayLegend(
+    overlay: MapOverlay,
+    modifier: Modifier = Modifier,
+) {
+    val occupied = MaterialTheme.colorScheme.primary
+    val empty    = MaterialTheme.colorScheme.surfaceVariant
+
+    val items: List<Pair<Color, String>> = when (overlay) {
+        MapOverlay.Default    -> listOf(occupied to "Occupied", empty to "Empty")
+        MapOverlay.Biome      -> listOf(
+            empty            to "Grassland",
+            biomeColorForest to "Forest",
+            biomeColorDesert to "Desert",
+            biomeColorCoast  to "Coast",
+            biomeColorWater  to "Water",
+        )
+        MapOverlay.Climate    -> listOf(
+            climateParched to "Parched",
+            climateFertile to "Fertile",
+            climateDeluge  to "Deluge",
+        )
+        MapOverlay.Volatility -> listOf(
+            Color(0.25f, 0.25f, 0.25f) to "Low",
+            Color(0.60f, 0.60f, 0.60f) to "Mid",
+            Color(0.95f, 0.95f, 0.95f) to "High",
+        )
+    }
+
+    Row(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        items.forEach { (color, label) ->
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(8.dp)
+                        .background(color, CircleShape),
+                )
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun OverlayToggleRow(
+    selected: MapOverlay,
+    onSelect: (MapOverlay) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val overlays = listOf(
+        MapOverlay.Default    to "Default",
+        MapOverlay.Biome      to "Biome",
+        MapOverlay.Climate    to "Climate",
+        MapOverlay.Volatility to "Volatile",
+    )
+    Row(
+        modifier = modifier.selectableGroup(),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        overlays.forEach { (overlay, label) ->
+            val isSelected = selected == overlay
+            val containerColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer
+                                 else MaterialTheme.colorScheme.surface
+            val contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer
+                               else MaterialTheme.colorScheme.onSurfaceVariant
+            val borderColor = if (isSelected) MaterialTheme.colorScheme.primary
+                              else MaterialTheme.colorScheme.surfaceVariant
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .heightIn(min = 48.dp)
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(containerColor)
+                    .border(1.dp, borderColor, RoundedCornerShape(6.dp))
+                    .selectable(
+                        selected = isSelected,
+                        onClick = { onSelect(overlay) },
+                        role = Role.RadioButton,
+                    )
+                    .padding(vertical = 4.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = contentColor,
+                )
+            }
+        }
+    }
+}
+
 @Preview(showBackground = true, backgroundColor = 0xFF0F0F0F, name = "Dashboard - Full")
 @Composable
 private fun DashboardScreenPreview() {
@@ -424,6 +552,7 @@ private fun DashboardScreenPreview() {
             isChronicleVisible = false,
             onShowChronicle = {},
             onDismissChronicle = {},
+            onOverlaySelected = {},
         )
     }
 }

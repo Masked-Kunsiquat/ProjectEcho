@@ -33,6 +33,10 @@ class GameViewModel(
     /** Current game state; observed by the UI layer. */
     val worldState: StateFlow<WorldState> = _worldState.asStateFlow()
 
+    private val _mapOverlay = MutableStateFlow(MapOverlay.Default)
+    /** UI-only overlay mode for the map; not persisted to WorldState. */
+    val mapOverlay: StateFlow<MapOverlay> = _mapOverlay.asStateFlow()
+
     private var pendingAction: DivineAction? = null
     private var pendingCluster: List<Int> = emptyList()
 
@@ -60,6 +64,9 @@ class GameViewModel(
     fun setSimEvents(events: List<SimEvent>) {
         simEvents = events
     }
+
+    /** Switches the map overlay mode. */
+    fun setMapOverlay(overlay: MapOverlay) { _mapOverlay.value = overlay }
 
     /**
      * Queues a divine action to be applied on the next tick.

@@ -1,6 +1,8 @@
 package com.github.maskedkunisquat.projectecho
 
+import com.github.maskedkunisquat.projectecho.domain.model.BiomeType
 import com.github.maskedkunisquat.projectecho.domain.model.DivineAction
+import com.github.maskedkunisquat.projectecho.domain.model.MapTile
 import com.github.maskedkunisquat.projectecho.domain.model.Tribe
 import com.github.maskedkunisquat.projectecho.domain.model.WorldState
 import com.github.maskedkunisquat.projectecho.domain.rules.tick
@@ -61,15 +63,39 @@ class GameLoopTest {
     // --- Phase 2: Divine Interventions ---
 
     @Test
-    fun `CastRain - replenishes food and deducts favor`() {
+    fun `CastRain - deducts favor without direct food bonus`() {
         val state = stableState(population = 50, foodSupply = 100, divineFavor = 20)
 
         val result = tick(state, DivineAction.CastRain)
 
         assertEquals(1L, result.worldTimeTick)
-        assertEquals(11, result.divineFavor)                               // 20 - 10 (CastRain) + 1 regen (devotion 51 ≥ 40)
-        assertEquals(140, result.tribes["echosi"]!!.foodSupply)           // (100+50) + (50*0.8=40) - 50
-        assertEquals(51, result.tribes["echosi"]!!.population)            // (50 * 1.02).roundToInt()
+        assertEquals(11, result.divineFavor)                               // 20 - 10 (CastRain) + 1 regen
+        assertEquals(90, result.tribes["echosi"]!!.foodSupply)            // 100 + (50*0.8=40) - 50, no rain bonus
+        assertEquals(51, result.tribes["echosi"]!!.population)            // grew since fed
+    }
+
+    @Test
+    fun `CastRain - raises soilMoisture and volatility on targeted tiles`() {
+        val tile = MapTile(
+            id = 0, col = 0, row = 0,
+            soilMoisture = 40, volatility = 10,
+            occupantTribeId = "echosi",
+            biome = BiomeType.Grassland,
+        )
+        val state = WorldState(
+            worldTimeTick = 0L,
+            divineFavor = 20,
+            tiles = listOf(tile),
+            tribes = mapOf("echosi" to Tribe(tribeId = "echosi", name = "The Echosi", population = 5, devotion = 50, foodSupply = 200)),
+        )
+
+        val result = tick(state, DivineAction.CastRain, targetCluster = listOf(0))
+
+        val resultTile = result.tiles[0]
+        // decayStep first: soilMoisture 40→39 (baseline 35 → -1), volatility 10→9
+        // CastRain effect: soilMoisture 39+25=64, volatility 9+10=19
+        assertEquals(64, resultTile.soilMoisture)
+        assertEquals(19, resultTile.volatility)
     }
 
     @Test
