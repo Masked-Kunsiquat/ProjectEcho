@@ -103,8 +103,9 @@ fun DashboardScreen(
         }
     }
 
-    // Stable color assignment: new tribe IDs get the next unused slot; existing IDs never shift.
+    // Stable color assignment: existing IDs keep their slot; stale IDs are pruned; new IDs get the next slot.
     val colorAssignments = remember { mutableMapOf<String, Color>() }
+    colorAssignments.keys.retainAll(worldState.tribes.keys)
     worldState.tribes.keys.forEach { id ->
         if (id !in colorAssignments) {
             colorAssignments[id] = TRIBE_COLORS.getOrElse(colorAssignments.size) { TRIBE_COLORS.last() }

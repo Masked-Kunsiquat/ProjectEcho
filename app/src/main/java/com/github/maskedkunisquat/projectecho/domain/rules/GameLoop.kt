@@ -202,7 +202,7 @@ fun tick(
         eventHistory = state.eventHistory + generationEntries + sophisticationEntries + prayerChronicleEntries,
     )
     val postConflictState = conflictStep(postTerritoryState, random)
-    val postTickState = splitStep(postConflictState, random, personalities)
+    val postTickState = splitStep(postConflictState, random)
 
     val currentTick = postTickState.worldTimeTick
     val eligibleEvents = events.filter { event ->
@@ -339,7 +339,6 @@ private fun applyClusterTileEffect(
 internal fun splitStep(
     state: WorldState,
     random: Random = Random.Default,
-    personalities: List<TribePersonality> = emptyList(),
 ): WorldState {
     if (state.worldTimeTick < state.lastSplitTick + SPLIT_COOLDOWN_TICKS) return state
 
@@ -372,7 +371,7 @@ internal fun splitStep(
             archetypeId   = parentPersonality.archetypeId,
             aggression    = (parentPersonality.aggression    + random.nextFloat() * 0.3f - 0.15f).coerceIn(0f, 1f),
             caution       = (parentPersonality.caution       + random.nextFloat() * 0.3f - 0.15f).coerceIn(0f, 1f),
-            skepticismRate= (parentPersonality.skepticismRate + random.nextFloat() * 0.3f - 0.15f).coerceIn(0f, 1f),
+            skepticismRate= (parentPersonality.skepticismRate + random.nextFloat() * 0.3f - 0.15f).coerceAtLeast(0f),
             traditionalism= (parentPersonality.traditionalism + random.nextFloat() * 0.3f - 0.15f).coerceIn(0f, 1f),
             biomeAffinity = parentPersonality.biomeAffinity.mapValues { (_, v) ->
                 (v + random.nextFloat() * 0.3f - 0.15f).coerceIn(0.1f, 3.0f)

@@ -159,7 +159,7 @@ class PersonalityTest {
 
         assertTrue("aggression must be in [0,1]", child.aggression in 0f..1f)
         assertTrue("caution must be in [0,1]", child.caution in 0f..1f)
-        assertTrue("skepticismRate must be in [0,1]", child.skepticismRate in 0f..1f)
+        assertTrue("skepticismRate must be >= 0", child.skepticismRate >= 0f)
         assertTrue("traditionalism must be in [0,1]", child.traditionalism in 0f..1f)
         child.biomeAffinity.values.forEach { v ->
             assertTrue("biome affinity must be in [0.1,3.0]", v in 0.1f..3.0f)
