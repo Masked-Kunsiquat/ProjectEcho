@@ -31,10 +31,14 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.PlainTooltip
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TooltipBox
+import androidx.compose.material3.TooltipDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -366,15 +370,15 @@ private fun ActionPanel(
     modifier: Modifier = Modifier,
 ) {
     val actions = listOf(
-        DivineAction.CastRain      to "Rain",
-        DivineAction.BlessHarvest  to "Harvest",
-        DivineAction.InspireDevout to "Inspire",
-        DivineAction.CauseFamine   to "Famine",
-        DivineAction.SendPlague    to "Plague",
-        DivineAction.Fortify       to "Fortify",
-        DivineAction.Blight        to "Blight",
-        DivineAction.Revelation    to "Revelation",
-        DivineAction.Smite         to "Smite",
+        Triple(DivineAction.CastRain,      "Rain",       "+25 moisture on target tiles"),
+        Triple(DivineAction.BlessHarvest,  "Harvest",    "+200 food, +8 moisture on cluster"),
+        Triple(DivineAction.InspireDevout, "Inspire",    "+15 devotion, no skepticism penalty"),
+        Triple(DivineAction.CauseFamine,   "Famine",     "-80 food, -15 moisture on cluster"),
+        Triple(DivineAction.SendPlague,    "Plague",     "-20% population"),
+        Triple(DivineAction.Fortify,       "Fortify",    "5-tick raid immunity"),
+        Triple(DivineAction.Blight,        "Blight",     "-30 moisture, triggers natural famine"),
+        Triple(DivineAction.Revelation,    "Revelation", "-20 skepticism, +10 devotion"),
+        Triple(DivineAction.Smite,         "Smite",      "Clears tiles, kills 15% of occupants"),
     )
 
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -383,14 +387,21 @@ private fun ActionPanel(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                row.forEach { (action, label) ->
-                    ActionChip(
-                        label = label,
-                        cost = action.favorCost,
-                        enabled = divineFavor >= action.favorCost,
-                        onClick = { onActionPressed(action) },
+                row.forEach { (action, label, description) ->
+                    TooltipBox(
+                        positionProvider = TooltipDefaults.rememberPlainTooltipPositionProvider(),
+                        tooltip = { PlainTooltip { Text(description) } },
+                        state = rememberTooltipState(),
                         modifier = Modifier.weight(1f),
-                    )
+                    ) {
+                        ActionChip(
+                            label = label,
+                            cost = action.favorCost,
+                            enabled = divineFavor >= action.favorCost,
+                            onClick = { onActionPressed(action) },
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
                 }
             }
         }
