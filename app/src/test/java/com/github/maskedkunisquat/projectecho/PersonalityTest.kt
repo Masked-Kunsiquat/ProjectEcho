@@ -228,6 +228,29 @@ class PersonalityTest {
         assertTrue(result.eventHistory.any { "advances" in it || "deepens" in it || "mastery" in it })
     }
 
+    @Test
+    fun `tick skepticismRate increases more for low-traditionalism tribe at sophistication milestone`() {
+        fun stateForTrad(trad: Float) = stateWithPersonality(
+            TribePersonality.default().copy(traditionalism = trad, skepticismRate = 0.5f, sophistication = 0),
+            population = 500, foodSupply = 5000, devotion = 50,
+        )
+        val lowRate  = tick(stateForTrad(0.1f)).tribes["t1"]!!.personality.skepticismRate
+        val highRate = tick(stateForTrad(0.9f)).tribes["t1"]!!.personality.skepticismRate
+        assertTrue("low-trad tribe (rate=$lowRate) should drift faster than high-trad (rate=$highRate)", lowRate > highRate)
+    }
+
+    @Test
+    fun `tick skepticismRate drift matches traditionalism formula at sophistication milestone`() {
+        val initialRate = 0.5f
+        val state = stateWithPersonality(
+            TribePersonality.default().copy(traditionalism = 0.9f, skepticismRate = initialRate, sophistication = 0),
+            population = 500, foodSupply = 5000, devotion = 50,
+        )
+        val newRate = tick(state).tribes["t1"]!!.personality.skepticismRate
+        // faithDrift = (1 - 0.9) * 0.05 = 0.005
+        assertEquals(initialRate + 0.005f, newRate, 0.001f)
+    }
+
     // --- Skepticism accumulation ---
 
     @Test

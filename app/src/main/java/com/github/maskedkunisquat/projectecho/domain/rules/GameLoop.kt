@@ -37,10 +37,13 @@ internal const val PRAYER_THRESHOLD = 60
 internal const val PRAYER_PRESSURE_CAP = 200f
 internal const val SKEPTICISM_DECAY_BASE = 10f
 
-// devotion / divisor yields suppression fraction: at devotion 100 → 50% raid suppression
 internal const val RAID_DEVOTION_SUPPRESSION_DIVISOR = 200f
-// tribes above this devotion level are spiritually cohesive and skip the split trigger
 internal const val SPLIT_DEVOTION_CAP = 80
+internal const val ATTACK_SOPHISTICATION_BONUS  = 0.04f
+internal const val DEFENSE_SOPHISTICATION_BONUS = 0.03f
+private const val FAITH_DRIFT_SCALE             = 0.05f
+private const val SKEPTICISM_RATE_CLAMP_MAX     = 2f
+internal const val SOPH_MOISTURE_CEILING        = 50
 
 fun tick(
     currentState: WorldState,
@@ -50,7 +53,7 @@ fun tick(
     targetTribeId: String? = null,
     random: Random = Random.Default,
 ): WorldState {
-    var state = currentState.copy(tiles = decayStep(currentState.tiles))
+    var state = currentState.copy(tiles = decayStep(currentState.tiles, currentState.tribes))
 
     val inspireDevoutEntries = mutableListOf<String>()
     var devoutExpectationsFired = false
@@ -65,10 +68,17 @@ fun tick(
                 DivineAction.InspireDevout -> tribe.copy(devotion = minOf(100, tribe.devotion + 15))
                 DivineAction.CauseFamine   -> tribe.copy(foodSupply = maxOf(0, tribe.foodSupply - 80))
                 DivineAction.BlessHarvest  -> tribe.copy(foodSupply = tribe.foodSupply + 200)
+                DivineAction.Fortify       -> tribe.copy(divineShieldTicks = 5)
+                DivineAction.Blight        -> tribe
+                DivineAction.Revelation    -> tribe.copy(
+                    devotion    = minOf(100, tribe.devotion + 10),
+                    personality = tribe.personality.copy(skepticism = maxOf(0, tribe.personality.skepticism - 20)),
+                )
+                DivineAction.Smite         -> tribe.copy(population = (tribe.population * 0.85).roundToInt())
                 null                       -> tribe
             } else tribe
             if (isTarget) {
-                val skepGain = if (action is DivineAction.InspireDevout) 0
+                val skepGain = if (action is DivineAction.InspireDevout || action is DivineAction.Revelation) 0
                     else (action!!.favorCost / 10f * tribe.personality.skepticismRate).roundToInt()
                 afterAction.copy(
                     prayerPressure = afterAction.prayerPressure * 0.5f,
@@ -84,7 +94,7 @@ fun tick(
         state = state.copy(
             tribes = updatedTribes,
             divineFavor = (state.divineFavor - action.favorCost).coerceIn(0, 100),
-            tiles = applyClusterTileEffect(state.tiles, effectiveCluster, action),
+            tiles = applyClusterTileEffect(state.tiles, effectiveCluster, action, targetTribeId),
         )
 
         // Chronicle when InspireDevout pushes a targeted tribe's devotion across 60 for the first time
@@ -170,15 +180,30 @@ fun tick(
         }
     }
 
+    // Extinction: remove tribes that starved to zero population
+    val extinctIds = survivedTribes.filterValues { it.population <= 0 }.keys.toSet()
+    val extinctEntries = extinctIds.map { id -> "The ${survivedTribes[id]!!.name} have perished from the land." }
+    val livingTribes = if (extinctIds.isEmpty()) survivedTribes else survivedTribes.filterKeys { it !in extinctIds }
+    if (extinctIds.isNotEmpty()) {
+        state = state.copy(tiles = state.tiles.map { t ->
+            if (t.occupantTribeId in extinctIds) t.copy(occupantTribeId = null) else t
+        })
+    }
+
     // Sophistication milestones
     val sophisticationEntries = mutableListOf<String>()
-    val withSophistication = survivedTribes.mapValues { (_, tribe) ->
+    val withSophistication = livingTribes.mapValues { (_, tribe) ->
         val popMet = SOPHISTICATION_POP_MILESTONES.count { it <= tribe.population }
         val devMet = SOPHISTICATION_DEVOTION_MILESTONES.count { it <= tribe.devotion }
         val expectedSoph = popMet + devMet
         if (tribe.personality.sophistication < expectedSoph) {
             sophisticationEntries += "The ${tribe.name} advances — their mastery of the land deepens."
-            tribe.copy(personality = tribe.personality.copy(sophistication = tribe.personality.sophistication + 1))
+            val faithDrift = (1f - tribe.personality.traditionalism) * FAITH_DRIFT_SCALE
+            val newRate = (tribe.personality.skepticismRate + faithDrift).coerceIn(0f, SKEPTICISM_RATE_CLAMP_MAX)
+            tribe.copy(personality = tribe.personality.copy(
+                sophistication = tribe.personality.sophistication + 1,
+                skepticismRate = newRate,
+            ))
         } else tribe
     }
 
@@ -224,13 +249,18 @@ fun tick(
         divineFavor = regenedFavor,
         tribes = withPrayerDecay,
         tiles = territoryStep(state.tiles, withPrayerDecay),
-        eventHistory = state.eventHistory + generationEntries + sophisticationEntries + prayerChronicleEntries + inspireDevoutEntries,
+        eventHistory = state.eventHistory + generationEntries + extinctEntries + sophisticationEntries + prayerChronicleEntries + inspireDevoutEntries,
         eventCooldowns = if (devoutExpectationsFired)
             state.eventCooldowns + ("devout_expectations" to state.worldTimeTick + 1L)
         else state.eventCooldowns,
     )
     val postConflictState = conflictStep(postTerritoryState, random)
-    val postTickState = splitStep(postConflictState, random)
+    val postShieldDecay = postConflictState.copy(
+        tribes = postConflictState.tribes.mapValues { (_, t) ->
+            if (t.divineShieldTicks > 0) t.copy(divineShieldTicks = t.divineShieldTicks - 1) else t
+        }
+    )
+    val postTickState = splitStep(postShieldDecay, random)
 
     val currentTick = postTickState.worldTimeTick
     val eligibleEvents = events.filter { event ->
@@ -347,6 +377,7 @@ private fun applyClusterTileEffect(
     tiles: List<MapTile>,
     cluster: List<Int>,
     action: DivineAction,
+    targetTribeId: String? = null,
 ): List<MapTile> {
     if (cluster.isEmpty()) return tiles
     val clusterSet = cluster.toHashSet()
@@ -359,6 +390,10 @@ private fun applyClusterTileEffect(
             )
             DivineAction.BlessHarvest -> tile.copy(soilMoisture = (tile.soilMoisture + 8).coerceIn(0, 100))
             DivineAction.CauseFamine  -> tile.copy(soilMoisture = (tile.soilMoisture - 15).coerceIn(0, 100))
+            DivineAction.Blight       -> tile.copy(soilMoisture = (tile.soilMoisture - 30).coerceIn(0, 100))
+            DivineAction.Smite        -> if (targetTribeId == null || tile.occupantTribeId == targetTribeId)
+                tile.copy(soilMoisture = 0, occupantTribeId = null)
+            else tile
             else                      -> tile
         }
     }
@@ -454,9 +489,15 @@ internal fun conflictStep(state: WorldState, random: Random = Random.Default): W
                 getNeighbors(tile.id).any { it in aggressorTileIds }
             }
             if (defenderBorderTiles.isEmpty()) continue
+            if (defender.divineShieldTicks > 0) continue
 
+            val attackBonus  = 1f + aggressor.personality.sophistication * ATTACK_SOPHISTICATION_BONUS
+            val defenseBonus = 1f - defender.personality.sophistication * DEFENSE_SOPHISTICATION_BONUS
             val devotionSuppression = 1f - aggressor.devotion / RAID_DEVOTION_SUPPRESSION_DIVISOR
-            val threshold = aggressor.personality.aggression * (1f - defender.personality.caution) * devotionSuppression
+            val threshold = aggressor.personality.aggression *
+                            (1f - defender.personality.caution) *
+                            attackBonus * defenseBonus *
+                            devotionSuppression
             if (random.nextFloat() < threshold) {
                 val target = defenderBorderTiles.random(random)
                 tiles = tiles.map { t ->
@@ -471,12 +512,14 @@ internal fun conflictStep(state: WorldState, random: Random = Random.Default): W
     else state.copy(tiles = tiles, eventHistory = state.eventHistory + chronicleEntries)
 }
 
-fun decayStep(tiles: List<MapTile>): List<MapTile> = tiles.map { tile ->
+fun decayStep(tiles: List<MapTile>, tribes: Map<String, Tribe> = emptyMap()): List<MapTile> = tiles.map { tile ->
     val baseline = tile.biome.moistureBaseline
+    val sophLevel = tile.occupantTribeId?.let { id -> tribes[id]?.personality?.sophistication } ?: 0
+    val effectiveBaseline = minOf(baseline + sophLevel, SOPH_MOISTURE_CEILING)
     tile.copy(
         soilMoisture = when {
-            tile.soilMoisture > baseline -> maxOf(baseline, tile.soilMoisture - DECAY_DELTA)
-            tile.soilMoisture < baseline -> minOf(baseline, tile.soilMoisture + DECAY_DELTA)
+            tile.soilMoisture > effectiveBaseline -> maxOf(effectiveBaseline, tile.soilMoisture - DECAY_DELTA)
+            tile.soilMoisture < effectiveBaseline -> minOf(effectiveBaseline, tile.soilMoisture + DECAY_DELTA)
             else -> tile.soilMoisture
         },
         volatility = maxOf(0, tile.volatility - DECAY_DELTA),

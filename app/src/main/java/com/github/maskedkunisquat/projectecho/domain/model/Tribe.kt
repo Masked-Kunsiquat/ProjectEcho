@@ -13,4 +13,5 @@ data class Tribe(
     val generationDeaths: Int = 0,
     val prayerPressure: Float = 0f,
     val skepticismDecayBuffer: Float = 0f,
+    val divineShieldTicks: Int = 0,
 )

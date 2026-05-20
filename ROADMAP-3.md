@@ -43,7 +43,7 @@ Currently devotion affects only divine favor regen and the prayer threshold. Giv
 
 ### Military doctrine
 
-- [ ] In `conflictStep()`, replace the bare `aggression * (1 - caution)` threshold with a formula that includes sophistication:
+- [x] In `conflictStep()`, replace the bare `aggression * (1 - caution)` threshold with a formula that includes sophistication:
   ```kotlin
   attackBonus  = 1f + aggressor.personality.sophistication * 0.04f   // up to +40% at soph 10
   defenseBonus = 1f - defender.personality.sophistication * 0.03f    // up to -30% at soph 10
@@ -51,22 +51,22 @@ Currently devotion affects only divine favor regen and the prayer threshold. Giv
               (1f - defender.personality.caution) *
               attackBonus * defenseBonus
   ```
-- [ ] The existing archetype routing remains unchanged — this bonus matters more for a warlike tribe (high base aggression) than a reclusive one (low base)
-- [ ] Write unit tests: high-sophistication aggressor succeeds more raids on same seed; high-sophistication defender loses fewer tiles on same seed
+- [x] The existing archetype routing remains unchanged — this bonus matters more for a warlike tribe (high base aggression) than a reclusive one (low base)
+- [x] Write unit tests: high-sophistication aggressor succeeds more raids on same seed; high-sophistication defender loses fewer tiles on same seed
 
 ### Faith amplification
 
 The current model treats sophistication as always drifting toward secularism. Historically that's wrong: what correlates with secularism is *security and predictability*, not advancement itself. The real dial is `traditionalism`.
 
-- [ ] In `tick()`, at the sophistication milestone block (where `sophistication` is incremented): after incrementing, update `skepticismRate`:
+- [x] In `tick()`, at the sophistication milestone block (where `sophistication` is incremented): after incrementing, update `skepticismRate`:
   ```kotlin
   val faithDrift = (1f - tribe.personality.traditionalism) * 0.05f
   // clamp skepticismRate to [0f, 2f]
   ```
   At traditionalism 0.9 (reclusive/agrarian): drift ≈ +0.005 per milestone — nearly stable.
   At traditionalism 0.1 (nomadic): drift ≈ +0.045 per milestone — a restless tribe grows progressively quicker to doubt.
-- [ ] Because `traditionalism` is a personality field (on `TribePersonality`), `skepticismRate` drift should update `tribe.personality` via `.copy()`; no new stored fields needed
-- [ ] Write unit tests: low-traditionalism tribe's `skepticismRate` grows faster at each sophistication milestone than high-traditionalism tribe; high-traditionalism tribe's rate barely changes
+- [x] Because `traditionalism` is a personality field (on `TribePersonality`), `skepticismRate` drift should update `tribe.personality` via `.copy()`; no new stored fields needed
+- [x] Write unit tests: low-traditionalism tribe's `skepticismRate` grows faster at each sophistication milestone than high-traditionalism tribe; high-traditionalism tribe's rate barely changes
 
 ---
 
@@ -115,6 +115,19 @@ Add a computed function to derive a tribe's needs from stats that already exist:
   | InspireDevout | `SpirituallyDepleted` | any |
   | SendPlague | `UnderThreat` (on aggressor) | — |
   | CauseFamine | — (punitive) | — |
+  | Fortify | `UnderThreat` | `Overcrowded` |
+  | Blight | — (punitive, environmental) | — |
+  | Revelation | `SpirituallyDepleted` | `Thriving` (faith maintained even when flourishing) |
+  | Smite | — (punitive, territorial) | — |
+
+### Split viability guard
+
+Tribes can currently split into critically underfunded children (2 population, near-zero food) that linger for ticks before starving out. Extinction cleanup (added Phase 14) removes them eventually, but the upstream fix is to not allow the split in the first place.
+
+- [ ] In `splitStep()`, after computing `childFood` and `childPopulation`, add a viability check: skip the split if `childFood < childPopulation * SPLIT_MIN_FOOD_TICKS`; define `SPLIT_MIN_FOOD_TICKS = 5` as a named constant in `GameLoop.kt`
+- [ ] Write unit test: split is suppressed when projected child food falls below the viability threshold; split proceeds when food is sufficient
+
+*Note: once the RL Tribe policy (Phase 18+) controls expansion decisions, it will naturally learn not to split into unviable positions. This guard is a heuristic safety net until training is in place.*
 
 ### Need indicator UI
 
@@ -220,8 +233,37 @@ A freshly split tribe (sophistication 0, no history) should behave differently f
 ### Reward calculator & training init
 
 - [ ] Add `WorldState.reward(prev: WorldState, tribeId: String): Float` — `(newPop - prevPop) + (newTiles - prevTiles)` diffing two consecutive states; used by both headless batch runner and Python env
+  - **Extinction penalty:** if `tribeId` is absent from `next.tribes` (removed by the extinction filter in `tick()`), return a large fixed penalty (e.g. `−10f`) and mark the episode `done`; this is the hardest signal in training — a tribe that goes extinct unambiguously lost
 - [ ] Add `WorldState.initialForTraining(numTribes: Int, seed: Long): WorldState` — places 4–6 tribes in randomized starting positions with seeded RNG; production path (`WorldState.initial()`) unchanged
-- [ ] Write unit tests: vectorizer output length matches `STATE_VECTOR_LABELS` length, all values in [0, 1], reward is positive after growth tick, negative after territory loss
+- [ ] Write unit tests: vectorizer output length matches `STATE_VECTOR_LABELS` length, all values in [0, 1], reward is positive after growth tick, negative after territory loss, extinction returns the large penalty
+
+---
+
+## Pre-Training Design Checkpoint (before Phase 19)
+
+> **Divine actions are the training API.** Adding or meaningfully changing an action after Phase 19 training begins requires a full retrain — the output layer grows, the reward landscape shifts, and the Python env must be updated to match. Purely narrative changes (Chronicle text, flavor) are free. Everything else is expensive. Lock the action set down here.
+
+### Divine action audit *(resolve before Phase 18 finalises the action space)*
+
+**Action set (9 total — implemented, frozen before Phase 18):**
+
+| Action | Tribe effect | Tile effect | Cost |
+|---|---|---|---|
+| CastRain | — | +25 moisture, +10 volatility | 10 |
+| BlessHarvest | +200 food | +8 moisture | 20 |
+| InspireDevout | +15 devotion | — | 8 |
+| CauseFamine | −80 food | −15 moisture | 5 |
+| SendPlague | −20% population | — | 15 |
+| Fortify | divineShieldTicks=5 (blocks raids) | — | 15 |
+| Blight | — | −30 moisture (slow-acting famine) | 8 |
+| Revelation | −20 skepticism, +10 devotion; no skep gain | — | 12 |
+| Smite | −15% population | moisture→0, tiles freed | 25 |
+
+- **Enhancements still open (behavior, not new actions):**
+  - CastRain targeting: rain on owned tiles vs. flood on rival's tiles via target cluster
+  - BlessHarvest scaled by devotion: higher devotion → larger harvest multiplier
+  - SendPlague with border contagion: spreads to tribes sharing a tile border on subsequent ticks
+- [x] Decide final action set and document it here before beginning Phase 18
 
 ---
 
@@ -316,6 +358,38 @@ Non-aggression pacts between low-mutual-aggression tribes; coordinated expansion
 ### Gemma / LLM Chronicle generation *(distinct from policy network)*
 
 A small on-device LM generating dynamic Chronicle text instead of template strings. Gemma E4B is the candidate. This is a separate feature from the policy network (different architecture, different purpose) and should be designed after Phase 21 to avoid conflating the two.
+
+### God alignment & player playstyle *(open design question)*
+
+The game supports at least three valid player archetypes, and the mechanics already reward/punish each differently:
+
+**Benevolent God** — protects all tribes, prevents extinction. High devotion across the board → strong favor regen → more actions available. The "intended" loop, but not the only valid one.
+
+**Sadistic God** — plagues, famines, repeated torment. Drives skepticism up, devotion down. Tribes eventually stop praying → God gets no favor regen from them → loses the ability to intervene. Sadism is self-limiting: a faithless tribe is beyond reach. The tribe becomes immune to God because it stopped believing.
+
+**Favoritism God** — blesses one tribe constantly, ignores the rest. Ignored tribes' unanswered prayer pressure accumulates → they go skeptical → the favored tribe, flush with devotion and food, raids and absorbs them anyway. Valid monotheistic endgame: one dominant tribe generating all the favor.
+
+**The gap:** the current skepticism model only rises from actions *taken on* a tribe. A tribe God never touches doesn't feel the absence unless it's already devout enough to be praying (devotion > 60). There's no mechanic for "we gave up praying because God never answered" — low-devotion tribes just quietly disconnect. Closing this gap means:
+
+- [ ] *(Design question)* Should passive divine neglect accumulate a slow devotion decay for tribes below the prayer threshold — representing a community that drifts from faith not from doubt but from indifference?
+- [ ] The Tribe RL policy should treat devotion as a resource it actively manages, not just a stat that happens to it — a tribe that stops praying is making a rational adaptation to an inattentive or hostile God
+- [ ] These playstyles also affect RL training: the domain randomization in Phase 19 (random divine shocks) trains tribes to be robust against adversarial God behavior, not just a benevolent one
+
+### World as adaptive AI (Option A — reactive climate)
+
+**Design philosophy:** The World is a closed system in dynamic tension with its inhabitants. Tribes behave like a virus — expanding, consuming, pushing soil moisture above its natural baseline. The World's decay system is the immune response, constantly pulling conditions back toward equilibrium. High collective sophistication lets tribes resist that pull (the `SOPH_MOISTURE_CEILING` mechanic), but the World can escalate.
+
+God sits between both systems as mediator. Divine actions don't override the World — they *bias* it. CastRain shifts weather generation probabilities; the World runs its own logic from there. The outcome is never fully certain, which is closer to how most theological traditions describe divine action than a direct miracle would be.
+
+**Technical direction (post-Phase 21):**
+
+- Train a small generative model (not a policy — no action selection) that observes aggregate `WorldState` signals (total population, average sophistication, territorial coverage, mean soil moisture) and outputs a probability distribution over weather front types and spawn rates for the next N ticks
+- Training signal: keep tribal population in a "productive tension" band — not thriving so easily that God becomes irrelevant, not dying so fast that intervention is pointless
+- God's divine actions become inputs to the World model's context at inference time — CastRain on a region slightly increases the model's rain-front probability for that column cluster; it doesn't guarantee rain
+- The result: the World responds to civilisational pressure the way climate responds to human activity — feedback loops, lag, partial reversibility
+- Separate from the Tribe RL policy (different architecture, different training objective); both run at inference time on-device, neither knows about the other directly
+
+**Why this is worth building:** It makes the training environment for the Tribe policy richer (tribes can't memorise fixed weather patterns) and gives the player's divine role genuine weight — they are managing the relationship between two adaptive systems, not just keeping a tribe's health bar up.
 
 ---
 
