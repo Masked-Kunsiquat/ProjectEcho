@@ -115,6 +115,10 @@ Add a computed function to derive a tribe's needs from stats that already exist:
   | InspireDevout | `SpirituallyDepleted` | any |
   | SendPlague | `UnderThreat` (on aggressor) | — |
   | CauseFamine | — (punitive) | — |
+  | Fortify | `UnderThreat` | `Overcrowded` |
+  | Blight | — (punitive, environmental) | — |
+  | Revelation | `SpirituallyDepleted` | `Thriving` (faith maintained even when flourishing) |
+  | Smite | — (punitive, territorial) | — |
 
 ### Split viability guard
 
@@ -241,21 +245,25 @@ A freshly split tribe (sophistication 0, no history) should behave differently f
 
 ### Divine action audit *(resolve before Phase 18 finalises the action space)*
 
-**Current actions (5):** CastRain, BlessHarvest, InspireDevout, SendPlague, CauseFamine — three positive, two negative.
+**Action set (9 total — implemented, frozen before Phase 18):**
 
-Open questions to answer before freezing:
+| Action | Tribe effect | Tile effect | Cost |
+|---|---|---|---|
+| CastRain | — | +25 moisture, +10 volatility | 10 |
+| BlessHarvest | +200 food | +8 moisture | 20 |
+| InspireDevout | +15 devotion | — | 8 |
+| CauseFamine | −80 food | −15 moisture | 5 |
+| SendPlague | −20% population | — | 15 |
+| Fortify | divineShieldTicks=5 (blocks raids) | — | 15 |
+| Blight | — | −30 moisture (slow-acting famine) | 8 |
+| Revelation | −20 skepticism, +10 devotion; no skep gain | — | 12 |
+| Smite | −15% population | moisture→0, tiles freed | 25 |
 
-- **Is 5 enough?** Lean action spaces train faster and are easier to mask, but 5 may be too few for interesting God strategy — particularly on the positive side (rain and harvest are both resource boosts; they feel similar in practice).
-- **Candidate additions to consider:**
-  - *Smite* — targeted devastation: frees a cluster of tiles and kills a portion of the occupying tribe's population. More surgical than plague; direct territorial consequence.
-  - *Fortify* — defensive: grants a tribe temporary raid resistance for N ticks (threshold multiplier). Only meaningful action that doesn't directly change food/pop/devotion.
-  - *Blight* — environmental: degrades soil moisture in a region rather than directly reducing food. Interacts with the World system instead of bypassing it; fits the "God biases the World" design philosophy.
-- **Candidate enhancements to existing actions:**
-  - CastRain targeting: rain on owned tiles (helpful) vs. flood on a rival's tiles (harmful) — same action, different targeting mode, doubles strategic depth without doubling action space
-  - SendPlague with border contagion: spreads to tribes sharing a tile border with the target on subsequent ticks; fits the "God sets things in motion, World runs it" philosophy
-  - BlessHarvest scaled by devotion: the more devout the tribe, the larger the blessing — rewards the player for cultivating faith before acting
-- **God alignment implication:** the current set has no *defensive* action and no *environmental* action. A player who wants to protect a tribe from raids (favoritism playstyle) has no direct tool — they can only bless food and hope. Fortify would close that gap.
-- [ ] Decide final action set and document it here before beginning Phase 18
+- **Enhancements still open (behavior, not new actions):**
+  - CastRain targeting: rain on owned tiles vs. flood on rival's tiles via target cluster
+  - BlessHarvest scaled by devotion: higher devotion → larger harvest multiplier
+  - SendPlague with border contagion: spreads to tribes sharing a tile border on subsequent ticks
+- [x] Decide final action set and document it here before beginning Phase 18
 
 ---
 

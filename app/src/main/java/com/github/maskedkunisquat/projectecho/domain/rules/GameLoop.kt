@@ -68,10 +68,17 @@ fun tick(
                 DivineAction.InspireDevout -> tribe.copy(devotion = minOf(100, tribe.devotion + 15))
                 DivineAction.CauseFamine   -> tribe.copy(foodSupply = maxOf(0, tribe.foodSupply - 80))
                 DivineAction.BlessHarvest  -> tribe.copy(foodSupply = tribe.foodSupply + 200)
+                DivineAction.Fortify       -> tribe.copy(divineShieldTicks = 5)
+                DivineAction.Blight        -> tribe
+                DivineAction.Revelation    -> tribe.copy(
+                    devotion    = minOf(100, tribe.devotion + 10),
+                    personality = tribe.personality.copy(skepticism = maxOf(0, tribe.personality.skepticism - 20)),
+                )
+                DivineAction.Smite         -> tribe.copy(population = (tribe.population * 0.85).roundToInt())
                 null                       -> tribe
             } else tribe
             if (isTarget) {
-                val skepGain = if (action is DivineAction.InspireDevout) 0
+                val skepGain = if (action is DivineAction.InspireDevout || action is DivineAction.Revelation) 0
                     else (action!!.favorCost / 10f * tribe.personality.skepticismRate).roundToInt()
                 afterAction.copy(
                     prayerPressure = afterAction.prayerPressure * 0.5f,
@@ -248,7 +255,12 @@ fun tick(
         else state.eventCooldowns,
     )
     val postConflictState = conflictStep(postTerritoryState, random)
-    val postTickState = splitStep(postConflictState, random)
+    val postShieldDecay = postConflictState.copy(
+        tribes = postConflictState.tribes.mapValues { (_, t) ->
+            if (t.divineShieldTicks > 0) t.copy(divineShieldTicks = t.divineShieldTicks - 1) else t
+        }
+    )
+    val postTickState = splitStep(postShieldDecay, random)
 
     val currentTick = postTickState.worldTimeTick
     val eligibleEvents = events.filter { event ->
@@ -377,6 +389,8 @@ private fun applyClusterTileEffect(
             )
             DivineAction.BlessHarvest -> tile.copy(soilMoisture = (tile.soilMoisture + 8).coerceIn(0, 100))
             DivineAction.CauseFamine  -> tile.copy(soilMoisture = (tile.soilMoisture - 15).coerceIn(0, 100))
+            DivineAction.Blight       -> tile.copy(soilMoisture = (tile.soilMoisture - 30).coerceIn(0, 100))
+            DivineAction.Smite        -> tile.copy(soilMoisture = 0, occupantTribeId = null)
             else                      -> tile
         }
     }
@@ -472,6 +486,7 @@ internal fun conflictStep(state: WorldState, random: Random = Random.Default): W
                 getNeighbors(tile.id).any { it in aggressorTileIds }
             }
             if (defenderBorderTiles.isEmpty()) continue
+            if (defender.divineShieldTicks > 0) continue
 
             val attackBonus  = 1f + aggressor.personality.sophistication * ATTACK_SOPHISTICATION_BONUS
             val defenseBonus = 1f - defender.personality.sophistication * DEFENSE_SOPHISTICATION_BONUS
