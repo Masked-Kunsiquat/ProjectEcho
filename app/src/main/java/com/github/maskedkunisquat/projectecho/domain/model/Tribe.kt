@@ -37,7 +37,7 @@ data class Tribe(
         if (personality.skepticism > SPIRITUALLY_DEPLETED_SKEPTICISM && devotion < SPIRITUALLY_DEPLETED_DEVOTION) {
             result += TribeNeed.SpirituallyDepleted
         }
-        if (ownedTiles.isNotEmpty() && population / ownedTiles.size > NEEDS_DENSITY_THRESHOLD) {
+        if (ownedTiles.isNotEmpty() && population > NEEDS_DENSITY_THRESHOLD * ownedTiles.size) {
             result += TribeNeed.Overcrowded
         }
         if (result.isEmpty()) result += TribeNeed.Thriving

@@ -255,10 +255,9 @@ class TribeNeedTest {
 
         val result = conflictStep(state, Random(seed = 0L))
 
-        // A tile was raided; beta's lastRaidTick should equal worldTimeTick
-        if (result.tiles.count { it.occupantTribeId == "beta" } < 2) {
-            assertEquals(42L, result.tribes["beta"]!!.lastRaidTick)
-        }
+        // Assert the raid happened, then validate lastRaidTick unconditionally
+        assertEquals(1, result.tiles.count { it.occupantTribeId == "beta" })
+        assertEquals(42L, result.tribes["beta"]!!.lastRaidTick)
     }
 
     @Test fun `conflictStep does not set lastRaidTick when no raid occurs`() {
