@@ -327,6 +327,22 @@ Non-aggression pacts between low-mutual-aggression tribes; coordinated expansion
 
 A small on-device LM generating dynamic Chronicle text instead of template strings. Gemma E4B is the candidate. This is a separate feature from the policy network (different architecture, different purpose) and should be designed after Phase 21 to avoid conflating the two.
 
+### God alignment & player playstyle *(open design question)*
+
+The game supports at least three valid player archetypes, and the mechanics already reward/punish each differently:
+
+**Benevolent God** — protects all tribes, prevents extinction. High devotion across the board → strong favor regen → more actions available. The "intended" loop, but not the only valid one.
+
+**Sadistic God** — plagues, famines, repeated torment. Drives skepticism up, devotion down. Tribes eventually stop praying → God gets no favor regen from them → loses the ability to intervene. Sadism is self-limiting: a faithless tribe is beyond reach. The tribe becomes immune to God because it stopped believing.
+
+**Favoritism God** — blesses one tribe constantly, ignores the rest. Ignored tribes' unanswered prayer pressure accumulates → they go skeptical → the favored tribe, flush with devotion and food, raids and absorbs them anyway. Valid monotheistic endgame: one dominant tribe generating all the favor.
+
+**The gap:** the current skepticism model only rises from actions *taken on* a tribe. A tribe God never touches doesn't feel the absence unless it's already devout enough to be praying (devotion > 60). There's no mechanic for "we gave up praying because God never answered" — low-devotion tribes just quietly disconnect. Closing this gap means:
+
+- [ ] *(Design question)* Should passive divine neglect accumulate a slow devotion decay for tribes below the prayer threshold — representing a community that drifts from faith not from doubt but from indifference?
+- [ ] The Tribe RL policy should treat devotion as a resource it actively manages, not just a stat that happens to it — a tribe that stops praying is making a rational adaptation to an inattentive or hostile God
+- [ ] These playstyles also affect RL training: the domain randomization in Phase 19 (random divine shocks) trains tribes to be robust against adversarial God behavior, not just a benevolent one
+
 ### World as adaptive AI (Option A — reactive climate)
 
 **Design philosophy:** The World is a closed system in dynamic tension with its inhabitants. Tribes behave like a virus — expanding, consuming, pushing soil moisture above its natural baseline. The World's decay system is the immune response, constantly pulling conditions back toward equilibrium. High collective sophistication lets tribes resist that pull (the `SOPH_MOISTURE_CEILING` mechanic), but the World can escalate.
