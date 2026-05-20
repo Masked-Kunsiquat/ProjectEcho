@@ -5,6 +5,7 @@ import com.github.maskedkunisquat.projectecho.domain.model.GRID_COLS
 import com.github.maskedkunisquat.projectecho.domain.model.GRID_SIZE
 import com.github.maskedkunisquat.projectecho.domain.model.MapTile
 import com.github.maskedkunisquat.projectecho.domain.model.Tribe
+import com.github.maskedkunisquat.projectecho.domain.model.TribePersonality
 import com.github.maskedkunisquat.projectecho.domain.model.WeatherFront
 import com.github.maskedkunisquat.projectecho.domain.model.WeatherType
 import com.github.maskedkunisquat.projectecho.domain.model.WorldState
@@ -47,6 +48,32 @@ class BiomeSimTest {
         val tile = MapTile(id = 0, col = 0, row = 0, soilMoisture = 15, biome = BiomeType.Desert)
         val result = decayStep(listOf(tile)).first()
         assertEquals(15, result.soilMoisture)
+    }
+
+    @Test
+    fun `decayStep sophisticated tribe raises effective baseline above biome natural`() {
+        // Forest baseline=45; soph-10 effectiveBaseline=50.
+        // Tile at moisture=46: no-soph decays to 45; soph-10 rises toward 50 → 47.
+        val tile = MapTile(id = 0, col = 0, row = 0, biome = BiomeType.Forest,
+                           soilMoisture = 46, occupantTribeId = "t1")
+        val tribe = Tribe("t1", "Test", 100, 50, 200,
+                          TribePersonality.default().copy(sophistication = 10))
+        val withSoph    = decayStep(listOf(tile), mapOf("t1" to tribe)).first()
+        val withoutSoph = decayStep(listOf(tile.copy(occupantTribeId = null))).first()
+        assertEquals("unowned tile should decay to biome baseline", 45, withoutSoph.soilMoisture)
+        assertEquals("soph-10 tile should rise toward effective baseline", 47, withSoph.soilMoisture)
+    }
+
+    @Test
+    fun `decayStep moisture ceiling caps effective baseline to prevent Saturated phase`() {
+        // Forest baseline=45; soph-10 would give 55, but SOPH_MOISTURE_CEILING=50 caps it.
+        // Tile at moisture=52 should decay toward 50 (not stall at 55).
+        val tile = MapTile(id = 0, col = 0, row = 0, biome = BiomeType.Forest,
+                           soilMoisture = 52, occupantTribeId = "t1")
+        val tribe = Tribe("t1", "Test", 100, 50, 200,
+                          TribePersonality.default().copy(sophistication = 10))
+        val result = decayStep(listOf(tile), mapOf("t1" to tribe)).first()
+        assertEquals(51, result.soilMoisture)
     }
 
     // --- weatherStep biome weather resistance ---

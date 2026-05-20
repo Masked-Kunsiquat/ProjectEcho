@@ -43,6 +43,7 @@ internal const val ATTACK_SOPHISTICATION_BONUS  = 0.04f
 internal const val DEFENSE_SOPHISTICATION_BONUS = 0.03f
 private const val FAITH_DRIFT_SCALE             = 0.05f
 private const val SKEPTICISM_RATE_CLAMP_MAX     = 2f
+internal const val SOPH_MOISTURE_CEILING        = 50
 
 fun tick(
     currentState: WorldState,
@@ -52,7 +53,7 @@ fun tick(
     targetTribeId: String? = null,
     random: Random = Random.Default,
 ): WorldState {
-    var state = currentState.copy(tiles = decayStep(currentState.tiles))
+    var state = currentState.copy(tiles = decayStep(currentState.tiles, currentState.tribes))
 
     val inspireDevoutEntries = mutableListOf<String>()
     var devoutExpectationsFired = false
@@ -483,12 +484,14 @@ internal fun conflictStep(state: WorldState, random: Random = Random.Default): W
     else state.copy(tiles = tiles, eventHistory = state.eventHistory + chronicleEntries)
 }
 
-fun decayStep(tiles: List<MapTile>): List<MapTile> = tiles.map { tile ->
+fun decayStep(tiles: List<MapTile>, tribes: Map<String, Tribe> = emptyMap()): List<MapTile> = tiles.map { tile ->
     val baseline = tile.biome.moistureBaseline
+    val sophLevel = tile.occupantTribeId?.let { id -> tribes[id]?.personality?.sophistication } ?: 0
+    val effectiveBaseline = minOf(baseline + sophLevel, SOPH_MOISTURE_CEILING)
     tile.copy(
         soilMoisture = when {
-            tile.soilMoisture > baseline -> maxOf(baseline, tile.soilMoisture - DECAY_DELTA)
-            tile.soilMoisture < baseline -> minOf(baseline, tile.soilMoisture + DECAY_DELTA)
+            tile.soilMoisture > effectiveBaseline -> maxOf(effectiveBaseline, tile.soilMoisture - DECAY_DELTA)
+            tile.soilMoisture < effectiveBaseline -> minOf(effectiveBaseline, tile.soilMoisture + DECAY_DELTA)
             else -> tile.soilMoisture
         },
         volatility = maxOf(0, tile.volatility - DECAY_DELTA),
