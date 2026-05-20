@@ -33,6 +33,10 @@ internal const val MAX_SOPHISTICATION = 10
 private val SOPHISTICATION_POP_MILESTONES      = listOf(500, 1000, 1500)
 private val SOPHISTICATION_DEVOTION_MILESTONES = listOf(75, 90)
 
+internal const val PRAYER_THRESHOLD = 60
+internal const val PRAYER_PRESSURE_CAP = 200f
+internal const val SKEPTICISM_DECAY_BASE = 10f
+
 fun tick(
     currentState: WorldState,
     action: DivineAction? = null,
@@ -43,7 +47,8 @@ fun tick(
 ): WorldState {
     var state = currentState.copy(tiles = decayStep(currentState.tiles))
 
-    if (action != null && state.divineFavor >= action.favorCost) {
+    val actionApplied = action != null && state.divineFavor >= action.favorCost
+    if (actionApplied) {
         val updatedTribes = state.tribes.mapValues { (_, tribe) ->
             val afterAction = when (action) {
                 DivineAction.CastRain      -> tribe
@@ -51,9 +56,11 @@ fun tick(
                 DivineAction.InspireDevout -> tribe.copy(devotion = minOf(100, tribe.devotion + 15))
                 DivineAction.CauseFamine   -> tribe.copy(foodSupply = maxOf(0, tribe.foodSupply - 80))
                 DivineAction.BlessHarvest  -> tribe.copy(foodSupply = tribe.foodSupply + 200)
+                null                       -> tribe
             }
-            val skepGain = (action.favorCost / 10f * tribe.personality.skepticismRate).roundToInt()
+            val skepGain = (action!!.favorCost / 10f * tribe.personality.skepticismRate).roundToInt()
             afterAction.copy(
+                prayerPressure = afterAction.prayerPressure * 0.5f,
                 personality = afterAction.personality.copy(
                     skepticism = minOf(100, afterAction.personality.skepticism + skepGain)
                 )
@@ -146,8 +153,37 @@ fun tick(
         } else tribe
     }
 
+    // Unanswered prayer pressure + passive skepticism decay
+    val prayerChronicleEntries = mutableListOf<String>()
+    val withPrayerDecay = withSophistication.mapValues { (_, tribe) ->
+        val newPressure = if (!actionApplied && tribe.devotion > PRAYER_THRESHOLD)
+            tribe.prayerPressure + (tribe.devotion - PRAYER_THRESHOLD).toFloat()
+        else tribe.prayerPressure
+
+        val (finalPressure, skeptAfterPrayer) = if (newPressure >= PRAYER_PRESSURE_CAP) {
+            prayerChronicleEntries += "The prayers of ${tribe.name} go unanswered. Doubt spreads among the faithful."
+            0f to minOf(100, tribe.personality.skepticism + 1)
+        } else {
+            newPressure to tribe.personality.skepticism
+        }
+
+        val decayRate = maxOf(0.01f, tribe.personality.skepticismRate)
+        val newDecayBuffer = tribe.skepticismDecayBuffer + 1f / decayRate
+        val (finalDecayBuffer, skeptAfterDecay) = if (newDecayBuffer >= SKEPTICISM_DECAY_BASE) {
+            0f to maxOf(0, skeptAfterPrayer - 1)
+        } else {
+            newDecayBuffer to skeptAfterPrayer
+        }
+
+        tribe.copy(
+            prayerPressure = finalPressure,
+            skepticismDecayBuffer = finalDecayBuffer,
+            personality = tribe.personality.copy(skepticism = skeptAfterDecay),
+        )
+    }
+
     // Devotion regen with skepticism penalty
-    val regenAmount = (withSophistication.values.maxOfOrNull { tribe ->
+    val regenAmount = (withPrayerDecay.values.maxOfOrNull { tribe ->
         val base = tribe.devotion * 3 / 100
         (base * (1f - tribe.personality.skepticism / 200f)).roundToInt()
     } ?: 0)
@@ -156,9 +192,9 @@ fun tick(
     val postTerritoryState = state.copy(
         worldTimeTick = state.worldTimeTick + 1,
         divineFavor = regenedFavor,
-        tribes = withSophistication,
-        tiles = territoryStep(state.tiles, withSophistication),
-        eventHistory = state.eventHistory + generationEntries + sophisticationEntries,
+        tribes = withPrayerDecay,
+        tiles = territoryStep(state.tiles, withPrayerDecay),
+        eventHistory = state.eventHistory + generationEntries + sophisticationEntries + prayerChronicleEntries,
     )
     val postTickState = splitStep(postTerritoryState, random, personalities)
 

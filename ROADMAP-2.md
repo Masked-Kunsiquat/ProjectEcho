@@ -299,13 +299,13 @@ When a divine action **is** applied: halve `prayerPressure` on the targeted trib
 Rather than −1 every tick (too fast), decay fires every `SKEPTICISM_DECAY_BASE * skepticismRate` ticks, where `SKEPTICISM_DECAY_BASE ≈ 10`. Tribes with low `skepticismRate` (agrarian 0.6, maritime 0.5) forget quickly — decay fires ~every 6–7 ticks. Warlike (1.4) and reclusive (1.2) hold grudges — decay fires ~every 14 ticks. Implementation: `skepticismDecayBuffer += 1f / tribe.personality.skepticismRate` each tick; when buffer ≥ `SKEPTICISM_DECAY_BASE`, decrement skepticism and reset buffer (mirrors prayerPressure pattern).
 
 ### Checklist
-- [ ] Add `prayerPressure: Float = 0f` and `skepticismDecayBuffer: Float = 0f` to `Tribe` (both serialized, backward-compatible defaults)
-- [ ] In `applyDivineAction`: halve `prayerPressure` on the targeted tribe (`tribe.prayerPressure *= 0.5f`) — partial answer, not full reset
-- [ ] In `tick()`, after survival phase, if `tribe.devotion > PRAYER_THRESHOLD` and no divine action was applied to this tribe this tick: `prayerPressure += (tribe.devotion - PRAYER_THRESHOLD).toFloat()`; if devotion ≤ `PRAYER_THRESHOLD`, leave `prayerPressure` unchanged (freeze); when `prayerPressure >= PRAYER_PRESSURE_CAP`: `skepticism = min(100, skepticism + 1)`, `prayerPressure = 0f`, append Chronicle entry
-- [ ] In `tick()`, accumulate `skepticismDecayBuffer += 1f / tribe.personality.skepticismRate` each tick; when buffer ≥ `SKEPTICISM_DECAY_BASE`: `skepticism = max(0, skepticism - 1)`, reset buffer
-- [ ] Tune `PRAYER_THRESHOLD`, `PRAYER_PRESSURE_CAP`, and `SKEPTICISM_DECAY_BASE` against a live session; document chosen values as named constants in `GameLoop.kt`
-- [ ] Add unanswered-prayer Chronicle event text to `events.json` (or inline in `GameLoop` if one-off) — e.g. *"The prayers of {{tribeName}} go unanswered. Doubt spreads among the faithful."*
-- [ ] Write unit tests: prayerPressure accumulates only when devout and no action applied, freezes when devotion drops below threshold, halves on divine action, converts correctly at cap with Chronicle appended, skepticism decays faster for low-skepticismRate archetypes, prayerPressure survives generational turnover unchanged
+- [x] Add `prayerPressure: Float = 0f` and `skepticismDecayBuffer: Float = 0f` to `Tribe` (both serialized, backward-compatible defaults)
+- [x] In `applyDivineAction`: halve `prayerPressure` on the targeted tribe (`tribe.prayerPressure *= 0.5f`) — partial answer, not full reset. Until Phase 12c adds `targetTribeId`, apply to **all** tribes as a temporary simplification (god acted; everyone feels it)
+- [x] In `tick()`, after survival phase, if `tribe.devotion > PRAYER_THRESHOLD` and no divine action was applied to this tribe this tick: `prayerPressure += (tribe.devotion - PRAYER_THRESHOLD).toFloat()`; if devotion ≤ `PRAYER_THRESHOLD`, leave `prayerPressure` unchanged (freeze); when `prayerPressure >= PRAYER_PRESSURE_CAP`: `skepticism = min(100, skepticism + 1)`, `prayerPressure = 0f`, append Chronicle entry
+- [x] In `tick()`, accumulate `skepticismDecayBuffer += 1f / tribe.personality.skepticismRate` each tick; when buffer ≥ `SKEPTICISM_DECAY_BASE`: `skepticism = max(0, skepticism - 1)`, reset buffer
+- [x] Tune `PRAYER_THRESHOLD`, `PRAYER_PRESSURE_CAP`, and `SKEPTICISM_DECAY_BASE` against a live session; document chosen values as named constants in `GameLoop.kt`
+- [x] Add unanswered-prayer Chronicle event text to `events.json` (or inline in `GameLoop` if one-off) — e.g. *"The prayers of {{tribeName}} go unanswered. Doubt spreads among the faithful."*
+- [x] Write unit tests: prayerPressure accumulates only when devout and no action applied, freezes when devotion drops below threshold, halves on divine action, converts correctly at cap with Chronicle appended, skepticism decays faster for low-skepticismRate archetypes, prayerPressure survives generational turnover unchanged — 172 tests pass
 - [ ] Smoke test: leave a high-devotion tribe unattended; observe skepticism climbing in Chronicle with "unanswered prayer" entries; intervene occasionally; observe pressure halving and stabilisation
 
 ---
@@ -321,7 +321,7 @@ The `aggression` weight from Phase 12b drives raid initiation probability. Borde
 - [ ] **Border detection** — utility function `getBorderTiles(tileId, tiles): List<Int>` returning tiles owned by a different tribe adjacent to the given tile; add to `TileNeighbors.kt`
 - [ ] **Raid resolution** — new `conflictStep(state, random)` in `GameLoop.kt` after `territoryStep`; for each pair of neighbouring tribes, roll `random.nextFloat() < aggressor.personality.aggression * (1 - defender.personality.caution)`; on success transfer one contested tile, append Chronicle entry (e.g., *"The Ironborn raid the Ashwood frontier."*)
 - [ ] **`territoryStep` release restored** — once conflict can transfer tiles, the Phase 12a sticky-territory suppression can be removed; weakened tribes now lose territory to neighbours organically rather than to the unclaimed pool
-- [ ] **Per-tribe divine targeting** — add `targetTribeId: String?` to `applyDivineAction` so `SendPlague` and `InspireDevout` can be directed at a specific tribe; UI: tapping a tribe's legend chip before pressing an action sets the target
+- [ ] **Per-tribe divine targeting** — add `targetTribeId: String?` to `applyDivineAction` so `SendPlague` and `InspireDevout` can be directed at a specific tribe; UI: tapping a tribe's legend chip before pressing an action sets the target; also replaces the Phase 12b-2 "halve all tribes" simplification — `prayerPressure *= 0.5f` now applies only to the targeted tribe
 - [ ] Write unit tests: border tile detection correct, raid roll fires only between neighbours, tile transfer updates `occupantTribeId`, Chronicle entry generated on raid
 - [ ] Smoke test: two tribes share a border; observe raid entries in Chronicle; map tiles change colour at the contested edge
 

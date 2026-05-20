@@ -11,4 +11,6 @@ data class Tribe(
     val foodSupply: Int,
     val personality: TribePersonality = TribePersonality.default(),
     val generationDeaths: Int = 0,
+    val prayerPressure: Float = 0f,
+    val skepticismDecayBuffer: Float = 0f,
 )
