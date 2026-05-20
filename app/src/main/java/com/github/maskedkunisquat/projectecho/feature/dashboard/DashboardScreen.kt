@@ -421,29 +421,35 @@ private fun ActionChip(
     val borderColor = if (enabled) MaterialTheme.colorScheme.primary
                       else MaterialTheme.colorScheme.surfaceVariant
 
-    TooltipBox(
-        positionProvider = TooltipDefaults.rememberTooltipPositionProvider(),
-        tooltip = { PlainTooltip { Text(tooltip) } },
-        state = rememberTooltipState(),
-        modifier = modifier,
+    // Outer Box owns the layout — weight(1f).aspectRatio(1f) unchanged from pre-tooltip code.
+    // TooltipBox sits inside as a pure interaction layer and never touches the size constraints.
+    Box(
+        modifier = modifier
+            .aspectRatio(1f),
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .aspectRatio(1f)
-                .clip(RoundedCornerShape(8.dp))
-                .background(containerColor)
-                .border(1.dp, borderColor, RoundedCornerShape(8.dp))
-                .then(if (enabled) Modifier.clickable(onClick = onClick) else Modifier),
-            contentAlignment = Alignment.Center,
+        TooltipBox(
+            positionProvider = TooltipDefaults.rememberTooltipPositionProvider(),
+            tooltip = { PlainTooltip { Text(tooltip) } },
+            state = rememberTooltipState(),
+            modifier = Modifier.fillMaxSize(),
         ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center,
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(containerColor)
+                    .border(1.dp, borderColor, RoundedCornerShape(8.dp))
+                    .then(if (enabled) Modifier.clickable(onClick = onClick) else Modifier),
+                contentAlignment = Alignment.Center,
             ) {
-                Text(text = label, style = MaterialTheme.typography.labelMedium, color = contentColor)
-                Spacer(modifier = Modifier.height(2.dp))
-                Text(text = "$FAVOR_ICON$cost", style = MaterialTheme.typography.labelSmall, color = contentColor)
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center,
+                ) {
+                    Text(text = label, style = MaterialTheme.typography.labelMedium, color = contentColor)
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(text = "$FAVOR_ICON$cost", style = MaterialTheme.typography.labelSmall, color = contentColor)
+                }
             }
         }
     }
