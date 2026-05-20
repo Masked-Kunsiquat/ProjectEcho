@@ -1,5 +1,7 @@
 package com.github.maskedkunisquat.projectecho
 
+import com.github.maskedkunisquat.projectecho.domain.model.MapTile
+import com.github.maskedkunisquat.projectecho.domain.rules.getBorderTiles
 import com.github.maskedkunisquat.projectecho.domain.rules.getNeighbors
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -72,5 +74,60 @@ class TileNeighborsTest {
         val tileA = 0  // top-left corner, triangle A
         val tileB = 1  // top-left corner, triangle B
         assertEquals(getNeighbors(tileA).size, getNeighbors(tileB).size)
+    }
+
+    // --- getBorderTiles ---
+
+    private fun tile(id: Int, col: Int, row: Int, owner: String? = null) =
+        MapTile(id = id, col = col, row = row, occupantTribeId = owner)
+
+    @Test
+    fun `getBorderTiles returns empty when tile has no occupant`() {
+        val tiles = listOf(
+            tile(0, col = 0, row = 0),                          // unowned
+            tile(1, col = 0, row = 0, owner = "beta"),          // neighbor, different tribe
+        )
+        assertEquals(emptyList<Int>(), getBorderTiles(0, tiles))
+    }
+
+    @Test
+    fun `getBorderTiles returns empty when no adjacent different-tribe tiles`() {
+        // tile 0 and 1 are partners (same cell); owned by same tribe
+        val tiles = listOf(
+            tile(0, col = 0, row = 0, owner = "alpha"),
+            tile(1, col = 0, row = 0, owner = "alpha"),
+        )
+        assertEquals(emptyList<Int>(), getBorderTiles(0, tiles))
+    }
+
+    @Test
+    fun `getBorderTiles returns ids of adjacent different-tribe tiles`() {
+        // cell (col=0,row=0): tileIds 0,1 — owned by alpha
+        // cell (col=1,row=0): tileIds 2,3 — owned by beta (adjacent, dCol=1)
+        val tiles = listOf(
+            tile(0, col = 0, row = 0, owner = "alpha"),
+            tile(1, col = 0, row = 0, owner = "alpha"),
+            tile(2, col = 1, row = 0, owner = "beta"),
+            tile(3, col = 1, row = 0, owner = "beta"),
+        )
+        val borders = getBorderTiles(0, tiles)
+        assertTrue(2 in borders)
+        assertTrue(3 in borders)
+        assertFalse(0 in borders)
+        assertFalse(1 in borders)
+    }
+
+    @Test
+    fun `getBorderTiles excludes unoccupied neighbors`() {
+        val tiles = listOf(
+            tile(0, col = 0, row = 0, owner = "alpha"),
+            tile(1, col = 0, row = 0),                    // partner, unoccupied
+            tile(2, col = 1, row = 0, owner = "beta"),    // different tribe
+            tile(3, col = 1, row = 0),                    // different cell, unoccupied
+        )
+        val borders = getBorderTiles(0, tiles)
+        assertTrue(2 in borders)
+        assertFalse(1 in borders)
+        assertFalse(3 in borders)
     }
 }

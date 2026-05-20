@@ -72,7 +72,7 @@ class MainActivity : ComponentActivity() {
                     DashboardScreen(
                         worldState = worldState,
                         onTickPressed = { viewModel.triggerTick() },
-                        onActionPressed = { action, tileId -> viewModel.applyDivineAction(action, tileId) },
+                        onActionPressed = { action, tileId, tribeId -> viewModel.applyDivineAction(action, tileId, tribeId) },
                         snackbarHostState = snackbarHostState,
                         isChronicleVisible = isChronicleVisible,
                         onShowChronicle = { isChronicleVisible = true },

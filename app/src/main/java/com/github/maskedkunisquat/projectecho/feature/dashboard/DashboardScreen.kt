@@ -64,7 +64,7 @@ private const val FAVOR_ICON = "⚡︎"
 fun DashboardScreen(
     worldState: WorldState,
     onTickPressed: () -> Unit,
-    onActionPressed: (DivineAction, Int?) -> Unit,
+    onActionPressed: (DivineAction, Int?, String?) -> Unit,
     snackbarHostState: SnackbarHostState,
     isChronicleVisible: Boolean,
     onShowChronicle: () -> Unit,
@@ -111,6 +111,7 @@ fun DashboardScreen(
 
     var hoveredTileId by remember { mutableStateOf<Int?>(null) }
     var detailTribeId by remember { mutableStateOf<String?>(null) }
+    var selectedTribeId by remember { mutableStateOf<String?>(null) }
     detailTribeId?.let { tribeId ->
         worldState.tribes[tribeId]?.let { tribe ->
             val occupiedTiles = worldState.tiles.filter { it.occupantTribeId == tribeId }
@@ -197,7 +198,11 @@ fun DashboardScreen(
                 TribeLegendChip(
                     tribe = tribe,
                     tribeColor = tribeColorMap[tribe.tribeId] ?: TRIBE_COLORS[0],
-                    onClick = { detailTribeId = tribe.tribeId },
+                    selected = selectedTribeId == tribe.tribeId,
+                    onSelect = {
+                        selectedTribeId = if (selectedTribeId == tribe.tribeId) null else tribe.tribeId
+                    },
+                    onOpenDetail = { detailTribeId = tribe.tribeId },
                 )
             }
         }
@@ -211,8 +216,9 @@ fun DashboardScreen(
         ActionPanel(
             divineFavor = worldState.divineFavor,
             onActionPressed = { action ->
-                onActionPressed(action, hoveredTileId)
+                onActionPressed(action, hoveredTileId, selectedTribeId)
                 hoveredTileId = null
+                selectedTribeId = null
             },
             modifier = Modifier
                 .fillMaxWidth()
@@ -287,14 +293,19 @@ private fun TribeDetailSheet(
 private fun TribeLegendChip(
     tribe: Tribe,
     tribeColor: Color,
-    onClick: () -> Unit,
+    selected: Boolean,
+    onSelect: () -> Unit,
+    onOpenDetail: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val borderColor = if (selected) MaterialTheme.colorScheme.primary
+                      else MaterialTheme.colorScheme.surfaceVariant
+    val borderWidth = if (selected) 2.dp else 1.dp
     Row(
         modifier = modifier
             .clip(RoundedCornerShape(8.dp))
-            .border(1.dp, MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(8.dp))
-            .clickable(onClick = onClick)
+            .border(borderWidth, borderColor, RoundedCornerShape(8.dp))
+            .clickable(onClick = onSelect)
             .padding(horizontal = 12.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -304,7 +315,7 @@ private fun TribeLegendChip(
                 .size(10.dp)
                 .background(tribeColor, CircleShape),
         )
-        Column {
+        Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = tribe.name,
                 style = MaterialTheme.typography.bodyMedium,
@@ -320,6 +331,7 @@ private fun TribeLegendChip(
             text = "▸",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.clickable(onClick = onOpenDetail),
         )
     }
 }
@@ -560,7 +572,7 @@ private fun DashboardScreenPreview() {
         DashboardScreen(
             worldState = WorldState.initial(),
             onTickPressed = {},
-            onActionPressed = { _, _ -> },  // preview stub
+            onActionPressed = { _, _, _ -> },  // preview stub
             snackbarHostState = remember { SnackbarHostState() },
             isChronicleVisible = false,
             onShowChronicle = {},

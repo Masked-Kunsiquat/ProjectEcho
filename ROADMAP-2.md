@@ -318,11 +318,11 @@ Rather than −1 every tick (too fast), decay fires every `SKEPTICISM_DECAY_BASE
 
 The `aggression` weight from Phase 12b drives raid initiation probability. Border tiles — tiles owned by tribe A adjacent to tiles owned by tribe B — are conflict candidates. Each tick, for each pair of neighbouring tribes, a raid roll is made weighted by the aggressor's `aggression` and the defender's `caution`. On success, one border tile transfers. This replaces the current sticky-territory workaround from Phase 12a.
 
-- [ ] **Border detection** — utility function `getBorderTiles(tileId, tiles): List<Int>` returning tiles owned by a different tribe adjacent to the given tile; add to `TileNeighbors.kt`
-- [ ] **Raid resolution** — new `conflictStep(state, random)` in `GameLoop.kt` after `territoryStep`; for each pair of neighbouring tribes, roll `random.nextFloat() < aggressor.personality.aggression * (1 - defender.personality.caution)`; on success transfer one contested tile, append Chronicle entry (e.g., *"The Ironborn raid the Ashwood frontier."*)
-- [ ] **`territoryStep` release restored** — once conflict can transfer tiles, the Phase 12a sticky-territory suppression can be removed; weakened tribes now lose territory to neighbours organically rather than to the unclaimed pool
-- [ ] **Per-tribe divine targeting** — add `targetTribeId: String?` to `applyDivineAction` so `SendPlague` and `InspireDevout` can be directed at a specific tribe; UI: tapping a tribe's legend chip before pressing an action sets the target; also replaces the Phase 12b-2 "halve all tribes" simplification — `prayerPressure *= 0.5f` now applies only to the targeted tribe
-- [ ] Write unit tests: border tile detection correct, raid roll fires only between neighbours, tile transfer updates `occupantTribeId`, Chronicle entry generated on raid
+- [x] **Border detection** — utility function `getBorderTiles(tileId, tiles): List<Int>` returning tiles owned by a different tribe adjacent to the given tile; add to `TileNeighbors.kt`
+- [x] **Raid resolution** — new `conflictStep(state, random)` in `GameLoop.kt` after `territoryStep`; for each pair of neighbouring tribes, roll `random.nextFloat() < aggressor.personality.aggression * (1 - defender.personality.caution)`; on success transfer one contested tile, append Chronicle entry (e.g., *"The Ironborn raid the Ashwood frontier."*)
+- [x] **`territoryStep` release restored** — once conflict can transfer tiles, the Phase 12a sticky-territory suppression can be removed; weakened tribes now lose territory to neighbours organically rather than to the unclaimed pool
+- [x] **Per-tribe divine targeting** — add `targetTribeId: String?` to `applyDivineAction` so `SendPlague` and `InspireDevout` can be directed at a specific tribe; UI: tapping a tribe's legend chip before pressing an action sets the target; also replaces the Phase 12b-2 "halve all tribes" simplification — `prayerPressure *= 0.5f` now applies only to the targeted tribe
+- [x] Write unit tests: border tile detection correct, raid roll fires only between neighbours, tile transfer updates `occupantTribeId`, Chronicle entry generated on raid — 182 tests pass
 - [ ] Smoke test: two tribes share a border; observe raid entries in Chronicle; map tiles change colour at the contested edge
 
 ---

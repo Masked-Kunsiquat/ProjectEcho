@@ -345,10 +345,10 @@ class GameLoopTest {
     }
 
     @Test
-    fun `territoryStep - release branch suppressed in multi-tribe world`() {
-        // Same excess as above, but a second tribe exists → no tiles released
-        val tilesA = (0 until 20).map { i -> makeTile(i,      "alpha") }
-        val tilesB = (20 until 30).map { i -> makeTile(i,     "beta") }
+    fun `territoryStep - release branch runs in multi-tribe world`() {
+        // Phase 12c restores release for multi-tribe; same excess as single-tribe case → 17 released
+        val tilesA = (0 until 20).map { i -> makeTile(i,  "alpha") }
+        val tilesB = (20 until 30).map { i -> makeTile(i, "beta") }
         val tribes = mapOf(
             "alpha" to Tribe("alpha", "Alpha", population = 10, devotion = 50, foodSupply = 100),
             "beta"  to Tribe("beta",  "Beta",  population = 10, devotion = 50, foodSupply = 100),
@@ -356,6 +356,6 @@ class GameLoopTest {
 
         val result = territoryStep(tilesA + tilesB, tribes)
 
-        assertEquals(20, result.count { it.occupantTribeId == "alpha" })
+        assertEquals(3, result.count { it.occupantTribeId == "alpha" })
     }
 }

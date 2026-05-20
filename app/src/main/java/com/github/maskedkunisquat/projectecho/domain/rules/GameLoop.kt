@@ -43,28 +43,32 @@ fun tick(
     events: List<SimEvent> = emptyList(),
     targetCluster: List<Int> = emptyList(),
     personalities: List<TribePersonality> = emptyList(),
+    targetTribeId: String? = null,
     random: Random = Random.Default,
 ): WorldState {
     var state = currentState.copy(tiles = decayStep(currentState.tiles))
 
     val actionApplied = action != null && state.divineFavor >= action.favorCost
     if (actionApplied) {
-        val updatedTribes = state.tribes.mapValues { (_, tribe) ->
-            val afterAction = when (action) {
+        val updatedTribes = state.tribes.mapValues { (id, tribe) ->
+            val isTarget = targetTribeId == null || id == targetTribeId
+            val afterAction = if (isTarget) when (action) {
                 DivineAction.CastRain      -> tribe
                 DivineAction.SendPlague    -> tribe.copy(population = (tribe.population * 0.8).roundToInt())
                 DivineAction.InspireDevout -> tribe.copy(devotion = minOf(100, tribe.devotion + 15))
                 DivineAction.CauseFamine   -> tribe.copy(foodSupply = maxOf(0, tribe.foodSupply - 80))
                 DivineAction.BlessHarvest  -> tribe.copy(foodSupply = tribe.foodSupply + 200)
                 null                       -> tribe
-            }
-            val skepGain = (action!!.favorCost / 10f * tribe.personality.skepticismRate).roundToInt()
-            afterAction.copy(
-                prayerPressure = afterAction.prayerPressure * 0.5f,
-                personality = afterAction.personality.copy(
-                    skepticism = minOf(100, afterAction.personality.skepticism + skepGain)
+            } else tribe
+            if (isTarget) {
+                val skepGain = (action!!.favorCost / 10f * tribe.personality.skepticismRate).roundToInt()
+                afterAction.copy(
+                    prayerPressure = afterAction.prayerPressure * 0.5f,
+                    personality = afterAction.personality.copy(
+                        skepticism = minOf(100, afterAction.personality.skepticism + skepGain)
+                    )
                 )
-            )
+            } else afterAction
         }
         val effectiveCluster = if (action == DivineAction.CastRain && targetCluster.isEmpty()) {
             state.tiles.filter { it.occupantTribeId != null }.map { it.id }
@@ -196,7 +200,8 @@ fun tick(
         tiles = territoryStep(state.tiles, withPrayerDecay),
         eventHistory = state.eventHistory + generationEntries + sophisticationEntries + prayerChronicleEntries,
     )
-    val postTickState = splitStep(postTerritoryState, random, personalities)
+    val postConflictState = conflictStep(postTerritoryState, random)
+    val postTickState = splitStep(postConflictState, random, personalities)
 
     val currentTick = postTickState.worldTimeTick
     val eligibleEvents = events.filter { event ->
@@ -279,7 +284,7 @@ internal fun territoryStep(tiles: List<MapTile>, tribes: Map<String, Tribe>): Li
         val expected = maxOf(0, tribe.population * GRID_SIZE / 500)
         val occupiedIndices = working.indices.filter { working[it].occupantTribeId == tribeId }
         val excess = occupiedIndices.size - expected
-        if (excess > 0 && tribes.size == 1) {
+        if (excess > 0) {
             occupiedIndices.takeLast(excess).forEach { idx ->
                 working[idx] = working[idx].copy(occupantTribeId = null)
             }
@@ -399,6 +404,41 @@ internal fun splitStep(
         )
     }
     return state
+}
+
+internal fun conflictStep(state: WorldState, random: Random = Random.Default): WorldState {
+    if (state.tribes.size < 2) return state
+
+    val tribeIds = state.tribes.keys.toList()
+    val chronicleEntries = mutableListOf<String>()
+    var tiles = state.tiles
+
+    for (aggressorId in tribeIds) {
+        val aggressor = state.tribes[aggressorId] ?: continue
+        for (defenderId in tribeIds) {
+            if (aggressorId == defenderId) continue
+            val defender = state.tribes[defenderId] ?: continue
+
+            val aggressorTileIds = tiles.filter { it.occupantTribeId == aggressorId }.map { it.id }.toHashSet()
+            val defenderBorderTiles = tiles.filter { tile ->
+                tile.occupantTribeId == defenderId &&
+                getNeighbors(tile.id).any { it in aggressorTileIds }
+            }
+            if (defenderBorderTiles.isEmpty()) continue
+
+            val threshold = aggressor.personality.aggression * (1f - defender.personality.caution)
+            if (random.nextFloat() < threshold) {
+                val target = defenderBorderTiles.random(random)
+                tiles = tiles.map { t ->
+                    if (t.id == target.id) t.copy(occupantTribeId = aggressorId) else t
+                }
+                chronicleEntries += "The ${aggressor.name} raid the ${defender.name} frontier."
+            }
+        }
+    }
+
+    return if (chronicleEntries.isEmpty()) state
+    else state.copy(tiles = tiles, eventHistory = state.eventHistory + chronicleEntries)
 }
 
 fun decayStep(tiles: List<MapTile>): List<MapTile> = tiles.map { tile ->

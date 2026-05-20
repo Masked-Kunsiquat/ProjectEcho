@@ -40,6 +40,7 @@ class GameViewModel(
 
     private var pendingAction: DivineAction? = null
     private var pendingCluster: List<Int> = emptyList()
+    private var pendingTribeTarget: String? = null
 
     @Volatile
     private var simEvents: List<SimEvent> = emptyList()
@@ -82,9 +83,10 @@ class GameViewModel(
      * Only one action can be pending at a time; a second call before the next tick
      * replaces the previous one.
      */
-    fun applyDivineAction(action: DivineAction, targetTileId: Int? = null) {
+    fun applyDivineAction(action: DivineAction, targetTileId: Int? = null, targetTribeId: String? = null) {
         pendingAction = action
         pendingCluster = targetTileId?.let { listOf(it) + getNeighbors(it) } ?: emptyList()
+        pendingTribeTarget = targetTribeId
     }
 
     /**
@@ -95,9 +97,11 @@ class GameViewModel(
     fun triggerTick() {
         val action = pendingAction
         val cluster = pendingCluster
+        val tribeTarget = pendingTribeTarget
         pendingAction = null
         pendingCluster = emptyList()
-        val newState = tick(_worldState.value, action, simEvents, cluster, personalities)
+        pendingTribeTarget = null
+        val newState = tick(_worldState.value, action, simEvents, cluster, personalities, targetTribeId = tribeTarget)
         _worldState.value = newState
         viewModelScope.launch(ioDispatcher) {
             runCatching { repository.save(newState) }
