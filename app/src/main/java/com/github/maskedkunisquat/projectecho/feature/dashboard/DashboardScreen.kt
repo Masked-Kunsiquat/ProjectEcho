@@ -52,12 +52,33 @@ import com.github.maskedkunisquat.projectecho.domain.model.EnvironmentalPhase
 import com.github.maskedkunisquat.projectecho.domain.model.GRID_COLS
 import com.github.maskedkunisquat.projectecho.domain.model.GRID_ROWS
 import com.github.maskedkunisquat.projectecho.domain.model.Tribe
+import com.github.maskedkunisquat.projectecho.domain.model.TribeNeed
 import com.github.maskedkunisquat.projectecho.domain.model.WorldState
 import com.github.maskedkunisquat.projectecho.ui.theme.TRIBE_COLORS
 import com.github.maskedkunisquat.projectecho.ui.theme.ProjectEchoTheme
 
 // U+26A1 + U+FE0E forces text presentation so the glyph inherits Compose color styling
 private const val FAVOR_ICON = "⚡︎"
+
+// Need indicator glyphs — U+FE0E forces text presentation where needed
+private const val ICON_PARCHED    = "☀︎"  // U+2600 + U+FE0E
+private const val ICON_HUNGRY     = "⊙"   // U+2299
+private const val ICON_STARVING   = "☠︎"  // U+2620 + U+FE0E
+private const val ICON_ENDANGERED = "⚠︎"  // U+26A0 + U+FE0E
+private const val ICON_THREAT     = "⚔︎"  // U+2694 + U+FE0E
+private const val ICON_SPIRITUAL  = "✦"   // U+2726
+private const val ICON_CROWDED    = "⊕"   // U+2295
+
+private fun TribeNeed.icon(): String? = when (this) {
+    TribeNeed.Parched            -> ICON_PARCHED
+    TribeNeed.Hungry             -> ICON_HUNGRY
+    TribeNeed.Starving           -> ICON_STARVING
+    TribeNeed.Endangered         -> ICON_ENDANGERED
+    TribeNeed.UnderThreat        -> ICON_THREAT
+    TribeNeed.SpirituallyDepleted -> ICON_SPIRITUAL
+    TribeNeed.Overcrowded        -> ICON_CROWDED
+    TribeNeed.Thriving           -> null
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -202,9 +223,12 @@ fun DashboardScreen(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             items(worldState.tribes.values.toList(), key = { it.tribeId }) { tribe ->
+                val ownedTiles = worldState.tiles.filter { it.occupantTribeId == tribe.tribeId }
+                val needs = tribe.needs(ownedTiles, worldState.worldTimeTick)
                 TribeLegendChip(
                     tribe = tribe,
                     tribeColor = tribeColorMap[tribe.tribeId] ?: TRIBE_COLORS[0],
+                    needs = needs,
                     selected = selectedTribeId == tribe.tribeId,
                     onSelect = {
                         selectedTribeId = if (selectedTribeId == tribe.tribeId) null else tribe.tribeId
@@ -300,6 +324,7 @@ private fun TribeDetailSheet(
 private fun TribeLegendChip(
     tribe: Tribe,
     tribeColor: Color,
+    needs: Set<TribeNeed>,
     selected: Boolean,
     onSelect: () -> Unit,
     onOpenDetail: () -> Unit,
@@ -308,6 +333,7 @@ private fun TribeLegendChip(
     val borderColor = if (selected) MaterialTheme.colorScheme.primary
                       else MaterialTheme.colorScheme.surfaceVariant
     val borderWidth = if (selected) 2.dp else 1.dp
+    val needIcons = needs.mapNotNull { it.icon() }.joinToString("")
     Row(
         modifier = modifier
             .clip(RoundedCornerShape(8.dp))
@@ -327,6 +353,13 @@ private fun TribeLegendChip(
             style = MaterialTheme.typography.labelMedium,
             fontWeight = FontWeight.SemiBold,
         )
+        if (needIcons.isNotEmpty()) {
+            Text(
+                text = needIcons,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.error,
+            )
+        }
         Text(
             text = "▸",
             style = MaterialTheme.typography.labelSmall,

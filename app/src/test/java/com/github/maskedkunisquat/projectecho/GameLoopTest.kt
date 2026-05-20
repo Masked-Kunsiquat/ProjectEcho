@@ -215,7 +215,7 @@ class GameLoopTest {
     private fun splitReadyState(
         tribeId: String = "alpha",
         population: Int = 500,
-        foodSupply: Int = 1000,
+        foodSupply: Int = 3000,
         tileCount: Int = 50,
         currentTick: Long = 200L,
         lastSplitTick: Long = 0L,
@@ -303,7 +303,7 @@ class GameLoopTest {
     @Test
     fun `splitStep - food supply is conserved across the split`() {
         val tribeId = "alpha"
-        val originalFood = 1000
+        val originalFood = 3000
         val state = splitReadyState(tribeId = tribeId, foodSupply = originalFood)
 
         val result = splitStep(state)

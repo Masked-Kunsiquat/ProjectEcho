@@ -44,6 +44,7 @@ internal const val DEFENSE_SOPHISTICATION_BONUS = 0.03f
 private const val FAITH_DRIFT_SCALE             = 0.05f
 private const val SKEPTICISM_RATE_CLAMP_MAX     = 2f
 internal const val SOPH_MOISTURE_CEILING        = 50
+internal const val SPLIT_MIN_FOOD_TICKS         = 5
 
 fun tick(
     currentState: WorldState,
@@ -80,8 +81,18 @@ fun tick(
             if (isTarget) {
                 val skepGain = if (action is DivineAction.InspireDevout || action is DivineAction.Revelation) 0
                     else (action!!.favorCost / 10f * tribe.personality.skepticismRate).roundToInt()
+                val ownedTiles = state.tiles.filter { it.occupantTribeId == id }
+                val needs = tribe.needs(ownedTiles, state.worldTimeTick)
+                val primary = action!!.primaryNeed
+                val secondary = action.secondaryNeed
+                val relevance = when {
+                    primary != null && needs.contains(primary)     -> 1.0f
+                    secondary != null && needs.contains(secondary) -> 0.6f
+                    else                                           -> 0.2f
+                }
+                val pressureReset = afterAction.prayerPressure * (0.3f + 0.5f * relevance)
                 afterAction.copy(
-                    prayerPressure = afterAction.prayerPressure * 0.5f,
+                    prayerPressure = afterAction.prayerPressure - pressureReset,
                     personality = afterAction.personality.copy(
                         skepticism = minOf(100, afterAction.personality.skepticism + skepGain)
                     )
@@ -428,6 +439,9 @@ internal fun splitStep(
         val childName = TribeNameGenerator.generate(childId.hashCode())
         val parentPop  = (tribe.population  * SPLIT_PARENT_SHARE).roundToInt()
         val parentFood = (tribe.foodSupply  * SPLIT_PARENT_SHARE).roundToInt()
+        val childPop   = tribe.population  - parentPop
+        val childFood  = tribe.foodSupply  - parentFood
+        if (childFood < childPop * SPLIT_MIN_FOOD_TICKS) continue
 
         // Child personality: mutate each float by ±0.15 from parent
         val parentPersonality = tribe.personality
@@ -452,9 +466,9 @@ internal fun splitStep(
             m[childId] = Tribe(
                 tribeId        = childId,
                 name           = childName,
-                population     = tribe.population - parentPop,
+                population     = childPop,
                 devotion       = tribe.devotion,
-                foodSupply     = tribe.foodSupply - parentFood,
+                foodSupply     = childFood,
                 personality    = childPersonality,
                 generationDeaths = 0,
             )
@@ -475,6 +489,7 @@ internal fun conflictStep(state: WorldState, random: Random = Random.Default): W
 
     val tribeIds = state.tribes.keys.toList()
     val chronicleEntries = mutableListOf<String>()
+    val raidedTribeIds = mutableSetOf<String>()
     var tiles = state.tiles
 
     for (aggressorId in tribeIds) {
@@ -503,13 +518,20 @@ internal fun conflictStep(state: WorldState, random: Random = Random.Default): W
                 tiles = tiles.map { t ->
                     if (t.id == target.id) t.copy(occupantTribeId = aggressorId) else t
                 }
+                raidedTribeIds += defenderId
                 chronicleEntries += "The ${aggressor.name} raid the ${defender.name} frontier."
             }
         }
     }
 
-    return if (chronicleEntries.isEmpty()) state
-    else state.copy(tiles = tiles, eventHistory = state.eventHistory + chronicleEntries)
+    return if (chronicleEntries.isEmpty() && raidedTribeIds.isEmpty()) state
+    else state.copy(
+        tiles = tiles,
+        tribes = if (raidedTribeIds.isEmpty()) state.tribes else state.tribes.mapValues { (id, tribe) ->
+            if (id in raidedTribeIds) tribe.copy(lastRaidTick = state.worldTimeTick) else tribe
+        },
+        eventHistory = state.eventHistory + chronicleEntries,
+    )
 }
 
 fun decayStep(tiles: List<MapTile>, tribes: Map<String, Tribe> = emptyMap()): List<MapTile> = tiles.map { tile ->

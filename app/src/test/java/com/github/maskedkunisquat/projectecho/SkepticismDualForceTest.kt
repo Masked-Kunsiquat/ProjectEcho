@@ -71,10 +71,22 @@ class SkepticismDualForceTest {
         assertEquals(50f, after.tribes["t1"]!!.prayerPressure, 0.01f)
     }
 
-    @Test fun `prayerPressure halves when divine action applied`() {
-        val tribe = devoutTribe(prayerPressure = 100f)
+    @Test fun `prayerPressure is reduced when divine action applied (mismatched need → 0·2 relevance)`() {
+        // tribe is Hungry (food=10 < pop=50 × 3=150) but not SpirituallyDepleted
+        // InspireDevout.primaryNeed = SpirituallyDepleted → relevance 0.2f
+        // pressureReset = 100f × (0.3 + 0.5 × 0.2) = 40f → newPressure = 60f
+        val tribe = devoutTribe(prayerPressure = 100f, foodSupply = 10, population = 50)
         val after = tick(stateWith(tribe, divineFavor = 100), action = DivineAction.InspireDevout)
-        assertEquals(50f, after.tribes["t1"]!!.prayerPressure, 0.01f)
+        assertEquals(60f, after.tribes["t1"]!!.prayerPressure, 0.01f)
+    }
+
+    @Test fun `prayerPressure resets fully on matched divine action (relevance 1·0)`() {
+        // tribe is SpirituallyDepleted: skepticism=70 > 60, devotion=20 < 40
+        // InspireDevout.primaryNeed = SpirituallyDepleted → relevance 1.0f
+        // pressureReset = 100f × (0.3 + 0.5 × 1.0) = 80f → newPressure = 20f
+        val tribe = devoutTribe(prayerPressure = 100f, devotion = 20, skepticism = 70, foodSupply = 10_000)
+        val after = tick(stateWith(tribe, divineFavor = 100), action = DivineAction.InspireDevout)
+        assertEquals(20f, after.tribes["t1"]!!.prayerPressure, 0.01f)
     }
 
     @Test fun `prayerPressure does not accumulate on same tick action is applied`() {
@@ -152,7 +164,7 @@ class SkepticismDualForceTest {
     @Test fun `prayerPressure survives generational turnover unchanged`() {
         // Set generationDeaths just below the trigger (halfPop = pop/2).
         // Send a plague to kill 20% and tip over the threshold.
-        // prayerPressure is halved by the action, then preserved through turnover.
+        // prayerPressure is reduced by the action, then preserved through turnover.
         val tribe = devoutTribe(
             devotion = 30,          // below PRAYER_THRESHOLD, no accumulation
             skepticism = 20,
@@ -164,7 +176,8 @@ class SkepticismDualForceTest {
         val after = tick(stateWith(tribe, divineFavor = 100), action = DivineAction.SendPlague)
         val result = after.tribes["t1"]!!
         assertTrue("Generational turnover should have fired", after.eventHistory.any { "new generation" in it })
-        // prayerPressure halved by action (75 * 0.5 = 37.5), then preserved through turnover
-        assertEquals(37.5f, result.prayerPressure, 0.1f)
+        // tribe is Hungry+Starving (food=0); SendPlague has no primaryNeed → relevance 0.2f
+        // pressureReset = 75f × (0.3 + 0.5 × 0.2) = 30f → newPressure = 45f, preserved through turnover
+        assertEquals(45f, result.prayerPressure, 0.1f)
     }
 }
