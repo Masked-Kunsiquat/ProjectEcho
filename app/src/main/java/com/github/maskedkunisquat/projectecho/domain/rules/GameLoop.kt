@@ -37,10 +37,12 @@ internal const val PRAYER_THRESHOLD = 60
 internal const val PRAYER_PRESSURE_CAP = 200f
 internal const val SKEPTICISM_DECAY_BASE = 10f
 
-// devotion / divisor yields suppression fraction: at devotion 100 → 50% raid suppression
 internal const val RAID_DEVOTION_SUPPRESSION_DIVISOR = 200f
-// tribes above this devotion level are spiritually cohesive and skip the split trigger
 internal const val SPLIT_DEVOTION_CAP = 80
+internal const val ATTACK_SOPHISTICATION_BONUS  = 0.04f
+internal const val DEFENSE_SOPHISTICATION_BONUS = 0.03f
+private const val FAITH_DRIFT_SCALE             = 0.05f
+private const val SKEPTICISM_RATE_CLAMP_MAX     = 2f
 
 fun tick(
     currentState: WorldState,
@@ -178,7 +180,12 @@ fun tick(
         val expectedSoph = popMet + devMet
         if (tribe.personality.sophistication < expectedSoph) {
             sophisticationEntries += "The ${tribe.name} advances — their mastery of the land deepens."
-            tribe.copy(personality = tribe.personality.copy(sophistication = tribe.personality.sophistication + 1))
+            val faithDrift = (1f - tribe.personality.traditionalism) * FAITH_DRIFT_SCALE
+            val newRate = (tribe.personality.skepticismRate + faithDrift).coerceIn(0f, SKEPTICISM_RATE_CLAMP_MAX)
+            tribe.copy(personality = tribe.personality.copy(
+                sophistication = tribe.personality.sophistication + 1,
+                skepticismRate = newRate,
+            ))
         } else tribe
     }
 
@@ -455,8 +462,13 @@ internal fun conflictStep(state: WorldState, random: Random = Random.Default): W
             }
             if (defenderBorderTiles.isEmpty()) continue
 
+            val attackBonus  = 1f + aggressor.personality.sophistication * ATTACK_SOPHISTICATION_BONUS
+            val defenseBonus = 1f - defender.personality.sophistication * DEFENSE_SOPHISTICATION_BONUS
             val devotionSuppression = 1f - aggressor.devotion / RAID_DEVOTION_SUPPRESSION_DIVISOR
-            val threshold = aggressor.personality.aggression * (1f - defender.personality.caution) * devotionSuppression
+            val threshold = aggressor.personality.aggression *
+                            (1f - defender.personality.caution) *
+                            attackBonus * defenseBonus *
+                            devotionSuppression
             if (random.nextFloat() < threshold) {
                 val target = defenderBorderTiles.random(random)
                 tiles = tiles.map { t ->

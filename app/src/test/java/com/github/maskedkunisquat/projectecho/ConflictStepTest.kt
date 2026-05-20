@@ -179,4 +179,52 @@ class ConflictStepTest {
         val capturedTiles = result.tiles.filter { it.id in listOf(2, 3) && it.occupantTribeId == "alpha" }
         assertTrue("at least one beta tile should be owned by alpha", capturedTiles.isNotEmpty())
     }
+
+    @Test
+    fun `high-sophistication aggressor raids more often than low-sophistication aggressor`() {
+        // soph 0: threshold = 0.5 * 1.0 * 1.0 = 0.5
+        // soph 10: threshold = 0.5 * 1.0 * 1.4 = 0.7 → higher → more raids
+        val baseTiles = listOf(
+            tile(0, col = 0, row = 0, owner = "alpha"),
+            tile(1, col = 0, row = 0, owner = "alpha"),
+            tile(2, col = 1, row = 0, owner = "beta"),
+            tile(3, col = 1, row = 0, owner = "beta"),
+        )
+        fun raidCount(aggressorSoph: Int): Int {
+            val aggressor = tribe("alpha", "Alpha", aggression = 0.5f, caution = 0.0f)
+                .let { t -> t.copy(devotion = 0, personality = t.personality.copy(sophistication = aggressorSoph)) }
+            val defender = tribe("beta", "Beta", aggression = 0.0f, caution = 0.0f).copy(devotion = 0)
+            val state = worldWith(baseTiles, mapOf("alpha" to aggressor, "beta" to defender))
+            return (0 until 100).count { i ->
+                conflictStep(state, Random(i.toLong())).tiles.count { it.occupantTribeId == "alpha" } > 2
+            }
+        }
+        val lowSoph  = raidCount(0)
+        val highSoph = raidCount(10)
+        assertTrue("soph-10 aggressor ($highSoph raids) should out-raid soph-0 ($lowSoph raids)", highSoph > lowSoph)
+    }
+
+    @Test
+    fun `high-sophistication defender is raided less often than low-sophistication defender`() {
+        // soph 0: threshold = 0.7 * 1.0 * 1.0 = 0.7
+        // soph 10: threshold = 0.7 * 1.0 * 0.7 = 0.49 → lower → fewer raids succeed
+        val baseTiles = listOf(
+            tile(0, col = 0, row = 0, owner = "alpha"),
+            tile(1, col = 0, row = 0, owner = "alpha"),
+            tile(2, col = 1, row = 0, owner = "beta"),
+            tile(3, col = 1, row = 0, owner = "beta"),
+        )
+        fun raidCount(defenderSoph: Int): Int {
+            val aggressor = tribe("alpha", "Alpha", aggression = 0.7f, caution = 0.0f).copy(devotion = 0)
+            val defender = tribe("beta", "Beta", aggression = 0.0f, caution = 0.0f)
+                .let { t -> t.copy(devotion = 0, personality = t.personality.copy(sophistication = defenderSoph)) }
+            val state = worldWith(baseTiles, mapOf("alpha" to aggressor, "beta" to defender))
+            return (0 until 100).count { i ->
+                conflictStep(state, Random(i.toLong())).tiles.count { it.occupantTribeId == "alpha" } > 2
+            }
+        }
+        val lowDefSoph  = raidCount(0)
+        val highDefSoph = raidCount(10)
+        assertTrue("soph-10 defender ($highDefSoph raids taken) should be raided less than soph-0 ($lowDefSoph)", highDefSoph < lowDefSoph)
+    }
 }

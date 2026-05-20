@@ -43,7 +43,7 @@ Currently devotion affects only divine favor regen and the prayer threshold. Giv
 
 ### Military doctrine
 
-- [ ] In `conflictStep()`, replace the bare `aggression * (1 - caution)` threshold with a formula that includes sophistication:
+- [x] In `conflictStep()`, replace the bare `aggression * (1 - caution)` threshold with a formula that includes sophistication:
   ```kotlin
   attackBonus  = 1f + aggressor.personality.sophistication * 0.04f   // up to +40% at soph 10
   defenseBonus = 1f - defender.personality.sophistication * 0.03f    // up to -30% at soph 10
@@ -51,22 +51,22 @@ Currently devotion affects only divine favor regen and the prayer threshold. Giv
               (1f - defender.personality.caution) *
               attackBonus * defenseBonus
   ```
-- [ ] The existing archetype routing remains unchanged — this bonus matters more for a warlike tribe (high base aggression) than a reclusive one (low base)
-- [ ] Write unit tests: high-sophistication aggressor succeeds more raids on same seed; high-sophistication defender loses fewer tiles on same seed
+- [x] The existing archetype routing remains unchanged — this bonus matters more for a warlike tribe (high base aggression) than a reclusive one (low base)
+- [x] Write unit tests: high-sophistication aggressor succeeds more raids on same seed; high-sophistication defender loses fewer tiles on same seed
 
 ### Faith amplification
 
 The current model treats sophistication as always drifting toward secularism. Historically that's wrong: what correlates with secularism is *security and predictability*, not advancement itself. The real dial is `traditionalism`.
 
-- [ ] In `tick()`, at the sophistication milestone block (where `sophistication` is incremented): after incrementing, update `skepticismRate`:
+- [x] In `tick()`, at the sophistication milestone block (where `sophistication` is incremented): after incrementing, update `skepticismRate`:
   ```kotlin
   val faithDrift = (1f - tribe.personality.traditionalism) * 0.05f
   // clamp skepticismRate to [0f, 2f]
   ```
   At traditionalism 0.9 (reclusive/agrarian): drift ≈ +0.005 per milestone — nearly stable.
   At traditionalism 0.1 (nomadic): drift ≈ +0.045 per milestone — a restless tribe grows progressively quicker to doubt.
-- [ ] Because `traditionalism` is a personality field (on `TribePersonality`), `skepticismRate` drift should update `tribe.personality` via `.copy()`; no new stored fields needed
-- [ ] Write unit tests: low-traditionalism tribe's `skepticismRate` grows faster at each sophistication milestone than high-traditionalism tribe; high-traditionalism tribe's rate barely changes
+- [x] Because `traditionalism` is a personality field (on `TribePersonality`), `skepticismRate` drift should update `tribe.personality` via `.copy()`; no new stored fields needed
+- [x] Write unit tests: low-traditionalism tribe's `skepticismRate` grows faster at each sophistication milestone than high-traditionalism tribe; high-traditionalism tribe's rate barely changes
 
 ---
 
