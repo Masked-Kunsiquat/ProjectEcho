@@ -135,6 +135,33 @@ class ConflictStepTest {
     }
 
     @Test
+    fun `high-devotion aggressor raids less frequently than zero-devotion aggressor`() {
+        // devotion=0 → suppression=1.0 → threshold=1.0 → random.nextFloat() always < 1.0 → every trial raids
+        // devotion=100 → suppression=0.5 → threshold=0.5 → ~50% of trials raid
+        val tiles = listOf(
+            tile(0, col = 0, row = 0, owner = "alpha"),
+            tile(1, col = 0, row = 0, owner = "alpha"),
+            tile(2, col = 1, row = 0, owner = "beta"),
+            tile(3, col = 1, row = 0, owner = "beta"),
+        )
+        fun raidCount(devotion: Int, trials: Int): Int {
+            val state = worldWith(tiles, mapOf(
+                "alpha" to tribe("alpha", "Alpha", aggression = 1.0f, caution = 0.5f).copy(devotion = devotion),
+                "beta"  to tribe("beta",  "Beta",  aggression = 0.0f, caution = 0.0f),
+            ))
+            val rng = Random(seed = 42L)
+            var count = 0
+            repeat(trials) {
+                if (conflictStep(state, rng).tiles.count { it.occupantTribeId == "alpha" } > 2) count++
+            }
+            return count
+        }
+        val devout  = raidCount(devotion = 100, trials = 20)
+        val warlike = raidCount(devotion = 0,   trials = 20)
+        assertTrue("devout aggressor (devotion=100) should raid less often than zero-devotion aggressor", devout < warlike)
+    }
+
+    @Test
     fun `conflictStep updated tile has correct new owner`() {
         val tiles = listOf(
             tile(0, col = 0, row = 0, owner = "alpha"),

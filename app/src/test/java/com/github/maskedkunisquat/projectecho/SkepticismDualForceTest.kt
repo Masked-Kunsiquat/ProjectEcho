@@ -139,6 +139,14 @@ class SkepticismDualForceTest {
         )
     }
 
+    // --- InspireDevout skepticism fix ---
+
+    @Test fun `InspireDevout does not increase skepticism`() {
+        val tribe = devoutTribe(skepticism = 10)
+        val after = tick(stateWith(tribe, divineFavor = 100), action = DivineAction.InspireDevout)
+        assertEquals(10, after.tribes["t1"]!!.personality.skepticism)
+    }
+
     // --- Generational turnover ---
 
     @Test fun `prayerPressure survives generational turnover unchanged`() {

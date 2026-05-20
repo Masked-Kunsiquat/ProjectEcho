@@ -8,6 +8,7 @@ import com.github.maskedkunisquat.projectecho.domain.model.Tribe
 import com.github.maskedkunisquat.projectecho.domain.model.WorldState
 import com.github.maskedkunisquat.projectecho.domain.rules.SPLIT_COOLDOWN_TICKS
 import com.github.maskedkunisquat.projectecho.domain.rules.SPLIT_DENSITY_THRESHOLD
+import com.github.maskedkunisquat.projectecho.domain.rules.SPLIT_DEVOTION_CAP
 import com.github.maskedkunisquat.projectecho.domain.rules.SPLIT_MIN_POPULATION
 import com.github.maskedkunisquat.projectecho.domain.rules.splitStep
 import com.github.maskedkunisquat.projectecho.domain.rules.territoryStep
@@ -320,6 +321,16 @@ class GameLoopTest {
 
         val result = splitStep(state)
 
+        assertEquals(1, result.tribes.size)
+    }
+
+    @Test
+    fun `splitStep - blocked when tribe devotion exceeds SPLIT_DEVOTION_CAP`() {
+        // 500 pop / 50 tiles = density 10 > threshold, but devotion 90 > SPLIT_DEVOTION_CAP(80) → blocked
+        val state = splitReadyState().let { s ->
+            s.copy(tribes = s.tribes.mapValues { (_, t) -> t.copy(devotion = SPLIT_DEVOTION_CAP + 10) })
+        }
+        val result = splitStep(state)
         assertEquals(1, result.tribes.size)
     }
 
