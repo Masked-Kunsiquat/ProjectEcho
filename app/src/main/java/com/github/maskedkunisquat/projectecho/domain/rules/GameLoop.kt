@@ -37,6 +37,9 @@ internal const val PRAYER_THRESHOLD = 60
 internal const val PRAYER_PRESSURE_CAP = 200f
 internal const val SKEPTICISM_DECAY_BASE = 10f
 
+internal const val RAID_DEVOTION_SUPPRESSION_DIVISOR = 200f
+internal const val SPLIT_DEVOTION_CAP = 80
+
 fun tick(
     currentState: WorldState,
     action: DivineAction? = null,
@@ -60,7 +63,8 @@ fun tick(
                 null                       -> tribe
             } else tribe
             if (isTarget) {
-                val skepGain = (action!!.favorCost / 10f * tribe.personality.skepticismRate).roundToInt()
+                val skepGain = if (action is DivineAction.InspireDevout) 0
+                    else (action!!.favorCost / 10f * tribe.personality.skepticismRate).roundToInt()
                 afterAction.copy(
                     prayerPressure = afterAction.prayerPressure * 0.5f,
                     personality = afterAction.personality.copy(
@@ -348,6 +352,7 @@ internal fun splitStep(
         if (tribe.population < SPLIT_MIN_POPULATION) continue
         if (occupiedTiles.isEmpty()) continue
         if (tribe.population / occupiedTiles.size <= SPLIT_DENSITY_THRESHOLD) continue
+        if (tribe.devotion > SPLIT_DEVOTION_CAP) continue
 
         val centroidCol = occupiedTiles.map { it.col }.average()
         val centroidRow = occupiedTiles.map { it.row }.average()
@@ -425,7 +430,8 @@ internal fun conflictStep(state: WorldState, random: Random = Random.Default): W
             }
             if (defenderBorderTiles.isEmpty()) continue
 
-            val threshold = aggressor.personality.aggression * (1f - defender.personality.caution)
+            val devotionSuppression = 1f - aggressor.devotion / RAID_DEVOTION_SUPPRESSION_DIVISOR
+            val threshold = aggressor.personality.aggression * (1f - defender.personality.caution) * devotionSuppression
             if (random.nextFloat() < threshold) {
                 val target = defenderBorderTiles.random(random)
                 tiles = tiles.map { t ->

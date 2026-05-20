@@ -22,18 +22,18 @@ Phase numbering continues from ROADMAP-2 (1–12c).
 
 ### InspireDevout skepticism fix
 
-- [ ] In `GameLoop.kt`, locate the `skepGain` calculation applied after every divine action; add a guard so `InspireDevout` is exempt from the formula entirely (or optionally inverts it: small `skepticism -= 1`, clamped at 0)
-- [ ] Add a Chronicle event to `events.json` that fires when devotion crosses 60 after an InspireDevout action — e.g. *"The {{tribeName}} prays with renewed fervour. Their expectations of the divine have grown."* This surfaces the prayer-pressure paradox: inspiring faith raises expectations the player may not meet
-- [ ] Update unit tests in `SkepticismDualForceTest.kt` — assert that applying `InspireDevout` does not increase skepticism; update any test that assumed blanket skepticism gain applies to all actions
+- [x] In `GameLoop.kt`, locate the `skepGain` calculation applied after every divine action; add a guard so `InspireDevout` is exempt from the formula entirely (or optionally inverts it: small `skepticism -= 1`, clamped at 0)
+- [x] Add a Chronicle event to `events.json` that fires when devotion crosses 60 after an InspireDevout action — e.g. *"The {{tribeName}} prays with renewed fervour. Their expectations of the divine have grown."* This surfaces the prayer-pressure paradox: inspiring faith raises expectations the player may not meet
+- [x] Update unit tests in `SkepticismDualForceTest.kt` — assert that applying `InspireDevout` does not increase skepticism; update any test that assumed blanket skepticism gain applies to all actions
 
 ### Devotion behavioral hooks
 
 Currently devotion affects only divine favor regen and the prayer threshold. Give it actual influence over tribal decisions:
 
-- [ ] In `conflictStep()`: multiply raid threshold by `(1f - tribe.devotion / 200f)` for the aggressor — a tribe deep in prayer is less likely to initiate raids (at devotion 100: ~50% raid suppression; at devotion 0: no effect)
-- [ ] In `splitStep()`: add a devotion guard — skip split if the candidate tribe's devotion exceeds a threshold constant (e.g. `SPLIT_DEVOTION_CAP = 80`); spiritual cohesion holds the community together
-- [ ] Document both constants in `GameLoop.kt` with names (`RAID_DEVOTION_SUPPRESSION_DIVISOR`, `SPLIT_DEVOTION_CAP`)
-- [ ] Write unit tests: high-devotion tribe fails raid roll more often (seed-controlled), split blocked above cap
+- [x] In `conflictStep()`: multiply raid threshold by `(1f - tribe.devotion / 200f)` for the aggressor — a tribe deep in prayer is less likely to initiate raids (at devotion 100: ~50% raid suppression; at devotion 0: no effect)
+- [x] In `splitStep()`: add a devotion guard — skip split if the candidate tribe's devotion exceeds a threshold constant (e.g. `SPLIT_DEVOTION_CAP = 80`); spiritual cohesion holds the community together
+- [x] Document both constants in `GameLoop.kt` with names (`RAID_DEVOTION_SUPPRESSION_DIVISOR`, `SPLIT_DEVOTION_CAP`)
+- [x] Write unit tests: high-devotion tribe fails raid roll more often (seed-controlled), split blocked above cap
 
 ---
 
