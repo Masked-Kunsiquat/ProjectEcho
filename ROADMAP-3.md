@@ -44,7 +44,7 @@ Currently devotion affects only divine favor regen and the prayer threshold. Giv
 ### Military doctrine
 
 - [ ] In `conflictStep()`, replace the bare `aggression * (1 - caution)` threshold with a formula that includes sophistication:
-  ```
+  ```kotlin
   attackBonus  = 1f + aggressor.personality.sophistication * 0.04f   // up to +40% at soph 10
   defenseBonus = 1f - defender.personality.sophistication * 0.03f    // up to -30% at soph 10
   threshold = aggressor.personality.aggression *

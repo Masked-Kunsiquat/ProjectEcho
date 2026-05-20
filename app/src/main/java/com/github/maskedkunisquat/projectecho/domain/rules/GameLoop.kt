@@ -37,7 +37,9 @@ internal const val PRAYER_THRESHOLD = 60
 internal const val PRAYER_PRESSURE_CAP = 200f
 internal const val SKEPTICISM_DECAY_BASE = 10f
 
+// devotion / divisor yields suppression fraction: at devotion 100 → 50% raid suppression
 internal const val RAID_DEVOTION_SUPPRESSION_DIVISOR = 200f
+// tribes above this devotion level are spiritually cohesive and skip the split trigger
 internal const val SPLIT_DEVOTION_CAP = 80
 
 fun tick(
@@ -49,6 +51,9 @@ fun tick(
     random: Random = Random.Default,
 ): WorldState {
     var state = currentState.copy(tiles = decayStep(currentState.tiles))
+
+    val inspireDevoutEntries = mutableListOf<String>()
+    var devoutExpectationsFired = false
 
     val actionApplied = action != null && state.divineFavor >= action.favorCost
     if (actionApplied) {
@@ -81,6 +86,23 @@ fun tick(
             divineFavor = (state.divineFavor - action.favorCost).coerceIn(0, 100),
             tiles = applyClusterTileEffect(state.tiles, effectiveCluster, action),
         )
+
+        // Chronicle when InspireDevout pushes a targeted tribe's devotion across 60 for the first time
+        if (action is DivineAction.InspireDevout) {
+            val lastFired = currentState.eventCooldowns["devout_expectations"]
+            val cooldownOk = lastFired == null || (currentState.worldTimeTick + 1L) >= lastFired + 40L
+            if (cooldownOk) {
+                for ((id, updatedTribe) in state.tribes) {
+                    val isTarget = targetTribeId == null || id == targetTribeId
+                    val preDevotion = currentState.tribes[id]?.devotion ?: 0
+                    if (isTarget && preDevotion < 60 && updatedTribe.devotion >= 60) {
+                        inspireDevoutEntries += "The ${updatedTribe.name} prays with renewed fervour. Their expectations of the divine have grown."
+                        devoutExpectationsFired = true
+                        break
+                    }
+                }
+            }
+        }
     }
 
     // Survival + generational drift
@@ -202,7 +224,10 @@ fun tick(
         divineFavor = regenedFavor,
         tribes = withPrayerDecay,
         tiles = territoryStep(state.tiles, withPrayerDecay),
-        eventHistory = state.eventHistory + generationEntries + sophisticationEntries + prayerChronicleEntries,
+        eventHistory = state.eventHistory + generationEntries + sophisticationEntries + prayerChronicleEntries + inspireDevoutEntries,
+        eventCooldowns = if (devoutExpectationsFired)
+            state.eventCooldowns + ("devout_expectations" to state.worldTimeTick + 1L)
+        else state.eventCooldowns,
     )
     val postConflictState = conflictStep(postTerritoryState, random)
     val postTickState = splitStep(postConflictState, random)

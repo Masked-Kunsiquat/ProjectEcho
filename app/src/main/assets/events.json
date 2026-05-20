@@ -59,15 +59,6 @@
     ]
   },
   {
-    "id": "devout_expectations",
-    "cooldownTicks": 40,
-    "trigger": { "stat": "devotion", "operator": "gte", "threshold": 60 },
-    "texts": [
-      "The {{tribeName}} prays with renewed fervour. Their expectations of the divine have grown.",
-      "Faith swells within {{tribeName}}. The faithful now watch the heavens with greater hunger."
-    ]
-  },
-  {
     "id": "tribe_grows",
     "trigger": { "stat": "population", "operator": "gte", "threshold": 200 },
     "texts": [
