@@ -94,7 +94,7 @@ fun tick(
         state = state.copy(
             tribes = updatedTribes,
             divineFavor = (state.divineFavor - action.favorCost).coerceIn(0, 100),
-            tiles = applyClusterTileEffect(state.tiles, effectiveCluster, action),
+            tiles = applyClusterTileEffect(state.tiles, effectiveCluster, action, targetTribeId),
         )
 
         // Chronicle when InspireDevout pushes a targeted tribe's devotion across 60 for the first time
@@ -377,6 +377,7 @@ private fun applyClusterTileEffect(
     tiles: List<MapTile>,
     cluster: List<Int>,
     action: DivineAction,
+    targetTribeId: String? = null,
 ): List<MapTile> {
     if (cluster.isEmpty()) return tiles
     val clusterSet = cluster.toHashSet()
@@ -390,7 +391,9 @@ private fun applyClusterTileEffect(
             DivineAction.BlessHarvest -> tile.copy(soilMoisture = (tile.soilMoisture + 8).coerceIn(0, 100))
             DivineAction.CauseFamine  -> tile.copy(soilMoisture = (tile.soilMoisture - 15).coerceIn(0, 100))
             DivineAction.Blight       -> tile.copy(soilMoisture = (tile.soilMoisture - 30).coerceIn(0, 100))
-            DivineAction.Smite        -> tile.copy(soilMoisture = 0, occupantTribeId = null)
+            DivineAction.Smite        -> if (targetTribeId == null || tile.occupantTribeId == targetTribeId)
+                tile.copy(soilMoisture = 0, occupantTribeId = null)
+            else tile
             else                      -> tile
         }
     }
