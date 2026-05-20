@@ -19,4 +19,5 @@ val TRIBE_COLORS = listOf(
     Color(0xFF9575CD),  // Purple
     Color(0xFF81C784),  // Green
     Color(0xFF4FC3F7),  // Light Blue
+    Color(0xFFFF8A65),  // Deep Orange
 )

@@ -103,11 +103,14 @@ fun DashboardScreen(
         }
     }
 
-    val tribeColorMap = remember(worldState.tribes) {
-        worldState.tribes.keys.sorted()
-            .mapIndexed { idx, id -> id to TRIBE_COLORS.getOrElse(idx) { TRIBE_COLORS.last() } }
-            .toMap()
+    // Stable color assignment: new tribe IDs get the next unused slot; existing IDs never shift.
+    val colorAssignments = remember { mutableMapOf<String, Color>() }
+    worldState.tribes.keys.forEach { id ->
+        if (id !in colorAssignments) {
+            colorAssignments[id] = TRIBE_COLORS.getOrElse(colorAssignments.size) { TRIBE_COLORS.last() }
+        }
     }
+    val tribeColorMap: Map<String, Color> = colorAssignments
 
     var hoveredTileId by remember { mutableStateOf<Int?>(null) }
     var detailTribeId by remember { mutableStateOf<String?>(null) }
@@ -182,6 +185,8 @@ fun DashboardScreen(
         // Overlay colour legend
         MapOverlayLegend(
             overlay = mapOverlay,
+            tribeColorMap = tribeColorMap,
+            tribeNames = worldState.tribes.mapValues { it.value.name },
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 4.dp),
@@ -465,13 +470,17 @@ private fun EnvironmentalPhase.displayName(): String = when (this) {
 @Composable
 private fun MapOverlayLegend(
     overlay: MapOverlay,
+    tribeColorMap: Map<String, Color> = emptyMap(),
+    tribeNames: Map<String, String> = emptyMap(),
     modifier: Modifier = Modifier,
 ) {
-    val occupied = MaterialTheme.colorScheme.primary
-    val empty    = MaterialTheme.colorScheme.surfaceVariant
+    val empty = MaterialTheme.colorScheme.surfaceVariant
 
     val items: List<Pair<Color, String>> = when (overlay) {
-        MapOverlay.Default    -> listOf(occupied to "Occupied", empty to "Empty")
+        MapOverlay.Default -> {
+            val tribeItems = tribeColorMap.entries.map { (id, color) -> color to (tribeNames[id] ?: id) }
+            tribeItems + listOf(empty to "Empty")
+        }
         MapOverlay.Biome      -> listOf(
             empty            to "Grassland",
             biomeColorForest to "Forest",

@@ -185,7 +185,7 @@
 ### Territory logic change
 The single-tribe `territoryStep` formula (`expected = population × 192 / 500`) makes territory *follow* population. For multi-tribe this is dangerous: a tribe weakened by plague or drought releases tiles via the formula, which the neighbour immediately claims, deepening the starvation spiral. Proper conflict mechanics don't exist yet, so tile-capture must not happen passively.
 
-Fix: suppress the **release** branch of `territoryStep` when `tribes.size > 1`. Territory becomes sticky — tribes keep their land even when weakened. The **expansion** branch stays active so genuinely unclaimed tiles (near water bodies) are still contested organically. Inter-tribe competition in Phase 12a is via population and food dynamics. Tile-capture (raids, battle outcomes) is Phase 12b.
+Fix: suppress the **release** branch of `territoryStep` when `tribes.size > 1`. Territory becomes sticky — tribes keep their land even when weakened. The **expansion** branch stays active so genuinely unclaimed tiles (near water bodies) are still contested organically. Inter-tribe competition in Phase 12a is via population and food dynamics. Tile-capture (raids, battle outcomes) is Phase 12c.
 
 ### Checklist
 - [x] Add `lastSplitTick: Long = 0L` to `WorldState` (serialized, backward-compatible default)

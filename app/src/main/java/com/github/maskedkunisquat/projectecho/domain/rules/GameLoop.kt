@@ -159,8 +159,9 @@ fun tick(
 
     // Unanswered prayer pressure + passive skepticism decay
     val prayerChronicleEntries = mutableListOf<String>()
-    val withPrayerDecay = withSophistication.mapValues { (_, tribe) ->
-        val newPressure = if (!actionApplied && tribe.devotion > PRAYER_THRESHOLD)
+    val withPrayerDecay = withSophistication.mapValues { (tId, tribe) ->
+        val actionTargetsThisTribe = actionApplied && (targetTribeId == null || tId == targetTribeId)
+        val newPressure = if (!actionTargetsThisTribe && tribe.devotion > PRAYER_THRESHOLD)
             tribe.prayerPressure + (tribe.devotion - PRAYER_THRESHOLD).toFloat()
         else tribe.prayerPressure
 

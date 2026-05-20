@@ -1,6 +1,7 @@
 package com.github.maskedkunisquat.projectecho
 
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -46,14 +47,14 @@ class MainActivity : ComponentActivity() {
             val events = withContext(Dispatchers.IO) {
                 runCatching {
                     assets.open("events.json").bufferedReader().use { EventParser.parse(it.readText()) }
-                }.getOrDefault(emptyList())
+                }.getOrElse { e -> Log.e("MainActivity", "Failed to load events.json", e); emptyList() }
             }
             viewModel.setSimEvents(events)
 
             val personalityList = withContext(Dispatchers.IO) {
                 runCatching {
                     assets.open("personalities.json").bufferedReader().use { PersonalityParser.parse(it.readText()) }
-                }.getOrDefault(emptyList())
+                }.getOrElse { e -> Log.e("MainActivity", "Failed to load personalities.json", e); emptyList() }
             }
             viewModel.setPersonalities(personalityList)
         }
