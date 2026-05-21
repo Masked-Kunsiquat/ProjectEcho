@@ -43,6 +43,7 @@ private const val FAITH_DRIFT_SCALE             = 0.05f
 private const val SKEPTICISM_RATE_CLAMP_MAX     = 2f
 internal const val SOPH_MOISTURE_CEILING        = 50
 internal const val SPLIT_MIN_FOOD_TICKS         = 1
+internal const val MAX_CHRONICLE_ENTRIES        = 150
 
 fun tick(
     currentState: WorldState,
@@ -309,6 +310,7 @@ fun tick(
 
     val finalState = weatherStep(eventedState, random)
     return finalState.copy(
+        eventHistory = finalState.eventHistory.takeLast(MAX_CHRONICLE_ENTRIES),
         tribes = finalState.tribes.mapValues { (id, tribe) ->
             if (id !in prevPopulations) {
                 // Tribe born this tick (e.g. from splitStep) — deltas are undefined, report zero
