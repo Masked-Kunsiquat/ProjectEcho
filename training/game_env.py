@@ -107,12 +107,13 @@ def _shaped_reward(prev: WorldState, nxt: WorldState, tribe_id: str, was_success
         r += 0.1                                       # food surplus tick
     if tribe.food_supply == 0 and prev_tribe and tribe.population < prev_tribe.population:
         r -= 0.5                                       # starvation tick
-    if was_successful_raider:    r += 0.2             # successful raid (reduced from 0.5)
-    # overextension: penalise holding >40% of all tiles
+    if was_successful_raider:    r += 0.3             # successful raid (v4: bumped from 0.2; starvation mask handles over-raiding)
+    # overextension: penalise holding >40% of all tiles (v4: quadratic, much steeper above 60%)
     tribe_tiles   = sum(1 for t in nxt.tiles if t.occupant_tribe_id == tribe_id)
     tile_fraction = tribe_tiles / max(1, len(nxt.tiles))
     if tile_fraction > 0.4:
-        r -= 0.05 * (tile_fraction - 0.4)             # proportional above the threshold
+        excess = tile_fraction - 0.4
+        r -= 0.3 * excess + 0.5 * (excess ** 2)       # ~0.06 at 60%, ~0.28 at 80%, ~0.60 at 100%
     return max(-1.0, min(1.0, r))
 
 

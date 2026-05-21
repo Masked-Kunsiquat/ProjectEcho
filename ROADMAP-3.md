@@ -391,6 +391,12 @@ Observed in playtest: initial tribe expanded to pop ~930, tiles ~78 by T=80 with
 
 - **Starvation raid mask**: `RLPolicy.buildMask()` and `game_env.py action_masks()` now block all RAID actions when `foodSupply == 0`. Breaks the "mutual death spiral" pattern where two starving tribes raided each other to extinction. Applies at both inference (Android) and training time (Python). Both files updated in sync — this constraint is active for the next training run without needing full parity sync.
 
+**Model training history (gauntlet = 100 eps vs HeuristicPolicy, deterministic):**
+- v1: 67% win rate, 35.1 vs 17.1 avg tiles — "virus" behavior, dominated and eliminated all opponents
+- v2: 46% win rate, 25.5 vs 21.8 avg tiles — coexistence reward improved balance; still map-monopolizing (88/96 tiles observed)
+- v3: 38% win rate, 21.7 vs 26.8 avg tiles — starvation mask + v2 reward stacked too passive; learner losing tile race to heuristic opponents. **Do not use.** v2 weights kept in `tribe_policy.json`.
+- v4 (queued): raid bonus 0.2→0.3, overextension penalty quadratic (0.3×excess + 0.5×excess²) — targets ~50-55% win rate; starvation mask kept
+
 **Python parity note**: `simulation.py` still has the old farming fallback, old split thresholds, and no wanderer logic. Parity test at seed=42 T=100 may still pass (those edge cases don't fire in that scenario), but the sims are no longer identical. Before v3 training, sync all four changes to Python and re-run `parity_test.py`.
 
 ---
