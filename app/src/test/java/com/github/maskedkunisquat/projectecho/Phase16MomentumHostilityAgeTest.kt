@@ -61,7 +61,7 @@ class Phase16MomentumHostilityAgeTest {
 
     @Test
     fun `populationDelta is positive after a growth tick`() {
-        // pop=50, food=300, no tiles: farmed = round(50*0.8) = 40; newFood = 300+40-50 = 290 > 0 → grows
+        // pop=50, food=300, no tiles: farmed = round(50*0.70) = 35; newFood = 300+35-50 = 285 > 0 → grows
         val state = worldWith(emptyList(), mapOf("alpha" to tribe("alpha", pop = 50, food = 300)))
 
         val result = tick(state)
@@ -74,7 +74,7 @@ class Phase16MomentumHostilityAgeTest {
 
     @Test
     fun `populationDelta is negative after a starvation tick`() {
-        // pop=50, food=0, no tiles: farmed=40; newFood = 0+40-50 = -10 < 0 → starvation
+        // pop=50, food=0, no tiles: farmed=35; newFood = 0+35-50 = -15 < 0 → starvation
         val state = worldWith(emptyList(), mapOf("alpha" to tribe("alpha", pop = 50, food = 0)))
 
         val result = tick(state)
@@ -87,7 +87,7 @@ class Phase16MomentumHostilityAgeTest {
 
     @Test
     fun `populationDelta is zero when population is stable`() {
-        // pop=5, food=1, no tiles: farmed = round(5*0.8) = 4; newFood = 1+4-5 = 0 → else branch, pop unchanged
+        // pop=5, food=1, no tiles: farmed = round(5*0.70) = 4; newFood = 1+4-5 = 0 → else branch, pop unchanged
         val state = worldWith(emptyList(), mapOf("alpha" to tribe("alpha", pop = 5, food = 1)))
 
         val result = tick(state)

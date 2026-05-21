@@ -110,8 +110,8 @@ class EnvironmentalPhaseTest {
             tiles = tilesFor("echosi", moisture = 35),
         )
         val result = tick(state)
-        // farmed = (100 * 0.8 * 1.5).roundToInt() = 120; newFood = 200 + 120 - 100 = 220
-        assertEquals(220, result.tribes["echosi"]!!.foodSupply)
+        // farmed = (100 * 0.70 * 1.5).roundToInt() = 105; newFood = 200 + 105 - 100 = 205
+        assertEquals(205, result.tribes["echosi"]!!.foodSupply)
         assertEquals(102, result.tribes["echosi"]!!.population)
     }
 
@@ -122,8 +122,8 @@ class EnvironmentalPhaseTest {
             tiles = tilesFor("echosi", moisture = 65),
         )
         val result = tick(state)
-        // farmed = (100 * 0.8 * 0.5).roundToInt() = 40; newFood = 200 + 40 - 100 = 140
-        assertEquals(140, result.tribes["echosi"]!!.foodSupply)
+        // farmed = (100 * 0.70 * 0.5).roundToInt() = 35; newFood = 200 + 35 - 100 = 135
+        assertEquals(135, result.tribes["echosi"]!!.foodSupply)
         assertEquals(102, result.tribes["echosi"]!!.population)
     }
 
@@ -134,9 +134,9 @@ class EnvironmentalPhaseTest {
             tiles = tilesFor("echosi", moisture = 10),
         )
         val result = tick(state)
-        // farmed = (100 * 0.8 * 0.1).roundToInt() = 8; newFood = 50 + 8 - 100 = -42 → starvation
+        // farmed = (100 * 0.70 * 0.1).roundToInt() = 7; newFood = 50 + 7 - 100 = -43 → starvation
         assertEquals(0, result.tribes["echosi"]!!.foodSupply)
-        assertEquals(95, result.tribes["echosi"]!!.population)
+        assertEquals(90, result.tribes["echosi"]!!.population)
         assertEquals(47, result.tribes["echosi"]!!.devotion)
     }
 
@@ -162,8 +162,8 @@ class EnvironmentalPhaseTest {
             tiles = tilesFor("echosi", moisture = 35, count = 5),
         )
         val result = tick(state)
-        // effectiveFarmers=50; farmed = (50*0.8*1.5).roundToInt()=60; newFood = 200+60-100 = 160
-        assertEquals(160, result.tribes["echosi"]!!.foodSupply)
+        // effectiveFarmers=50; farmed = (50*0.70*1.5).roundToInt()=53; newFood = 200+53-100 = 153
+        assertEquals(153, result.tribes["echosi"]!!.foodSupply)
     }
 
     @Test
@@ -171,8 +171,8 @@ class EnvironmentalPhaseTest {
         val tribe = Tribe("echosi", "The Echosi", 100, 50, 200)
         val state = WorldState(0L, 50, emptyList(), mapOf("echosi" to tribe))
         val result = tick(state)
-        // Behaviour must match pre-Phase-7: farmed = 80, newFood = 180
-        assertEquals(180, result.tribes["echosi"]!!.foodSupply)
+        // farmed = (100 * 0.70 * 1.0).roundToInt() = 70; newFood = 200 + 70 - 100 = 170
+        assertEquals(170, result.tribes["echosi"]!!.foodSupply)
         assertEquals(102, result.tribes["echosi"]!!.population)
     }
 }

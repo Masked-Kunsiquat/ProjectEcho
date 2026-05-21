@@ -43,7 +43,7 @@ internal const val DEFENSE_SOPHISTICATION_BONUS = 0.03f
 private const val FAITH_DRIFT_SCALE             = 0.05f
 private const val SKEPTICISM_RATE_CLAMP_MAX     = 2f
 internal const val SOPH_MOISTURE_CEILING        = 50
-internal const val SPLIT_MIN_FOOD_TICKS         = 5
+internal const val SPLIT_MIN_FOOD_TICKS         = 1
 
 fun tick(
     currentState: WorldState,
@@ -149,13 +149,13 @@ fun tick(
         val effectiveFarmers = if (occupiedTiles.isEmpty()) tribe.population
                                else minOf(tribe.population, occupiedTiles.size * TILE_CAPACITY)
         val coastBonus = occupiedTiles.count { it.biome == BiomeType.Coast } * COAST_FISHING_BONUS
-        val farmed = (effectiveFarmers * 0.8 * effectiveMultiplier).roundToInt() + coastBonus
+        val farmed = (effectiveFarmers * 0.70 * effectiveMultiplier).roundToInt() + coastBonus
         val newFoodSupply = tribe.foodSupply + farmed - tribe.population
 
         val afterSurvival = when {
             newFoodSupply < 0 -> tribe.copy(
                 foodSupply = 0,
-                population = minOf(tribe.population - 1, (tribe.population * 0.95).roundToInt()).coerceAtLeast(0),
+                population = minOf(tribe.population - 1, (tribe.population * 0.90).roundToInt()).coerceAtLeast(0),
                 devotion = maxOf(0, tribe.devotion - 3),
             )
             newFoodSupply > 0 -> tribe.copy(

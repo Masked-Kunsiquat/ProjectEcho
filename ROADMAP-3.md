@@ -183,6 +183,14 @@ A freshly split tribe (sophistication 0, no history) should behave differently f
 - [x] Expose tribe age (`worldTimeTick - foundedTick`) in `TribeDetailSheet` for player visibility
 - [x] Write unit test: child tribe's `foundedTick` equals the tick on which the split fires; original tribe's `foundedTick` remains 0
 
+### Balance tuning (applied alongside hex migration)
+
+Observed in playtest: initial tribe expanded to pop ~930, tiles ~78 by T=80 with zero divine input; chronic food oscillation near 0 with no splits at T=1000+. Root cause: farming base rate produced an automatic 20% surplus at Fertile moisture, starvation was too gentle to collapse overpopulated tribes, and split viability guard blocked too aggressively.
+
+- [x] Starvation rate: `× 0.95` → `× 0.90` (10%/tick die-off instead of 5% — collapses overpopulated tribes faster)
+- [x] Farming base rate: `0.8` → `0.70` (Fertile effective rate 1.05×, down from 1.2× — growth requires active management)
+- [x] `SPLIT_MIN_FOOD_TICKS`: `5` → `1` (unblock splits for tribes with minimal food reserves)
+
 ---
 
 ## Block 3 — Headless & Policy Infrastructure

@@ -14,7 +14,7 @@ import org.junit.Test
 
 class SkepticismDualForceTest {
 
-    // foodSupply=10 with pop=50 and no tiles gives farmed=40, newFood=0 (exact equilibrium)
+    // foodSupply=15 with pop=50 and no tiles gives farmed=35, newFood=0 (exact equilibrium)
     // so devotion does not change during survival — important for deterministic prayer checks.
     private fun devoutTribe(
         devotion: Int = 80,
@@ -23,7 +23,7 @@ class SkepticismDualForceTest {
         skepticismDecayBuffer: Float = 0f,
         skepticismRate: Float = 1.0f,
         traditionalism: Float = 0.5f,
-        foodSupply: Int = 10,
+        foodSupply: Int = 15,
         population: Int = 50,
         generationDeaths: Int = 0,
     ) = Tribe(

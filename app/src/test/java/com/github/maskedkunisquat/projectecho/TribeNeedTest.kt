@@ -307,9 +307,9 @@ class TribeNeedTest {
 
     @Test fun `splitStep is suppressed when child food falls below viability threshold`() {
         // pop=500 → parentPop=300, childPop=200
-        // childFood must be >= 200 × SPLIT_MIN_FOOD_TICKS=5 = 1000 to be viable
-        // with foodSupply=1000: parentFood=600, childFood=400 < 1000 → blocked
-        val state = splitState(population = 500, foodSupply = 1000)
+        // childFood must be >= 200 × SPLIT_MIN_FOOD_TICKS=1 = 200 to be viable
+        // with foodSupply=400: parentFood=240, childFood=160 < 200 → blocked
+        val state = splitState(population = 500, foodSupply = 400)
 
         val result = splitStep(state)
 
@@ -317,7 +317,7 @@ class TribeNeedTest {
     }
 
     @Test fun `splitStep proceeds when child food meets viability threshold`() {
-        // childFood = 3000 * 0.4 = 1200 >= 200 × 5 = 1000 → viable
+        // childFood = 3000 * 0.4 = 1200 >= 200 × 1 = 200 → viable
         val state = splitState(population = 500, foodSupply = 3000)
 
         val result = splitStep(state)
@@ -328,10 +328,9 @@ class TribeNeedTest {
     @Test fun `splitStep blocked exactly at boundary (childFood equals threshold)`() {
         // Need childFood == childPop × SPLIT_MIN_FOOD_TICKS to be exactly at the boundary (just passes)
         // childPop = pop - (pop * 0.6).roundToInt() = 500 - 300 = 200
-        // Need childFood >= 200 × 5 = 1000
-        // childFood = totalFood * 0.4; totalFood * 0.4 = 1000 → totalFood = 2500
-        // parentFood = 2500 * 0.6 = 1500, childFood = 2500 - 1500 = 1000 → exactly 1000 >= 1000 → VIABLE
-        val state = splitState(population = 500, foodSupply = 2500)
+        // Need childFood >= 200 × 1 = 200
+        // foodSupply=500: parentFood=300, childFood=200 → exactly 200 >= 200 → VIABLE
+        val state = splitState(population = 500, foodSupply = 500)
 
         val result = splitStep(state)
 
