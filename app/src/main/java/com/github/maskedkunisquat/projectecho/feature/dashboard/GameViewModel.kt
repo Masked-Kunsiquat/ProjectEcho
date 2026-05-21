@@ -31,7 +31,7 @@ class GameViewModel(
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) : ViewModel() {
 
-    private val _worldState = MutableStateFlow(WorldState.initial())
+    private val _worldState = MutableStateFlow(WorldState.initialGame())
     /** Current game state; observed by the UI layer. */
     val worldState: StateFlow<WorldState> = _worldState.asStateFlow()
 
