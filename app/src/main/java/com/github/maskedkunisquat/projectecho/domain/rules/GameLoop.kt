@@ -51,6 +51,7 @@ fun tick(
     targetCluster: List<Int> = emptyList(),
     targetTribeId: String? = null,
     random: Random = Random.Default,
+    policy: TribePolicy = HeuristicPolicy(random),
 ): WorldState {
     val prevPopulations = currentState.tribes.mapValues { (_, t) -> t.population }
     val prevTileCounts  = currentState.tribes.mapValues { (id, _) ->
@@ -269,13 +270,13 @@ fun tick(
         worldTimeTick = state.worldTimeTick + 1,
         divineFavor = regenedFavor,
         tribes = withPrayerDecay,
-        tiles = territoryStep(state.tiles, withPrayerDecay),
+        tiles = territoryStep(state.tiles, withPrayerDecay, policy),
         eventHistory = state.eventHistory + generationEntries + extinctEntries + sophisticationEntries + prayerChronicleEntries + inspireDevoutEntries,
         eventCooldowns = if (devoutExpectationsFired)
             state.eventCooldowns + ("devout_expectations" to state.worldTimeTick + 1L)
         else state.eventCooldowns,
     )
-    val postConflictState = conflictStep(postTerritoryState, random)
+    val postConflictState = conflictStep(postTerritoryState, random, policy)
     val postShieldDecay = postConflictState.copy(
         tribes = postConflictState.tribes.mapValues { (_, t) ->
             if (t.divineShieldTicks > 0) t.copy(divineShieldTicks = t.divineShieldTicks - 1) else t
@@ -372,7 +373,11 @@ fun weatherStep(state: WorldState, random: Random = Random.Default): WorldState 
     )
 }
 
-internal fun territoryStep(tiles: List<MapTile>, tribes: Map<String, Tribe>): List<MapTile> {
+internal fun territoryStep(
+    tiles: List<MapTile>,
+    tribes: Map<String, Tribe>,
+    policy: TribePolicy = HeuristicPolicy(),
+): List<MapTile> {
     val working = tiles.toMutableList()
     for ((tribeId, tribe) in tribes) {
         val expected = maxOf(0, tribe.population * GRID_SIZE / 500)
@@ -392,13 +397,13 @@ internal fun territoryStep(tiles: List<MapTile>, tribes: Map<String, Tribe>): Li
                 if (t.biome == BiomeType.Water) return@filter false
                 t.id in neighborIds
             }
-            // Prefer tiles matching the tribe's top biome affinity
-            val scoredFrontier = frontier.sortedByDescending { idx ->
-                val t = working[idx]
-                tribe.personality.affinityFor(t.biome) * (t.soilMoisture / 100f)
-            }
-            scoredFrontier.take(deficit).forEach { idx ->
-                working[idx] = working[idx].copy(occupantTribeId = tribeId)
+            val remaining = frontier.toMutableList()
+            repeat(deficit) {
+                val chosen = policy.chooseExpansion(tribe, remaining.map { working[it] })
+                    ?: return@repeat
+                val chosenIdx = remaining.first { working[it].id == chosen.id }
+                remaining.remove(chosenIdx)
+                working[chosenIdx] = working[chosenIdx].copy(occupantTribeId = tribeId)
             }
         }
     }
@@ -506,7 +511,11 @@ internal fun splitStep(
     return state
 }
 
-internal fun conflictStep(state: WorldState, random: Random = Random.Default): WorldState {
+internal fun conflictStep(
+    state: WorldState,
+    random: Random = Random.Default,
+    policy: TribePolicy = HeuristicPolicy(random),
+): WorldState {
     if (state.tribes.size < 2) return state
 
     val tribeIds = state.tribes.keys.toList()
@@ -529,17 +538,11 @@ internal fun conflictStep(state: WorldState, random: Random = Random.Default): W
             if (defenderBorderTiles.isEmpty()) continue
             if (defender.divineShieldTicks > 0) continue
 
-            val attackBonus  = 1f + aggressor.personality.sophistication * ATTACK_SOPHISTICATION_BONUS
-            val defenseBonus = 1f - defender.personality.sophistication * DEFENSE_SOPHISTICATION_BONUS
-            val devotionSuppression = 1f - aggressor.devotion / RAID_DEVOTION_SUPPRESSION_DIVISOR
-            val threshold = aggressor.personality.aggression *
-                            (1f - defender.personality.caution) *
-                            attackBonus * defenseBonus *
-                            devotionSuppression
-            if (random.nextFloat() < threshold) {
-                val target = defenderBorderTiles.random(random)
+            val candidates = defenderBorderTiles.map { RaidCandidate(it, defenderId, defender) }
+            val chosen = policy.chooseRaid(aggressor, candidates)
+            if (chosen != null) {
                 tiles = tiles.map { t ->
-                    if (t.id == target.id) t.copy(occupantTribeId = aggressorId) else t
+                    if (t.id == chosen.tile.id) t.copy(occupantTribeId = aggressorId) else t
                 }
                 raidedTribeIds += defenderId
                 hostilityChanges.getOrPut(aggressorId) { mutableMapOf() }
