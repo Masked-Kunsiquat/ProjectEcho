@@ -359,12 +359,13 @@ Observed in playtest: initial tribe expanded to pop ~930, tiles ~78 by T=80 with
 ## Phase 21 — TFLite Export & Android Inference
 
 > Export the trained policy to TFLite and wire it into the Android app via the `TribePolicy` interface built in Phase 18.
+> Skipped TFLite — 3-layer MLP is tiny; pure Kotlin forward pass has zero JNI overhead and no additional dependency.
 
-- [ ] Export trained model to TFLite via `jax2tf` → TFLite converter, or stable-baselines3 ONNX exporter → TFLite converter
-- [ ] Drop `.tflite` into `/assets/` (same pattern as `personalities.json` and `events.json`)
-- [ ] Add `RLPolicy.kt` to the Android feature layer implementing `TribePolicy`; loads the TFLite model from assets, calls `Tribe.toFloatArray()` for each tribe, runs inference, maps output logits to `chooseExpansion` / `chooseRaid` decisions
-- [ ] Add a toggle in `GameViewModel` (`useRLPolicy: Boolean`, default `true`); accessible via a settings or debug button; allows side-by-side comparison of heuristic vs. RL behavior
-- [ ] All tribes use the RL model from tick 0 (Option B — decided in architecture notes); no transition edge case
+- [x] Export trained model — skipped TFLite; `training/export_weights.py` extracts actor MLP weights to `app/src/main/assets/tribe_policy.json` (JSON, ~500 KB)
+- [x] Drop JSON weights into `/assets/` (same load pattern as `events.json`)
+- [x] Add `RLPolicy.kt` to domain/rules implementing `TribePolicy`; loads JSON via kotlinx-serialization, runs pure Kotlin tanh MLP forward pass, maps output logits to `chooseExpansion` / `chooseRaid` decisions
+- [x] Add toggle in `GameViewModel`: `useRlPolicy: StateFlow<Boolean>` (defaults `true` once policy loads); `toggleRLPolicy()` for future UI button; falls back to `HeuristicPolicy` if JSON missing or toggle off
+- [x] All tribes use the RL model from tick 0 (Option B); no transition edge case
 - [ ] Measure on-device inference time; must be comfortably < 200 ms (tick interval is 2 000 ms); log inference time in debug builds
 - [ ] Smoke test: observe tribal behavior with RL policy enabled; verify tribes make meaningful territorial and conflict decisions; chronicle entries should show raids and expansions
 

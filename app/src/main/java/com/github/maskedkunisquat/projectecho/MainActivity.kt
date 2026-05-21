@@ -51,6 +51,18 @@ class MainActivity : ComponentActivity() {
             viewModel.setSimEvents(events)
         }
 
+        lifecycleScope.launch {
+            withContext(Dispatchers.IO) {
+                runCatching {
+                    assets.open("tribe_policy.json").bufferedReader().use { it.readText() }
+                }.onSuccess { json ->
+                    viewModel.setRLPolicy(json)
+                }.onFailure { e ->
+                    Log.e("MainActivity", "Failed to load tribe_policy.json — using heuristic", e)
+                }
+            }
+        }
+
         setContent {
             ProjectEchoTheme {
                 val worldState by viewModel.worldState.collectAsState()

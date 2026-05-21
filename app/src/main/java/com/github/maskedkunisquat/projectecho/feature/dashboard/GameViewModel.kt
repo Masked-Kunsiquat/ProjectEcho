@@ -6,6 +6,8 @@ import com.github.maskedkunisquat.projectecho.domain.model.DivineAction
 import com.github.maskedkunisquat.projectecho.domain.model.SimEvent
 import com.github.maskedkunisquat.projectecho.domain.model.WorldState
 import com.github.maskedkunisquat.projectecho.domain.repository.WorldStateRepository
+import com.github.maskedkunisquat.projectecho.domain.rules.HeuristicPolicy
+import com.github.maskedkunisquat.projectecho.domain.rules.RLPolicy
 import com.github.maskedkunisquat.projectecho.domain.rules.getNeighbors
 import com.github.maskedkunisquat.projectecho.domain.rules.tick
 import kotlinx.coroutines.CoroutineDispatcher
@@ -43,6 +45,21 @@ class GameViewModel(
 
     @Volatile
     private var simEvents: List<SimEvent> = emptyList()
+
+    private var rlPolicy: RLPolicy? = null
+
+    private val _useRlPolicy = MutableStateFlow(false)
+    /** When true, tribes use the trained RL policy instead of the heuristic. */
+    val useRlPolicy: StateFlow<Boolean> = _useRlPolicy.asStateFlow()
+
+    fun setRLPolicy(jsonString: String) {
+        rlPolicy = RLPolicy.fromJson(jsonString)
+        _useRlPolicy.value = true
+    }
+
+    fun toggleRLPolicy() {
+        _useRlPolicy.value = !_useRlPolicy.value
+    }
 
     init {
         viewModelScope.launch {
@@ -93,7 +110,11 @@ class GameViewModel(
         pendingAction = null
         pendingCluster = emptyList()
         pendingTribeTarget = null
-        val newState = tick(_worldState.value, action, simEvents, cluster, targetTribeId = tribeTarget)
+        val currentState = _worldState.value
+        val activeRl = rlPolicy?.takeIf { _useRlPolicy.value }
+        activeRl?.setWorldState(currentState)
+        val policy = activeRl ?: HeuristicPolicy()
+        val newState = tick(currentState, action, simEvents, cluster, targetTribeId = tribeTarget, policy = policy)
         _worldState.value = newState
         viewModelScope.launch(ioDispatcher) {
             runCatching { repository.save(newState) }
