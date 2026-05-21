@@ -52,8 +52,8 @@ class GameViewModel(
     /** When true, tribes use the trained RL policy instead of the heuristic. */
     val useRlPolicy: StateFlow<Boolean> = _useRlPolicy.asStateFlow()
 
-    private val _rlDebugLog = MutableStateFlow<List<String>>(emptyList())
-    /** Rolling 20-entry log of per-tick RL action summaries. Empty when policy is inactive. */
+    private val _rlDebugLog = MutableStateFlow(listOf("tick,name,pop,tiles,food,dev,soph,action"))
+    /** Rolling CSV log: header + last ~30 ticks of per-tribe state+action rows. */
     val rlDebugLog: StateFlow<List<String>> = _rlDebugLog.asStateFlow()
 
     fun setRLPolicy(jsonString: String) {
@@ -118,8 +118,11 @@ class GameViewModel(
         val activeRl = rlPolicy?.takeIf { _useRlPolicy.value }
         activeRl?.setWorldState(currentState)
         if (activeRl != null) {
-            val line = formatDebugLine(currentState, activeRl.lastActions)
-            _rlDebugLog.value = (_rlDebugLog.value + line).takeLast(20)
+            val newRows = buildDebugRows(currentState, activeRl.lastActions)
+            val current = _rlDebugLog.value
+            val header = current.firstOrNull() ?: "tick,name,pop,tiles,food,dev,soph,action"
+            val data = (current.drop(1) + newRows).takeLast(150)
+            _rlDebugLog.value = listOf(header) + data
         }
         val policy = activeRl ?: HeuristicPolicy()
         val newState = tick(currentState, action, simEvents, cluster, targetTribeId = tribeTarget, policy = policy)
@@ -129,24 +132,20 @@ class GameViewModel(
         }
     }
 
-    private fun formatDebugLine(state: WorldState, actions: Map<String, Int>): String {
-        val parts = state.tribes.entries.sortedBy { it.key }.map { (tribeId, tribe) ->
+    private fun buildDebugRows(state: WorldState, actions: Map<String, Int>): List<String> {
+        return state.tribes.entries.sortedBy { it.key }.map { (tribeId, tribe) ->
             val sortedOthers = state.tribes.keys.filter { it != tribeId }.sorted()
-            val label = when (val idx = actions[tribeId] ?: 11) {
-                0    -> "Expand N"
-                1    -> "Expand S"
-                2    -> "Expand E"
-                3    -> "Expand W"
+            val action = when (val idx = actions[tribeId] ?: 11) {
+                0    -> "ExpN"
+                1    -> "ExpS"
+                2    -> "ExpE"
+                3    -> "ExpW"
                 11   -> "Rest"
-                else -> {
-                    val targetName = sortedOthers.getOrNull(idx - 4)
-                        ?.let { state.tribes[it]?.name } ?: "?"
-                    "Raid $targetName"
-                }
+                else -> "Raid:${sortedOthers.getOrNull(idx - 4)?.let { state.tribes[it]?.name } ?: "?"}"
             }
-            "${tribe.name}: $label"
+            val tiles = state.tiles.count { it.occupantTribeId == tribeId }
+            "${state.worldTimeTick},${tribe.name},${tribe.population},$tiles,${tribe.foodSupply},${tribe.devotion},${tribe.personality.sophistication},$action"
         }
-        return "T${state.worldTimeTick} | ${parts.joinToString("  |  ")}"
     }
 
     override fun onCleared() {

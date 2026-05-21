@@ -369,6 +369,28 @@ Observed in playtest: initial tribe expanded to pop ~930, tiles ~78 by T=80 with
 - [ ] Measure on-device inference time; must be comfortably < 200 ms (tick interval is 2 000 ms); log inference time in debug builds
 - [ ] Smoke test: observe tribal behavior with RL policy enabled; verify tribes make meaningful territorial and conflict decisions; chronicle entries should show raids and expansions
 
+### Phase 21 post-launch fixes (same PR #30, branch `phase-21/rl-policy-android`)
+
+**v2 model training + weights swap**
+- Observed v1 "virus" behavior: zero-sum reward drove constant raiding → 1 tribe dominated and went extinct
+- Reshaped reward in `game_env.py`: raid bonus 0.5→0.2, coexistence bonus +0.02×(living_others), overextension penalty −0.05×(tile_fraction−0.4) above 40%
+- v2 gauntlet result: 46% win rate (vs 67% v1), 100% survival, tile gap 25.5 vs 21.8 — less dominant, genuinely balanced
+- Swapped `tribe_policy.json` to v2 weights (499 KB, same 3-layer 51→128→128→12 structure)
+
+**Chronicle + debug log**
+- Raid chronicle entries removed from `conflictStep` entirely — per-tick raids generated too many entries even after consolidation
+- Policy Log redesigned as rolling CSV (`tick,name,pop,tiles,food,dev,soph,action`, 30-tick buffer)
+- "Copy All" button in Policy Log sheet copies CSV to clipboard instantly
+- `SelectionContainer` on Policy Log for manual text selection as fallback
+
+**Game loop fixes (Kotlin only; Python simulation diverged — sync before v3 training)**
+- **Tileless farming bug fixed**: `effectiveFarmers` was `tribe.population` when `occupiedTiles.isEmpty()`, allowing pop=1 tribes with 0 tiles to survive indefinitely by farming exactly enough to break even. Changed to `0`.
+- **Wanderer spawner**: every 30 ticks, if tribe count < 3 and ≥ 20 unclaimed land tiles exist, a new tribe emerges with pop=100, food=500, random archetype, and ~19 claimed tiles. Chronicle event fires.
+- **Split thresholds lowered**: `SPLIT_MIN_POPULATION` 400→200, `SPLIT_DENSITY_THRESHOLD` 8→5. RL model's expansion behavior keeps tile counts high relative to population, preventing density from reaching 8.
+- **Split devotion cap raised**: `SPLIT_DEVOTION_CAP` 80→100. RL-trained tribes reach devotion=100 reliably; old cap blocked all splits.
+
+**Python parity note**: `simulation.py` still has the old farming fallback, old split thresholds, and no wanderer logic. Parity test at seed=42 T=100 may still pass (those edge cases don't fire in that scenario), but the sims are no longer identical. Before v3 training, sync all four changes to Python and re-run `parity_test.py`.
+
 ---
 
 ## Long-Range Placeholders (Post-Phase 21)
@@ -443,7 +465,7 @@ God sits between both systems as mediator. Divine actions don't override the Wor
 | 18 | TribePolicy interface + state vectorizer + reward calc | new `TribePolicy.kt`, `HeuristicPolicy.kt`, `GameLoop.kt` |
 | 19 | Python port + Gymnasium env (off-device) | `training/game_env.py` |
 | 20 | Kaggle PPO training + Hall of Fame league | Kaggle notebook |
-| 21 | TFLite export + Android inference via RLPolicy | new `RLPolicy.kt`, `/assets/*.tflite` |
+| 21 | JSON weights export + pure Kotlin MLP inference; 3-tribe start; wanderer spawner; v2 model | `RLPolicy.kt`, `tribe_policy.json`, `GameLoop.kt` |
 
 ---
 

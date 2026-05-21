@@ -1,6 +1,12 @@
 package com.github.maskedkunisquat.projectecho.feature.dashboard
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -133,23 +139,41 @@ fun DashboardScreen(
     }
 
     if (isDebugLogVisible) {
+        val clipboardManager = LocalClipboardManager.current
+        val csvText = rlDebugLog.joinToString("\n")
         ModalBottomSheet(
             onDismissRequest = onDismissDebugLog,
             sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
             containerColor = MaterialTheme.colorScheme.surface,
         ) {
-            Text(
-                text = "Policy Log",
-                style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-            )
-            HistoryLedger(
-                entries = rlDebugLog.ifEmpty { listOf("No data yet — waiting for first RL tick.") },
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(text = "Policy Log (CSV)", style = MaterialTheme.typography.titleMedium)
+                OutlinedButton(
+                    onClick = { clipboardManager.setText(AnnotatedString(csvText)) },
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+                ) {
+                    Text("Copy All")
+                }
+            }
+            SelectionContainer(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(360.dp)
                     .padding(horizontal = 16.dp),
-            )
+            ) {
+                Box(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                    Text(
+                        text = csvText.ifEmpty { "No data yet." },
+                        style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
+                    )
+                }
+            }
         }
     }
 
