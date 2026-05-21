@@ -17,7 +17,7 @@ sealed class EnvironmentalPhase {
     companion object {
         fun from(soilMoisture: Int): EnvironmentalPhase = when {
             soilMoisture >= 81 -> Deluge
-            soilMoisture >= 51 -> Saturated
+            soilMoisture >= 61 -> Saturated
             soilMoisture >= 21 -> Fertile
             else               -> Parched
         }

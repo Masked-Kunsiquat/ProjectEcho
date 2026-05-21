@@ -20,7 +20,6 @@ internal const val MOISTURE_BASELINE = 35
 internal const val DECAY_DELTA = 1
 private const val DELUGE_CASUALTY_RATE = 0.97
 internal const val TILE_CAPACITY = 10
-internal const val COAST_FISHING_BONUS = 5
 internal const val HIGH_VOLATILITY_THRESHOLD = 70
 
 internal const val SPLIT_DENSITY_THRESHOLD = 8
@@ -135,21 +134,18 @@ fun tick(
     val survivedTribes = state.tribes.mapValues { (_, tribe) ->
         val occupiedTiles = state.tiles.filter { it.occupantTribeId == tribe.tribeId }
 
-        val preferredBiomeName = tribe.personality.biomeAffinity.maxByOrNull { it.value }?.key
         val sophBonus = minOf(tribe.personality.sophistication, MAX_SOPHISTICATION) * 0.02f
 
         val effectiveMultiplier = if (occupiedTiles.isEmpty()) 1.0
         else occupiedTiles.map { tile ->
             val envMult = EnvironmentalPhase.from(tile.soilMoisture).foodMultiplier
-            val sophMult = if (preferredBiomeName != null && tile.biome.name == preferredBiomeName)
-                (1.0 + sophBonus) else 1.0
+            val sophMult = 1.0 + sophBonus * tribe.personality.affinityFor(tile.biome)
             envMult * sophMult
         }.average()
 
         val effectiveFarmers = if (occupiedTiles.isEmpty()) tribe.population
                                else minOf(tribe.population, occupiedTiles.size * TILE_CAPACITY)
-        val coastBonus = occupiedTiles.count { it.biome == BiomeType.Coast } * COAST_FISHING_BONUS
-        val farmed = (effectiveFarmers * 0.70 * effectiveMultiplier).roundToInt() + coastBonus
+        val farmed = (effectiveFarmers * 0.70 * effectiveMultiplier).roundToInt()
         val newFoodSupply = tribe.foodSupply + farmed - tribe.population
 
         val afterSurvival = when {
