@@ -203,16 +203,41 @@ Observed in playtest: initial tribe expanded to pop ~930, tiles ~78 by T=80 with
 
 > `GameLoop.tick()` is already a pure function. This phase wraps it in a standalone Kotlin entry point that runs without any Android lifecycle, ViewModel, or Room dependency — enabling batch runs, stress tests, and ground-truth output for validating the Python port.
 
-- [ ] Add a new Kotlin module (or `main/headless/` package in the domain layer) with a `main()` entry point that:
+- [x] Add a new Kotlin module (or `main/headless/` package in the domain layer) with a `main()` entry point that:
   - Creates a `WorldState` via `WorldState.initial()` with a given seed
   - Loads `SimEvent` list from a bundled JSON string (or file path argument)
   - Loads `TribePersonality` list from a bundled JSON string
   - Runs N ticks via `GameLoop.tick()` in a loop using seeded `Random`
   - Optionally serializes each post-tick `WorldState` to JSON (one file per tick or a single JSONL)
-- [ ] Zero Android imports in this module — if any Android import appears, the build must fail
-- [ ] Accept command-line args: `--ticks 1000 --seed 42 --output states.jsonl`
-- [ ] Write a "parity test": run 100 ticks headless with seed 42; assert final `worldTimeTick`, total population, and tile count match a known-good snapshot (prevents silent drift)
-- [ ] Verify: headless run of 1 000 ticks completes in < 10 seconds on a developer machine
+- [x] Zero Android imports in this module — if any Android import appears, the build must fail
+- [x] Accept command-line args: `--ticks 1000 --seed 42 --output states.jsonl`
+- [x] Write a "parity test": run 100 ticks headless with seed 42; assert final `worldTimeTick`, total population, and tile count match a known-good snapshot (prevents silent drift)
+- [x] Verify: headless run of 1 000 ticks completes in < 10 seconds on a developer machine
+
+### Phase 17b — Cross-Device Save Sync (pluggable backend)
+
+> `WorldState` is already `@Serializable`, so the serialization cost is zero. This sub-phase adds a thin, backend-agnostic persistence layer so a save started on one device can be continued on another (phone ↔ Galaxy Tab).
+
+**Why not GPGS:** GPGS requires Play Console registration ($25) AND complicates sideloaded installs under Google's 2026 developer-verification mandate (unverified sideloads get a high-friction install flow; GPGS sign-in on top makes it worse). **Google Drive** works independently of Play Store status, requires only OAuth, and supports sideloaded APKs today. GPGS can be added as a second backend later if the app ever hits the Play Store.
+
+#### Interface (domain-agnostic)
+
+- [ ] Define `SaveSyncBackend` interface in `feature/sync/`:
+  ```kotlin
+  interface SaveSyncBackend {
+      suspend fun upload(state: WorldState, timestampMs: Long)
+      suspend fun download(): Pair<WorldState, Long>?  // (state, timestampMs) or null
+  }
+  ```
+- [ ] Implement `GoogleDriveSyncBackend` — writes/reads a single `projectecho_save.json` file in the app's Drive App Data folder (hidden from user, not counted against quota, auto-deleted if app is uninstalled)
+- [ ] Leave `GpgsSyncBackend` as a stub/TODO for future Play Store path
+
+#### Wiring
+
+- [ ] Wire into `GameViewModel`: call `upload()` on manual save and on `onStop()`; call `download()` on first launch — take the newer timestamp silently, show a one-time dialog only if saves are within 5 minutes of each other
+- [ ] No domain layer changes — serialization is `Json.encodeToString(WorldState.serializer(), state)`
+
+*Note: Drive API requires OAuth sign-in on a real device; skip in CI. The underlying `WorldState` serialization is already covered by the parity test in Phase 17a.*
 
 ---
 

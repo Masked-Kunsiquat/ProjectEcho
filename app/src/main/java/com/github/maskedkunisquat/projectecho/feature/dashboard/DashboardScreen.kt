@@ -63,23 +63,25 @@ import com.github.maskedkunisquat.projectecho.ui.theme.ProjectEchoTheme
 private const val FAVOR_ICON = "⚡︎"
 
 // Need indicator glyphs — U+FE0E forces text presentation where needed
-private const val ICON_PARCHED    = "☀︎"  // U+2600 + U+FE0E
-private const val ICON_HUNGRY     = "⊙"   // U+2299
-private const val ICON_STARVING   = "☠︎"  // U+2620 + U+FE0E
-private const val ICON_ENDANGERED = "⚠︎"  // U+26A0 + U+FE0E
-private const val ICON_THREAT     = "⚔︎"  // U+2694 + U+FE0E
-private const val ICON_SPIRITUAL  = "✦"   // U+2726
-private const val ICON_CROWDED    = "⊕"   // U+2295
+private const val ICON_PARCHED     = "☀︎"  // U+2600 + U+FE0E
+private const val ICON_WATERLOGGED = "〰"   // U+3030 wavy dash
+private const val ICON_HUNGRY      = "⊙"   // U+2299
+private const val ICON_STARVING    = "☠︎"  // U+2620 + U+FE0E
+private const val ICON_ENDANGERED  = "⚠︎"  // U+26A0 + U+FE0E
+private const val ICON_THREAT      = "⚔︎"  // U+2694 + U+FE0E
+private const val ICON_SPIRITUAL   = "✦"   // U+2726
+private const val ICON_CROWDED     = "⊕"   // U+2295
 
 private fun TribeNeed.icon(): String? = when (this) {
-    TribeNeed.Parched            -> ICON_PARCHED
-    TribeNeed.Hungry             -> ICON_HUNGRY
-    TribeNeed.Starving           -> ICON_STARVING
-    TribeNeed.Endangered         -> ICON_ENDANGERED
-    TribeNeed.UnderThreat        -> ICON_THREAT
+    TribeNeed.Parched             -> ICON_PARCHED
+    TribeNeed.Waterlogged         -> ICON_WATERLOGGED
+    TribeNeed.Hungry              -> ICON_HUNGRY
+    TribeNeed.Starving            -> ICON_STARVING
+    TribeNeed.Endangered          -> ICON_ENDANGERED
+    TribeNeed.UnderThreat         -> ICON_THREAT
     TribeNeed.SpirituallyDepleted -> ICON_SPIRITUAL
-    TribeNeed.Overcrowded        -> ICON_CROWDED
-    TribeNeed.Thriving           -> null
+    TribeNeed.Overcrowded         -> ICON_CROWDED
+    TribeNeed.Thriving            -> null
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

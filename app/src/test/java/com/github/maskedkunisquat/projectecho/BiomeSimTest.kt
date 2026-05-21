@@ -9,7 +9,6 @@ import com.github.maskedkunisquat.projectecho.domain.model.TribePersonality
 import com.github.maskedkunisquat.projectecho.domain.model.WeatherFront
 import com.github.maskedkunisquat.projectecho.domain.model.WeatherType
 import com.github.maskedkunisquat.projectecho.domain.model.WorldState
-import com.github.maskedkunisquat.projectecho.domain.rules.COAST_FISHING_BONUS
 import com.github.maskedkunisquat.projectecho.domain.rules.HIGH_VOLATILITY_THRESHOLD
 import com.github.maskedkunisquat.projectecho.domain.rules.decayStep
 import com.github.maskedkunisquat.projectecho.domain.rules.tick
@@ -203,10 +202,11 @@ class BiomeSimTest {
         assertTrue(result.eventHistory.none { it == "A great storm tears through the valley." })
     }
 
-    // --- Coast fishing bonus ---
+    // --- Coast food via affinity-scaled sophistication bonus ---
 
     @Test
-    fun `Coast tiles add fishing bonus on top of phase food contribution`() {
+    fun `unsophisticated tribe gets no coast food bonus`() {
+        // soph=0 → sophBonus=0 → sophMult=1.0 regardless of biome; no flat fishing bonus
         val tile = MapTile(id = 0, col = 0, row = 0, soilMoisture = 35,
                            biome = BiomeType.Coast, occupantTribeId = "t")
         val state = WorldState(
@@ -216,27 +216,30 @@ class BiomeSimTest {
             tribes = mapOf("t" to Tribe(tribeId = "t", name = "The Test",
                                         population = 5, devotion = 50, foodSupply = 100)),
         )
-        val tribe = tick(state).tribes["t"]!!
-        // effectiveFarmers = min(5, 1*10) = 5; Fertile multiplier = 1.5
-        // farmed = (5*0.70*1.5).roundToInt() + 1*COAST_FISHING_BONUS = 5 + 5 = 10
-        // newFoodSupply = 100 + 10 - 5 = 105
-        assertEquals(105, tribe.foodSupply)
+        val result = tick(state).tribes["t"]!!
+        // effectiveFarmers=5; envMult=1.5 (Fertile); sophMult=1.0 (soph=0)
+        // farmed = (5*0.70*1.5).roundToInt() = 5; newFood = 100 + 5 - 5 = 100
+        assertEquals(100, result.foodSupply)
     }
 
     @Test
-    fun `non-Coast tile provides no fishing bonus`() {
-        val tile = MapTile(id = 0, col = 0, row = 0, soilMoisture = 35,
-                           biome = BiomeType.Grassland, occupantTribeId = "t")
-        val state = WorldState(
-            worldTimeTick = 0L,
-            divineFavor = 50,
-            tiles = listOf(tile),
-            tribes = mapOf("t" to Tribe(tribeId = "t", name = "The Test",
-                                        population = 5, devotion = 50, foodSupply = 100)),
+    fun `maritime tribe with sophistication gets more coast food than low-affinity tribe`() {
+        // maritime coast affinity=2.0; warlike coast affinity=0.7; both soph=10
+        val maritimePersonality = TribePersonality.maritime().copy(sophistication = 10)
+        val warlikePersonality  = TribePersonality.warlike().copy(sophistication = 10)
+        val coastTile = MapTile(id = 0, col = 0, row = 0, soilMoisture = 35,
+                                biome = BiomeType.Coast, occupantTribeId = "t")
+        fun stateFor(personality: TribePersonality) = WorldState(
+            worldTimeTick = 0L, divineFavor = 50,
+            tiles = listOf(coastTile),
+            tribes = mapOf("t" to Tribe(tribeId = "t", name = "Test",
+                                        population = 5, devotion = 50, foodSupply = 100,
+                                        personality = personality)),
         )
-        val tribe = tick(state).tribes["t"]!!
-        // farmed = (5*0.70*1.5).roundToInt() = 5; no bonus
-        // newFoodSupply = 100 + 5 - 5 = 100
-        assertEquals(100, tribe.foodSupply)
+        val maritimeFood = tick(stateFor(maritimePersonality)).tribes["t"]!!.foodSupply
+        val warlikeFood  = tick(stateFor(warlikePersonality)).tribes["t"]!!.foodSupply
+        // maritime sophMult = 1.0 + 0.2*2.0 = 1.4; warlike sophMult = 1.0 + 0.2*0.7 = 1.14
+        assertTrue("maritime tribe should produce more coast food than warlike tribe",
+            maritimeFood > warlikeFood)
     }
 }

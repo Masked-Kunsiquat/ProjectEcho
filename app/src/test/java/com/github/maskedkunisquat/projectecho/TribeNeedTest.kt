@@ -7,6 +7,7 @@ import com.github.maskedkunisquat.projectecho.domain.model.MapTile
 import com.github.maskedkunisquat.projectecho.domain.model.MIN_VIABLE_POPULATION
 import com.github.maskedkunisquat.projectecho.domain.model.NEEDS_DENSITY_THRESHOLD
 import com.github.maskedkunisquat.projectecho.domain.model.PARCHED_MOISTURE_THRESHOLD
+import com.github.maskedkunisquat.projectecho.domain.model.WATERLOGGED_MOISTURE_THRESHOLD
 import com.github.maskedkunisquat.projectecho.domain.model.SPIRITUALLY_DEPLETED_DEVOTION
 import com.github.maskedkunisquat.projectecho.domain.model.SPIRITUALLY_DEPLETED_SKEPTICISM
 import com.github.maskedkunisquat.projectecho.domain.model.UNDER_THREAT_TICKS
@@ -76,6 +77,38 @@ class TribeNeedTest {
         val t = tribe()
         val tiles = listOf(tile(0, moisture = 10), tile(1, moisture = 80))
         assertFalse(TribeNeed.Parched in t.needs(tiles, 0L))
+    }
+
+    // ── Waterlogged ───────────────────────────────────────────────────────────
+
+    @Test fun `Waterlogged fires when avg moisture exceeds threshold`() {
+        val t = tribe()
+        val tiles = listOf(tile(0, moisture = WATERLOGGED_MOISTURE_THRESHOLD + 1))
+        assertTrue(TribeNeed.Waterlogged in t.needs(tiles, 0L))
+    }
+
+    @Test fun `Waterlogged does not fire at exact threshold`() {
+        val t = tribe()
+        val tiles = listOf(tile(0, moisture = WATERLOGGED_MOISTURE_THRESHOLD))
+        assertFalse(TribeNeed.Waterlogged in t.needs(tiles, 0L))
+    }
+
+    @Test fun `Waterlogged uses average moisture across tiles`() {
+        // (40 + 90) / 2 = 65 > 60 → Waterlogged
+        val t = tribe()
+        val tiles = listOf(tile(0, moisture = 40), tile(1, moisture = 90))
+        assertTrue(TribeNeed.Waterlogged in t.needs(tiles, 0L))
+    }
+
+    @Test fun `Waterlogged and Parched cannot both fire`() {
+        // can't be both too wet and too dry by average
+        val t = tribe()
+        val wetTiles = listOf(tile(0, moisture = 80))
+        val dryTiles = listOf(tile(0, moisture = 10))
+        val wetNeeds = t.needs(wetTiles, 0L)
+        val dryNeeds = t.needs(dryTiles, 0L)
+        assertFalse(TribeNeed.Parched in wetNeeds)
+        assertFalse(TribeNeed.Waterlogged in dryNeeds)
     }
 
     // ── Hungry ────────────────────────────────────────────────────────────────

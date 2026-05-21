@@ -3,6 +3,7 @@ package com.github.maskedkunisquat.projectecho.domain.model
 import kotlinx.serialization.Serializable
 
 internal const val PARCHED_MOISTURE_THRESHOLD      = 25
+internal const val WATERLOGGED_MOISTURE_THRESHOLD  = 60
 internal const val HUNGRY_FOOD_TICKS               = 3
 internal const val UNDER_THREAT_TICKS              = 5L
 internal const val MIN_VIABLE_POPULATION           = 20
@@ -34,6 +35,7 @@ data class Tribe(
         val avgMoisture = if (ownedTiles.isEmpty()) 50
                          else ownedTiles.sumOf { it.soilMoisture } / ownedTiles.size
         if (avgMoisture < PARCHED_MOISTURE_THRESHOLD) result += TribeNeed.Parched
+        if (avgMoisture > WATERLOGGED_MOISTURE_THRESHOLD) result += TribeNeed.Waterlogged
         if (foodSupply < population * HUNGRY_FOOD_TICKS) result += TribeNeed.Hungry
         if (foodSupply == 0) result += TribeNeed.Starving
         if (population < MIN_VIABLE_POPULATION) result += TribeNeed.Endangered
