@@ -214,6 +214,21 @@ Observed in playtest: initial tribe expanded to pop ~930, tiles ~78 by T=80 with
 - [ ] Write a "parity test": run 100 ticks headless with seed 42; assert final `worldTimeTick`, total population, and tile count match a known-good snapshot (prevents silent drift)
 - [ ] Verify: headless run of 1 000 ticks completes in < 10 seconds on a developer machine
 
+### Phase 17b — Cross-Device Save Sync (GPGS Saved Games)
+
+> `WorldState` is already `@Serializable`, so the serialization cost is zero. This sub-phase adds a thin persistence layer so a save started on one device can be continued on another (phone ↔ Galaxy Tab).
+
+- [ ] Add **Google Play Games Services** dependency to `app/build.gradle.kts` (`com.google.android.gms:play-services-games-v2`)
+- [ ] Create `SaveSyncRepository.kt` in `feature/` (Android-side only — zero domain imports):
+  - `suspend fun upload(state: WorldState)` — encodes to JSON string, writes to GPGS Saved Games slot
+  - `suspend fun download(): WorldState?` — reads latest slot, decodes; returns `null` if no cloud save exists
+  - Conflict strategy: **latest timestamp wins** (appropriate for single-player; you're never on both devices at once)
+- [ ] Wire into `GameViewModel`: call `upload()` on each manual save or app backgrounding; call `download()` on first launch if local save is absent or older than cloud save
+- [ ] Handle the "which save is newer?" prompt gracefully — show a simple dialog if timestamps are within the same session window (e.g. < 5 min apart), otherwise silently take the newer one
+- [ ] No domain layer changes — `WorldState` serialization is already `Json.encodeToString(WorldState.serializer(), state)`
+
+*Note: GPGS requires a Google Play developer account and a real device (or emulator with Play Services) to test. Skip in CI; the underlying `WorldState` serialization is already covered by the parity test above.*
+
 ---
 
 ## Phase 18 — TribePolicy Interface & State Vectorizer
