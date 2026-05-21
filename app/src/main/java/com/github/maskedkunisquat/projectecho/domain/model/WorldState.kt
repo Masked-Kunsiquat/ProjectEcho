@@ -247,11 +247,10 @@ data class WorldState(
  */
 fun WorldState.reward(prev: WorldState, tribeId: String): Float {
     if (tribeId !in tribes) return TRAINING_EXTINCTION_PENALTY
-    val prevTribe = prev.tribes[tribeId] ?: return TRAINING_EXTINCTION_PENALTY
     val thisTribe = tribes.getValue(tribeId)
+    val prevPop = prev.tribes[tribeId]?.population ?: 0
+    val prevTiles = if (tribeId in prev.tribes) prev.tiles.count { it.occupantTribeId == tribeId } else 0
     val newPop = thisTribe.population
-    val prevPop = prevTribe.population
     val newTiles = tiles.count { it.occupantTribeId == tribeId }
-    val prevTiles = prev.tiles.count { it.occupantTribeId == tribeId }
     return (newPop - prevPop + newTiles - prevTiles).toFloat()
 }

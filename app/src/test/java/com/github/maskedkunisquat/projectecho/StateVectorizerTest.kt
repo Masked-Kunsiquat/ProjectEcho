@@ -136,10 +136,25 @@ class StateVectorizerTest {
 
     @Test
     fun `initialForTraining tribes do not share tiles`() {
-        val state = WorldState.initialForTraining(numTribes = 4, seed = 42L)
-        state.tiles.filter { it.occupantTribeId != null }.forEach { tile ->
-            val count = state.tiles.count { it.id == tile.id && it.occupantTribeId != null }
-            assertEquals("tile ${tile.id} should have exactly one owner", 1, count)
+        val numTribes = 4
+        val state = WorldState.initialForTraining(numTribes = numTribes, seed = 42L)
+
+        // Every tribe owns at least one tile
+        val tribeIds = (0 until numTribes).map { "training-tribe-$it" }
+        tribeIds.forEach { id ->
+            assertTrue("$id should own at least one tile",
+                state.tiles.any { it.occupantTribeId == id })
+        }
+
+        // Owned tile-id sets are pairwise disjoint
+        val ownedByTribe = tribeIds.associateWith { id ->
+            state.tiles.filter { it.occupantTribeId == id }.map { it.id }.toSet()
+        }
+        for (i in tribeIds.indices) {
+            for (j in (i + 1) until tribeIds.size) {
+                val overlap = ownedByTribe[tribeIds[i]]!! intersect ownedByTribe[tribeIds[j]]!!
+                assertTrue("${tribeIds[i]} and ${tribeIds[j]} share tiles: $overlap", overlap.isEmpty())
+            }
         }
     }
 

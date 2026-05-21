@@ -75,14 +75,14 @@ class TribePolicyTest {
 
     @Test
     fun `chooseRaid returns candidate when threshold always met`() {
-        // Use a seeded random that reliably returns a low value for the first call
+        // aggression=1.0, caution=0.0, devotion=0, sophistication=0 → threshold=1.0 (clamped)
+        // nextFloat() is always in [0,1) so the check nextFloat() >= 1.0 is always false → raid always fires
         val policy = HeuristicPolicy(Random(0))
         val aggressor = tribe(aggression = 1.0f, caution = 0.0f, devotion = 0)
         val defender = tribe(id = "def", caution = 0.0f)
-        val targets = listOf(RaidCandidate(MapTile(1, 1, 0), "def", defender))
-        // threshold ≈ 1.0; nextFloat is in [0,1), so < 1.0 nearly always
-        val results = (0 until 20).map { HeuristicPolicy(Random(it.toLong())).chooseRaid(aggressor, targets) }
-        assertTrue("at least one raid should succeed", results.any { it != null })
+        val target = RaidCandidate(MapTile(1, 1, 0), "def", defender)
+        val result = policy.chooseRaid(aggressor, listOf(target))
+        assertEquals(target, result)
     }
 
     @Test
