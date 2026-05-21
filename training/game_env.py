@@ -101,12 +101,18 @@ def _shaped_reward(prev: WorldState, nxt: WorldState, tribe_id: str, was_success
     prev_tribe = prev.tribes.get(tribe_id)
     r = 0.0
     r += 0.01                                          # alive bonus
+    r += 0.02 * max(0, len(nxt.tribes) - 1)           # coexistence: reward world with multiple tribes
     # hoarding guard: food bonus only when pop is stable or growing
     if tribe.food_supply > 0 and (prev_tribe is None or tribe.population >= prev_tribe.population):
         r += 0.1                                       # food surplus tick
     if tribe.food_supply == 0 and prev_tribe and tribe.population < prev_tribe.population:
         r -= 0.5                                       # starvation tick
-    if was_successful_raider:    r += 0.5             # successful raid
+    if was_successful_raider:    r += 0.2             # successful raid (reduced from 0.5)
+    # overextension: penalise holding >40% of all tiles
+    tribe_tiles   = sum(1 for t in nxt.tiles if t.occupant_tribe_id == tribe_id)
+    tile_fraction = tribe_tiles / max(1, len(nxt.tiles))
+    if tile_fraction > 0.4:
+        r -= 0.05 * (tile_fraction - 0.4)             # proportional above the threshold
     return max(-1.0, min(1.0, r))
 
 
