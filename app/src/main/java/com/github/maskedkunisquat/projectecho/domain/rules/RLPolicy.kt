@@ -89,13 +89,16 @@ class RLPolicy private constructor(
             mask[ACTION_EXPAND_W] = true
         }
 
-        val sortedOthers = state.tribes.keys.filter { it != tribe.tribeId }.sorted()
-        for ((i, otherId) in sortedOthers.take(Tribe.MAX_TRIBES - 1).withIndex()) {
-            val other     = state.tribes[otherId] ?: continue
-            if (other.divineShieldTicks > 0) continue
-            val otherIds  = state.tiles.filter { it.occupantTribeId == otherId }.map { it.id }.toHashSet()
-            val adjacent  = otherIds.any { oid -> getNeighbors(oid).any { it in ownedIds } }
-            if (adjacent) mask[ACTION_RAID_BASE + i] = true
+        // Starvation guard: a tribe with no food cannot sustain a raid
+        if (tribe.foodSupply > 0) {
+            val sortedOthers = state.tribes.keys.filter { it != tribe.tribeId }.sorted()
+            for ((i, otherId) in sortedOthers.take(Tribe.MAX_TRIBES - 1).withIndex()) {
+                val other    = state.tribes[otherId] ?: continue
+                if (other.divineShieldTicks > 0) continue
+                val otherIds = state.tiles.filter { it.occupantTribeId == otherId }.map { it.id }.toHashSet()
+                val adjacent = otherIds.any { oid -> getNeighbors(oid).any { it in ownedIds } }
+                if (adjacent) mask[ACTION_RAID_BASE + i] = true
+            }
         }
         return mask
     }

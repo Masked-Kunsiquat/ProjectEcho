@@ -389,6 +389,8 @@ Observed in playtest: initial tribe expanded to pop ~930, tiles ~78 by T=80 with
 - **Split thresholds lowered**: `SPLIT_MIN_POPULATION` 400→200, `SPLIT_DENSITY_THRESHOLD` 8→5. RL model's expansion behavior keeps tile counts high relative to population, preventing density from reaching 8.
 - **Split devotion cap raised**: `SPLIT_DEVOTION_CAP` 80→100. RL-trained tribes reach devotion=100 reliably; old cap blocked all splits.
 
+- **Starvation raid mask**: `RLPolicy.buildMask()` and `game_env.py action_masks()` now block all RAID actions when `foodSupply == 0`. Breaks the "mutual death spiral" pattern where two starving tribes raided each other to extinction. Applies at both inference (Android) and training time (Python). Both files updated in sync — this constraint is active for the next training run without needing full parity sync.
+
 **Python parity note**: `simulation.py` still has the old farming fallback, old split thresholds, and no wanderer logic. Parity test at seed=42 T=100 may still pass (those edge cases don't fire in that scenario), but the sims are no longer identical. Before v3 training, sync all four changes to Python and re-run `parity_test.py`.
 
 ---

@@ -266,13 +266,15 @@ class ProjectEchoEnv(gym.Env):
                 m[ACTION_EXPAND_E] = True
                 m[ACTION_EXPAND_W] = True
 
-            others = sorted(ot for ot in self._state.tribes if ot != tid)
-            for i, other_id in enumerate(others[:MAX_TRIBES - 1]):
-                other        = self._state.tribes[other_id]
-                other_occ    = {t.id for t in self._state.tiles if t.occupant_tribe_id == other_id}
-                is_adjacent  = any(any(n in occ_ids for n in get_neighbors(oid)) for oid in other_occ)
-                if is_adjacent and other.divine_shield_ticks == 0:
-                    m[ACTION_RAID_BASE + i] = True
+            # Starvation guard: a tribe with no food cannot sustain a raid
+            if tribe.food_supply > 0:
+                others = sorted(ot for ot in self._state.tribes if ot != tid)
+                for i, other_id in enumerate(others[:MAX_TRIBES - 1]):
+                    other        = self._state.tribes[other_id]
+                    other_occ    = {t.id for t in self._state.tiles if t.occupant_tribe_id == other_id}
+                    is_adjacent  = any(any(n in occ_ids for n in get_neighbors(oid)) for oid in other_occ)
+                    if is_adjacent and other.divine_shield_ticks == 0:
+                        m[ACTION_RAID_BASE + i] = True
 
             masks[tid] = m
         return masks
