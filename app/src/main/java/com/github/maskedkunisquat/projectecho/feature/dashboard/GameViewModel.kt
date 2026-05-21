@@ -52,6 +52,10 @@ class GameViewModel(
     /** When true, tribes use the trained RL policy instead of the heuristic. */
     val useRlPolicy: StateFlow<Boolean> = _useRlPolicy.asStateFlow()
 
+    private val _rlDebugLog = MutableStateFlow<List<String>>(emptyList())
+    /** Rolling 20-entry log of per-tick RL action summaries. Empty when policy is inactive. */
+    val rlDebugLog: StateFlow<List<String>> = _rlDebugLog.asStateFlow()
+
     fun setRLPolicy(jsonString: String) {
         rlPolicy = RLPolicy.fromJson(jsonString)
         _useRlPolicy.value = true
@@ -113,12 +117,36 @@ class GameViewModel(
         val currentState = _worldState.value
         val activeRl = rlPolicy?.takeIf { _useRlPolicy.value }
         activeRl?.setWorldState(currentState)
+        if (activeRl != null) {
+            val line = formatDebugLine(currentState, activeRl.lastActions)
+            _rlDebugLog.value = (_rlDebugLog.value + line).takeLast(20)
+        }
         val policy = activeRl ?: HeuristicPolicy()
         val newState = tick(currentState, action, simEvents, cluster, targetTribeId = tribeTarget, policy = policy)
         _worldState.value = newState
         viewModelScope.launch(ioDispatcher) {
             runCatching { repository.save(newState) }
         }
+    }
+
+    private fun formatDebugLine(state: WorldState, actions: Map<String, Int>): String {
+        val parts = state.tribes.entries.sortedBy { it.key }.map { (tribeId, tribe) ->
+            val sortedOthers = state.tribes.keys.filter { it != tribeId }.sorted()
+            val label = when (val idx = actions[tribeId] ?: 11) {
+                0    -> "Expand N"
+                1    -> "Expand S"
+                2    -> "Expand E"
+                3    -> "Expand W"
+                11   -> "Rest"
+                else -> {
+                    val targetName = sortedOthers.getOrNull(idx - 4)
+                        ?.let { state.tribes[it]?.name } ?: "?"
+                    "Raid $targetName"
+                }
+            }
+            "${tribe.name}: $label"
+        }
+        return "T${state.worldTimeTick} | ${parts.joinToString("  |  ")}"
     }
 
     override fun onCleared() {

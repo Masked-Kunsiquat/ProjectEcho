@@ -67,8 +67,10 @@ class MainActivity : ComponentActivity() {
             ProjectEchoTheme {
                 val worldState by viewModel.worldState.collectAsState()
                 val mapOverlay by viewModel.mapOverlay.collectAsState()
+                val rlDebugLog by viewModel.rlDebugLog.collectAsState()
                 val snackbarHostState = remember { SnackbarHostState() }
                 var isChronicleVisible by remember { mutableStateOf(false) }
+                var isDebugLogVisible by remember { mutableStateOf(false) }
 
                 Scaffold(
                     modifier = Modifier.fillMaxSize(),
@@ -82,6 +84,10 @@ class MainActivity : ComponentActivity() {
                         isChronicleVisible = isChronicleVisible,
                         onShowChronicle = { isChronicleVisible = true },
                         onDismissChronicle = { isChronicleVisible = false },
+                        rlDebugLog = rlDebugLog,
+                        isDebugLogVisible = isDebugLogVisible,
+                        onShowDebugLog = { isDebugLogVisible = true },
+                        onDismissDebugLog = { isDebugLogVisible = false },
                         mapOverlay = mapOverlay,
                         onOverlaySelected = { viewModel.setMapOverlay(it) },
                         modifier = Modifier.padding(innerPadding),

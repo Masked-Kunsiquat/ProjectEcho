@@ -37,6 +37,9 @@ class RLPolicy private constructor(
     private var cachedActions: Map<String, Int> = emptyMap()
     private var worldState: WorldState? = null
 
+    /** Actions chosen in the most recent [setWorldState] call: tribeId → action index. */
+    val lastActions: Map<String, Int> get() = cachedActions
+
     fun setWorldState(state: WorldState) {
         worldState = state
         cachedActions = state.tribes.mapValues { (_, tribe) ->

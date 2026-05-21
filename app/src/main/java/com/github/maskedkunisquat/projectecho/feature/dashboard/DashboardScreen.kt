@@ -94,6 +94,10 @@ fun DashboardScreen(
     isChronicleVisible: Boolean,
     onShowChronicle: () -> Unit,
     onDismissChronicle: () -> Unit,
+    rlDebugLog: List<String> = emptyList(),
+    isDebugLogVisible: Boolean = false,
+    onShowDebugLog: () -> Unit = {},
+    onDismissDebugLog: () -> Unit = {},
     mapOverlay: MapOverlay = MapOverlay.Default,
     onOverlaySelected: (MapOverlay) -> Unit,
     modifier: Modifier = Modifier,
@@ -120,6 +124,27 @@ fun DashboardScreen(
             )
             HistoryLedger(
                 entries = worldState.eventHistory,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(360.dp)
+                    .padding(horizontal = 16.dp),
+            )
+        }
+    }
+
+    if (isDebugLogVisible) {
+        ModalBottomSheet(
+            onDismissRequest = onDismissDebugLog,
+            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+            containerColor = MaterialTheme.colorScheme.surface,
+        ) {
+            Text(
+                text = "Policy Log",
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+            )
+            HistoryLedger(
+                entries = rlDebugLog.ifEmpty { listOf("No data yet — waiting for first RL tick.") },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(360.dp)
@@ -270,6 +295,13 @@ fun DashboardScreen(
                 border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
             ) {
                 Text("Chronicle")
+            }
+            OutlinedButton(
+                onClick = onShowDebugLog,
+                modifier = Modifier.weight(1f),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+            ) {
+                Text("Policy Log")
             }
             Button(
                 onClick = onTickPressed,
