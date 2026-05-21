@@ -214,20 +214,30 @@ Observed in playtest: initial tribe expanded to pop ~930, tiles ~78 by T=80 with
 - [ ] Write a "parity test": run 100 ticks headless with seed 42; assert final `worldTimeTick`, total population, and tile count match a known-good snapshot (prevents silent drift)
 - [ ] Verify: headless run of 1 000 ticks completes in < 10 seconds on a developer machine
 
-### Phase 17b — Cross-Device Save Sync (GPGS Saved Games)
+### Phase 17b — Cross-Device Save Sync (pluggable backend)
 
-> `WorldState` is already `@Serializable`, so the serialization cost is zero. This sub-phase adds a thin persistence layer so a save started on one device can be continued on another (phone ↔ Galaxy Tab).
+> `WorldState` is already `@Serializable`, so the serialization cost is zero. This sub-phase adds a thin, backend-agnostic persistence layer so a save started on one device can be continued on another (phone ↔ Galaxy Tab).
 
-- [ ] Add **Google Play Games Services** dependency to `app/build.gradle.kts` (`com.google.android.gms:play-services-games-v2`)
-- [ ] Create `SaveSyncRepository.kt` in `feature/` (Android-side only — zero domain imports):
-  - `suspend fun upload(state: WorldState)` — encodes to JSON string, writes to GPGS Saved Games slot
-  - `suspend fun download(): WorldState?` — reads latest slot, decodes; returns `null` if no cloud save exists
-  - Conflict strategy: **latest timestamp wins** (appropriate for single-player; you're never on both devices at once)
-- [ ] Wire into `GameViewModel`: call `upload()` on each manual save or app backgrounding; call `download()` on first launch if local save is absent or older than cloud save
-- [ ] Handle the "which save is newer?" prompt gracefully — show a simple dialog if timestamps are within the same session window (e.g. < 5 min apart), otherwise silently take the newer one
-- [ ] No domain layer changes — `WorldState` serialization is already `Json.encodeToString(WorldState.serializer(), state)`
+**Why not GPGS:** GPGS requires Play Console registration ($25) AND complicates sideloaded installs under Google's 2026 developer-verification mandate (unverified sideloads get a high-friction install flow; GPGS sign-in on top makes it worse). **Google Drive** works independently of Play Store status, requires only OAuth, and supports sideloaded APKs today. GPGS can be added as a second backend later if the app ever hits the Play Store.
 
-*Note: GPGS requires a Google Play developer account and a real device (or emulator with Play Services) to test. Skip in CI; the underlying `WorldState` serialization is already covered by the parity test above.*
+#### Interface (domain-agnostic)
+
+- [ ] Define `SaveSyncBackend` interface in `feature/sync/`:
+  ```kotlin
+  interface SaveSyncBackend {
+      suspend fun upload(state: WorldState, timestampMs: Long)
+      suspend fun download(): Pair<WorldState, Long>?  // (state, timestampMs) or null
+  }
+  ```
+- [ ] Implement `GoogleDriveSyncBackend` — writes/reads a single `projectecho_save.json` file in the app's Drive App Data folder (hidden from user, not counted against quota, auto-deleted if app is uninstalled)
+- [ ] Leave `GpgsSyncBackend` as a stub/TODO for future Play Store path
+
+#### Wiring
+
+- [ ] Wire into `GameViewModel`: call `upload()` on manual save and on `onStop()`; call `download()` on first launch — take the newer timestamp silently, show a one-time dialog only if saves are within 5 minutes of each other
+- [ ] No domain layer changes — serialization is `Json.encodeToString(WorldState.serializer(), state)`
+
+*Note: Drive API requires OAuth sign-in on a real device; skip in CI. The underlying `WorldState` serialization is already covered by the parity test in Phase 17a.*
 
 ---
 
