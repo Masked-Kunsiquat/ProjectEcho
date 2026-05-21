@@ -45,10 +45,11 @@ def build_vec_env(n_envs: int, seed: int, use_dummy: bool):
 
 def main(args: argparse.Namespace) -> None:
     from stable_baselines3.common.vec_env import VecMonitor
-    from stable_baselines3.common.utils import get_linear_fn
     from stable_baselines3.common.callbacks import CheckpointCallback
     from sb3_contrib import MaskablePPO
-    from callbacks import HallOfFameCallback, CurriculumCallback, HeuristicEvalCallback
+    from callbacks import (
+        EntropyDecayCallback, HallOfFameCallback, CurriculumCallback, HeuristicEvalCallback,
+    )
 
     os.makedirs(args.output_dir, exist_ok=True)
 
@@ -59,10 +60,6 @@ def main(args: argparse.Namespace) -> None:
         print(f"Resuming from {args.resume}")
         model = MaskablePPO.load(args.resume, env=vec_env)
     else:
-        # Entropy decays linearly from 0.1 → 0.01 over the full run.
-        # High early entropy forces exploration; decay lets the policy commit.
-        ent_schedule = get_linear_fn(start=0.1, end=0.01, end_fraction=1.0)
-
         model = MaskablePPO(
             "MlpPolicy",
             vec_env,
@@ -73,7 +70,7 @@ def main(args: argparse.Namespace) -> None:
             gamma           = 0.99,
             gae_lambda      = 0.95,
             clip_range      = 0.2,
-            ent_coef        = ent_schedule,
+            ent_coef        = 0.1,        # EntropyDecayCallback handles 0.1 → 0.01
             verbose         = 1,
             seed            = args.seed,
             tensorboard_log = os.path.join(args.output_dir, "tb"),
@@ -81,6 +78,9 @@ def main(args: argparse.Namespace) -> None:
         )
 
     callbacks = [
+        # Entropy decay: 0.1 → 0.01 linearly (MaskablePPO ignores callable ent_coef)
+        EntropyDecayCallback(start=0.1, end=0.01),
+
         # Hall of Fame: snapshot weights every 5 000 steps → push to all workers
         HallOfFameCallback(snapshot_every=5_000, verbose=1),
 

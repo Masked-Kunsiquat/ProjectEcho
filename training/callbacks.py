@@ -18,6 +18,27 @@ from stable_baselines3.common.callbacks import BaseCallback
 # HallOfFameCallback
 # ---------------------------------------------------------------------------
 
+class EntropyDecayCallback(BaseCallback):
+    """
+    Linearly decays model.ent_coef from `start` to `end` over the full run.
+
+    Replaces SB3's built-in schedule support, which MaskablePPO does not
+    honour in all sb3-contrib versions (callable ent_coef is multiplied raw
+    against a Tensor instead of being called first).
+    """
+
+    def __init__(self, start: float = 0.1, end: float = 0.01, verbose: int = 0):
+        super().__init__(verbose)
+        self._start = start
+        self._end   = end
+
+    def _on_step(self) -> bool:
+        total = getattr(self.model, "_total_timesteps", None) or 1
+        progress = min(1.0, self.num_timesteps / total)
+        self.model.ent_coef = self._start + (self._end - self._start) * progress
+        return True
+
+
 class HallOfFameCallback(BaseCallback):
     """
     Every `snapshot_every` timesteps, extract the current actor weights and
