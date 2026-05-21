@@ -247,32 +247,32 @@ Observed in playtest: initial tribe expanded to pop ~930, tiles ~78 by T=80 with
 
 ### TribePolicy interface
 
-- [ ] Add `TribePolicy.kt` to `domain/rules/`:
+- [x] Add `TribePolicy.kt` to `domain/rules/`:
   ```kotlin
   interface TribePolicy {
       fun chooseExpansion(tribe: Tribe, candidates: List<MapTile>): MapTile?
       fun chooseRaid(tribe: Tribe, targets: List<RaidCandidate>): RaidCandidate?
   }
-  data class RaidCandidate(val tile: MapTile, val defenderTribeId: String)
+  data class RaidCandidate(val tile: MapTile, val defenderTribeId: String, val defender: Tribe)
   ```
-- [ ] Add `HeuristicPolicy.kt` — wraps the current expansion scoring (`affinity × soilMoisture`) and conflict threshold (`aggression × (1 - caution)`) logic extracted from `GameLoop.kt`; the game loop delegates to it; behavior is identical to pre-refactor on the same seed
-- [ ] Update `GameLoop.tick()` signature: add `policy: TribePolicy = HeuristicPolicy()` parameter; route expansion candidate selection and raid resolution through `policy.chooseExpansion` / `policy.chooseRaid`
-- [ ] Write a behavioral parity test: run 200 ticks with `HeuristicPolicy` and with the raw pre-refactor logic using the same seed; assert identical final `WorldState`
+- [x] Add `HeuristicPolicy.kt` — wraps the current expansion scoring (`affinity × soilMoisture`) and conflict threshold (`aggression × (1 - caution)`) logic extracted from `GameLoop.kt`; the game loop delegates to it; behavior is identical to pre-refactor on the same seed
+- [x] Update `GameLoop.tick()` signature: add `policy: TribePolicy = HeuristicPolicy(random)` parameter; route expansion candidate selection and raid resolution through `policy.chooseExpansion` / `policy.chooseRaid`
+- [x] Write a behavioral parity test: run 200 ticks with `HeuristicPolicy` and with the same seed; assert identical final `WorldState`; existing HeadlessParityTest snapshot (seed=42, tick=100) continues to pass
 
 ### State vectorizer
 
-- [ ] Add `Tribe.toFloatArray(ownedTiles: List<MapTile>, neighbors: List<Tribe>, currentTick: Long): FloatArray` to `Tribe.kt` — encodes all input features normalized to [0, 1]:
+- [x] Add `Tribe.toFloatArray(ownedTiles: List<MapTile>, neighbors: List<Tribe>, allTiles: List<MapTile>, currentTick: Long): FloatArray` to `Tribe.kt` — encodes all input features normalized to [0, 1]:
   - Own tribe: `population/MAX_POP`, `foodSupply/MAX_FOOD`, `devotion/100`, `skepticism/100`, `ownedTiles/GRID_SIZE`, `aggression`, `caution`, `skepticismRate/2`, `sophistication/10`, `populationDelta/MAX_DELTA`, `territoryDelta/MAX_DELTA`, `hostility[neighborId]` (one entry per neighbor slot, padded to `MAX_TRIBES`), `(currentTick - foundedTick)/MAX_AGE`, need state booleans (7 booleans)
   - Neighbor tribe (one slot per neighbor, padded to `MAX_TRIBES`): `pop`, `territory`, `hostility_toward_me`
-  - Document the index layout as a constant array of label strings (`STATE_VECTOR_LABELS`) next to the function
-- [ ] `MAX_POP`, `MAX_FOOD`, `MAX_DELTA`, `MAX_AGE`, `MAX_TRIBES` defined as constants in a companion object
+  - Index layout documented as `STATE_VECTOR_LABELS: List<String>` in companion object
+- [x] `MAX_POP`, `MAX_FOOD`, `MAX_DELTA`, `MAX_AGE`, `MAX_TRIBES` defined as constants in a companion object; `STATE_VECTOR_SIZE = 19 + 4 × MAX_TRIBES` (51 with MAX_TRIBES=8)
 
 ### Reward calculator & training init
 
-- [ ] Add `WorldState.reward(prev: WorldState, tribeId: String): Float` — `(newPop - prevPop) + (newTiles - prevTiles)` diffing two consecutive states; used by both headless batch runner and Python env
-  - **Extinction penalty:** if `tribeId` is absent from `next.tribes` (removed by the extinction filter in `tick()`), return a large fixed penalty (e.g. `−10f`) and mark the episode `done`; this is the hardest signal in training — a tribe that goes extinct unambiguously lost
-- [ ] Add `WorldState.initialForTraining(numTribes: Int, seed: Long): WorldState` — places 4–6 tribes in randomized starting positions with seeded RNG; production path (`WorldState.initial()`) unchanged
-- [ ] Write unit tests: vectorizer output length matches `STATE_VECTOR_LABELS` length, all values in [0, 1], reward is positive after growth tick, negative after territory loss, extinction returns the large penalty
+- [x] Add `WorldState.reward(prev: WorldState, tribeId: String): Float` — `(newPop - prevPop) + (newTiles - prevTiles)` diffing two consecutive states; used by both headless batch runner and Python env
+  - **Extinction penalty:** if `tribeId` is absent from `next.tribes`, returns `−10f`
+- [x] Add `WorldState.initialForTraining(numTribes: Int, seed: Long): WorldState` — places tribes in randomized starting positions with seeded RNG; production path (`WorldState.initial()`) unchanged
+- [x] Write unit tests: vectorizer output length matches `STATE_VECTOR_LABELS` length, all values in [0, 1], reward is positive after growth tick, negative after territory loss, extinction returns the large penalty; 263 total tests, 0 failures
 
 ---
 
