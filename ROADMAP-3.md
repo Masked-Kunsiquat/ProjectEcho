@@ -340,19 +340,19 @@ Observed in playtest: initial tribe expanded to pop ~930, tiles ~78 by T=80 with
 
 ### Policy network
 
-- [ ] Tiny custom MLP: ~3 layers × 128 neurons, ~50 K parameters — inputs floats, outputs action probabilities via softmax. This is not a language model; it runs in microseconds.
-- [ ] Personality stats (`aggression`, `caution`, etc.) are *input features*, not separate networks — one shared policy handles all archetypes; the network learns that high aggression → prefer raid actions
+- [x] Tiny custom MLP: ~3 layers × 128 neurons, ~50 K parameters — inputs floats, outputs action probabilities via softmax. This is not a language model; it runs in microseconds.
+- [x] Personality stats (`aggression`, `caution`, etc.) are *input features*, not separate networks — one shared policy handles all archetypes; the network learns that high aggression → prefer raid actions
 
 ### Training loop
 
-- [ ] Spin up 4–6 tribes per match; ~200 ticks per episode
-- [ ] **Hall of Fame** — snapshot current policy weights every 100 matches; ~50% of opponents drawn from Hall (frozen past snapshots). Prevents collapse to one degenerate strategy.
-- [ ] **Parallel environments** — `SubprocVecEnv` with 8–16 simultaneous environments for 8–16× more experience per GPU hour
-- [ ] **Curriculum learning** — start with 50-tick episodes, crowded starting maps (conflict happens early); increase episode length as policy matures; crowded starts prevent "always expand into empty space" local optimum
-- [ ] **Entropy decay schedule** — high PPO entropy bonus early (forces exploration); decay over training (lets policy commit to decisive behavior); without high early entropy: immediate collapse to one action
-- [ ] **Checkpoint every N episodes** — policy collapse (catastrophic forgetting) is real; save weights frequently and keep rollback capability; Hall of Fame snapshots help but are separate from weight checkpoints
-- [ ] **Evaluate against heuristic baseline every N episodes** — run current policy against `HeuristicPolicy` and track win rate; heuristic is the training floor; regression below it signals a problem
-- [ ] Success criterion: policy win rate vs. heuristic baseline > 60% at convergence
+- [x] Spin up 4–6 tribes per match; ~200 ticks per episode
+- [x] **Hall of Fame** — snapshot current policy weights every 100 matches; ~50% of opponents drawn from Hall (frozen past snapshots). Prevents collapse to one degenerate strategy.
+- [x] **Parallel environments** — `SubprocVecEnv` with 8–16 simultaneous environments for 8–16× more experience per GPU hour
+- [x] **Curriculum learning** — start with 50-tick episodes, crowded starting maps (conflict happens early); increase episode length as policy matures; crowded starts prevent "always expand into empty space" local optimum
+- [x] **Entropy decay schedule** — high PPO entropy bonus early (forces exploration); decay over training (lets policy commit to decisive behavior); without high early entropy: immediate collapse to one action
+- [x] **Checkpoint every N episodes** — policy collapse (catastrophic forgetting) is real; save weights frequently and keep rollback capability; Hall of Fame snapshots help but are separate from weight checkpoints
+- [x] **Evaluate against heuristic baseline every N episodes** — run current policy against `HeuristicPolicy` and track win rate; heuristic is the training floor; regression below it signals a problem
+- [x] Success criterion: policy win rate vs. heuristic baseline > 60% at convergence — **67% gauntlet (100 eps, deterministic), 100% survival, 35.1 vs 17.1 avg tiles**
 
 ---
 
