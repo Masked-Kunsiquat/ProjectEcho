@@ -519,7 +519,8 @@ internal fun conflictStep(
     if (state.tribes.size < 2) return state
 
     val tribeIds = state.tribes.keys.toList()
-    val chronicleEntries = mutableListOf<String>()
+    // aggressorId → list of defender names raided this tick
+    val raidsByAggressor = mutableMapOf<String, MutableList<String>>()
     val raidedTribeIds = mutableSetOf<String>()
     val hostilityChanges = mutableMapOf<String, MutableMap<String, Float>>()
     var tiles = state.tiles
@@ -549,9 +550,16 @@ internal fun conflictStep(
                     .merge(defenderId, 0.1f, Float::plus)
                 hostilityChanges.getOrPut(defenderId) { mutableMapOf() }
                     .merge(aggressorId, 0.15f, Float::plus)
-                chronicleEntries += "The ${aggressor.name} raid the ${defender.name} frontier."
+                raidsByAggressor.getOrPut(aggressorId) { mutableListOf() } += defender.name
             }
         }
+    }
+
+    // One chronicle entry per aggressor to avoid flooding the log
+    val chronicleEntries = raidsByAggressor.map { (aggressorId, defenders) ->
+        val name = state.tribes[aggressorId]?.name ?: aggressorId
+        if (defenders.size == 1) "The $name raid the ${defenders[0]} frontier."
+        else "The $name raid ${defenders.size} frontiers."
     }
 
     return if (chronicleEntries.isEmpty() && raidedTribeIds.isEmpty()) state
