@@ -15,8 +15,8 @@ import java.io.File
  */
 fun main(args: Array<String>) {
     val argMap = buildArgMap(args)
-    val ticks = argMap["ticks"]?.toLongOrNull() ?: 1000L
-    val seed = argMap["seed"]?.toLongOrNull() ?: 42L
+    val ticks = parseLongArg(argMap, "ticks", default = 1000L)
+    val seed  = parseLongArg(argMap, "seed",  default = 42L)
     val outputPath = argMap["output"]
     val eventsPath = argMap["events"]
 
@@ -33,6 +33,13 @@ fun main(args: Array<String>) {
     println("tribes         : ${finalState.tribes.size}")
     println("totalPopulation: ${finalState.tribes.values.sumOf { it.population }}")
     println("occupiedTiles  : ${finalState.tiles.count { it.occupantTribeId != null }}")
+}
+
+private fun parseLongArg(argMap: Map<String, String>, key: String, default: Long): Long {
+    if (!argMap.containsKey(key)) return default
+    val raw = argMap[key]!!
+    return raw.toLongOrNull()
+        ?: throw IllegalArgumentException("--$key requires a numeric value, got '$raw'")
 }
 
 private fun buildArgMap(args: Array<String>): Map<String, String> {

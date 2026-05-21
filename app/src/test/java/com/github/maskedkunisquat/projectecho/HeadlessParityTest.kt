@@ -3,6 +3,7 @@ package com.github.maskedkunisquat.projectecho
 import com.github.maskedkunisquat.projectecho.domain.headless.runHeadless
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
+import org.junit.Assume
 import org.junit.Test
 
 /**
@@ -30,15 +31,7 @@ class HeadlessParityTest {
     fun `deterministic - identical seeds produce identical results`() {
         val run1 = runHeadless(ticks = 100, seed = 42L)
         val run2 = runHeadless(ticks = 100, seed = 42L)
-
-        val pop1 = run1.tribes.values.sumOf { it.population }
-        val pop2 = run2.tribes.values.sumOf { it.population }
-        val tiles1 = run1.tiles.count { it.occupantTribeId != null }
-        val tiles2 = run2.tiles.count { it.occupantTribeId != null }
-
-        assertEquals("total population must be deterministic", pop1, pop2)
-        assertEquals("occupied tile count must be deterministic", tiles1, tiles2)
-        assertEquals("tribe count must be deterministic", run1.tribes.size, run2.tribes.size)
+        assertEquals("full WorldState must be identical across identical seeds", run1, run2)
     }
 
     @Test
@@ -57,6 +50,8 @@ class HeadlessParityTest {
 
     @Test
     fun `performance - 1000 ticks complete in under 10 seconds`() {
+        Assume.assumeTrue("Skipped in CI — set RUN_PERF_TESTS=true to enable",
+            System.getenv("RUN_PERF_TESTS") == "true")
         val startMs = System.currentTimeMillis()
         runHeadless(ticks = 1000, seed = 42L)
         val elapsedMs = System.currentTimeMillis() - startMs
