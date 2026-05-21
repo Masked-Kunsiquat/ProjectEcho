@@ -159,9 +159,9 @@ class Phase16MomentumHostilityAgeTest {
         val result = tick(state)
 
         val hostilityAfter = result.tribes["alpha"]!!.hostility["beta"] ?: 0f
-        assertTrue(
-            "hostility should decay each tick (0.5 * 0.98 ≈ 0.49 < 0.5)",
-            hostilityAfter < 0.5f,
+        assertEquals(
+            "hostility should decay to 0.5 * 0.98 = 0.49 after one tick",
+            0.49f, hostilityAfter, 0.001f,
         )
     }
 
