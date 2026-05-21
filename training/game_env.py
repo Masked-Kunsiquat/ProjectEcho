@@ -95,7 +95,9 @@ def _shaped_reward(prev: WorldState, nxt: WorldState, tribe_id: str, was_success
     prev_tribe = prev.tribes.get(tribe_id)
     r = 0.0
     r += 0.01                                          # alive bonus
-    if tribe.food_supply > 0:    r += 0.1             # food surplus tick
+    # hoarding guard: food bonus only when pop is stable or growing
+    if tribe.food_supply > 0 and (prev_tribe is None or tribe.population >= prev_tribe.population):
+        r += 0.1                                       # food surplus tick
     if tribe.food_supply == 0 and prev_tribe and tribe.population < prev_tribe.population:
         r -= 0.5                                       # starvation tick
     if was_successful_raider:    r += 0.5             # successful raid
