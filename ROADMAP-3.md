@@ -314,23 +314,23 @@ Observed in playtest: initial tribe expanded to pop ~930, tiles ~78 by T=80 with
 
 > Rewrite the headless `GameLoop` as a Python [Gymnasium](https://gymnasium.farama.org/) `Env`. This is a translation exercise — the Kotlin logic is authoritative; the Python must match it tick-for-tick on the same seed sequence.
 
-- [ ] Create `training/game_env.py` — `class ProjectEchoEnv(gymnasium.Env)` with:
+- [x] Create `training/game_env.py` — `class ProjectEchoEnv(gymnasium.Env)` with:
   - `reset(seed)` → initial observation vector (float array) for all tribes
   - `step(action_dict)` → `(observations, rewards, dones, truncated, info)`
   - `observation_space`: `Box(low=0, high=1, shape=(STATE_VECTOR_LENGTH,), dtype=float32)` per tribe
   - `action_space`: `Discrete(NUM_ACTIONS)` per tribe — `{expand_N, expand_S, expand_E, expand_W, raid_tribe_0, …, raid_tribe_N, rest}`
-- [ ] **Observation normalization** — every input divided by its max constant before returning from `step()`. Skip this and training is slow and unstable.
-- [ ] **Action masking** — compute a boolean mask each step; zero out illegal action logits (raiding non-adjacent tribe, expanding onto occupied tile) before softmax. Both CleanRL and stable-baselines3 support this natively.
-- [ ] **Reward shaping** — augment the sparse terminal reward with:
+- [x] **Observation normalization** — every input divided by its max constant before returning from `step()`. Skip this and training is slow and unstable.
+- [x] **Action masking** — compute a boolean mask each step; zero out illegal action logits (raiding non-adjacent tribe, expanding onto occupied tile) before softmax. Both CleanRL and stable-baselines3 support this natively.
+- [x] **Reward shaping** — augment the sparse terminal reward with:
   - `+0.01` per tick alive
   - `+0.1` per food surplus tick (foodSupply > population consumption)
   - `−0.5` per starvation tick
   - `+0.5` per successful raid
   - Guard: a tribe that hoards food but never grows should not outscore one that actually expands
-- [ ] **Reward normalization** — clip rewards to [−1, 1] before gradient update; raw population deltas vary 0–50/tick and will destabilize training if passed raw
-- [ ] **Domain randomization** — 5% chance per tick of injecting a divine-action-magnitude shock to a random tribe (plague-scale pop drop, harvest-scale food spike, inspire-scale devotion boost, famine-scale food drop); the policy learns robustness to sudden large state changes
-- [ ] **Map diversity** — randomize `WorldState.initial()` seeds every episode; policy must learn general spatial reasoning, not "water is always bottom-left"
-- [ ] Parity test: run 100 ticks with seed 42 on both Kotlin headless and Python env; assert matching final population and tile counts per tribe
+- [x] **Reward normalization** — clip rewards to [−1, 1] before gradient update; raw population deltas vary 0–50/tick and will destabilize training if passed raw
+- [x] **Domain randomization** — 5% chance per tick of injecting a divine-action-magnitude shock to a random tribe (plague-scale pop drop, harvest-scale food spike, inspire-scale devotion boost, famine-scale food drop); the policy learns robustness to sudden large state changes
+- [x] **Map diversity** — randomize `WorldState.initial()` seeds every episode; policy must learn general spatial reasoning, not "water is always bottom-left"
+- [x] Parity test: run 100 ticks with seed 42 on both Kotlin headless and Python env; assert matching final population and tile counts per tribe
 
 ---
 
