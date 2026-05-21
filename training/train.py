@@ -54,7 +54,8 @@ def main(args: argparse.Namespace) -> None:
 
     vec_env = VecMonitor(build_vec_env(args.envs, args.seed, args.dummy_vec))
 
-    if args.resume and os.path.exists(args.resume):
+    is_resuming = bool(args.resume and os.path.exists(args.resume))
+    if is_resuming:
         print(f"Resuming from {args.resume}")
         model = MaskablePPO.load(args.resume, env=vec_env)
     else:
@@ -86,9 +87,11 @@ def main(args: argparse.Namespace) -> None:
         # Curriculum: episodes grow from 50 → 100 → 200 ticks as policy matures
         CurriculumCallback(verbose=1),
 
-        # Periodic checkpoint every 50 000 steps — rollback safety net
+        # Periodic checkpoint every ~50 000 total steps — rollback safety net.
+        # save_freq counts callback invocations (1 per rollout step), so divide
+        # by n_envs so the wall-clock interval stays ~50k regardless of parallelism.
         CheckpointCallback(
-            save_freq     = 50_000,
+            save_freq     = max(1, 50_000 // args.envs),
             save_path     = args.output_dir,
             name_prefix   = "ckpt",
             verbose       = 0,
@@ -106,9 +109,10 @@ def main(args: argparse.Namespace) -> None:
 
     print(f"Training for {args.timesteps:,} steps across {args.envs} envs …")
     model.learn(
-        total_timesteps = args.timesteps,
-        callback        = callbacks,
-        progress_bar    = True,
+        total_timesteps      = args.timesteps,
+        callback             = callbacks,
+        progress_bar         = True,
+        reset_num_timesteps  = not is_resuming,
     )
 
     final_path = os.path.join(args.output_dir, "final_model")

@@ -155,11 +155,13 @@ class LeagueEnv(gym.Env):
         else:
             action_dict = {self._learner_id: int(action)}
             for opp_id in self._hof_ids:
+                if opp_id not in self._last_masks:
+                    # Dead or not-yet-seen opponent — let inner env's HeuristicPolicy handle it
+                    continue
+                mask = self._last_masks[opp_id].astype(bool)
+                mask[ACTION_REST] = True
                 obs  = self._last_obs.get(
                     opp_id, np.zeros(STATE_VECTOR_SIZE, dtype=np.float32))
-                mask = self._last_masks.get(
-                    opp_id, np.ones(NUM_ACTIONS, dtype=bool)).astype(bool)
-                mask[ACTION_REST] = True
                 action_dict[opp_id] = self._hof.get_action(obs, mask)
 
         obs_dict, rew_dict, term_dict, trunc_dict, info = self._inner.step(action_dict)

@@ -194,4 +194,4 @@ class HeuristicEvalCallback(BaseCallback):
         opp_tiles     = info.get("opponent_tiles", [])
         if not opp_tiles:
             return True  # every opponent is dead
-        return learner_tiles >= float(np.median(opp_tiles))
+        return learner_tiles > max(opp_tiles)
