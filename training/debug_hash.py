@@ -11,5 +11,5 @@ def java_hashcode_debug(s):
 print("Tracing java_hashcode('iron-wrought'):")
 result = java_hashcode_debug("iron-wrought")
 print(f"Result: {result}")
-print(f"Expected: -1184234995")
+print("Expected: -1184234995")
 print(f"Difference: {result - (-1184234995)}")

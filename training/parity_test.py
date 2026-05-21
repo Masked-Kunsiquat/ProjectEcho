@@ -56,10 +56,10 @@ def test_parity_seed42_tick100():
         sum(1 for tile in state.tiles if tile.occupant_tribe_id == tid)
         for tid in state.tribes
     )
-    if SNAPSHOT_TRIBE_POPS[0] >= 0:
+    if SNAPSHOT_TRIBE_POPS and SNAPSHOT_TRIBE_POPS[0] >= 0:
         assert tribe_pops == SNAPSHOT_TRIBE_POPS, (
             f"per-tribe pop drift: expected {SNAPSHOT_TRIBE_POPS}, got {tribe_pops}")
-    if SNAPSHOT_TRIBE_TILES[0] >= 0:
+    if SNAPSHOT_TRIBE_TILES and SNAPSHOT_TRIBE_TILES[0] >= 0:
         assert tribe_tiles == SNAPSHOT_TRIBE_TILES, (
             f"per-tribe tile drift: expected {SNAPSHOT_TRIBE_TILES}, got {tribe_tiles}")
 
