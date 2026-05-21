@@ -2,8 +2,8 @@ package com.github.maskedkunisquat.projectecho.domain.model
 
 sealed class EnvironmentalPhase {
     object Deluge : EnvironmentalPhase()    // moisture 81–100
-    object Saturated : EnvironmentalPhase() // moisture 51–80
-    object Fertile : EnvironmentalPhase()   // moisture 21–50
+    object Saturated : EnvironmentalPhase() // moisture 61–80
+    object Fertile : EnvironmentalPhase()   // moisture 21–60
     object Parched : EnvironmentalPhase()   // moisture  0–20
 
     val foodMultiplier: Double
