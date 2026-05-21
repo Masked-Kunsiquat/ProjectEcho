@@ -1,7 +1,6 @@
 package com.github.maskedkunisquat.projectecho.domain.model
 
 import kotlinx.serialization.Serializable
-import kotlin.math.abs
 import kotlin.math.sqrt
 import kotlin.random.Random
 
@@ -47,15 +46,21 @@ data class WorldState(
                 waterCells += sorted
             }
 
-            // Step 2: Coast — land cells with at least one Water neighbour (N/S/E/W)
+            // Step 2: Coast — land cells with at least one Water hex-neighbour (6 directions)
             val coastCells = (0 until cellCount).filter { ci ->
                 if (ci in waterCells) return@filter false
                 val c = ci % GRID_COLS
                 val r = ci / GRID_COLS
-                waterCells.any { wci ->
-                    val wc = wci % GRID_COLS
-                    val wr = wci / GRID_COLS
-                    (abs(c - wc) == 1 && r == wr) || (c == wc && abs(r - wr) == 1)
+                val hexNeighbors = if (c % 2 == 0) listOf(
+                    c to r-1, c+1 to r-1, c+1 to r,
+                    c to r+1, c-1 to r,   c-1 to r-1,
+                ) else listOf(
+                    c to r-1, c+1 to r,   c+1 to r+1,
+                    c to r+1, c-1 to r+1, c-1 to r,
+                )
+                hexNeighbors.any { (nc, nr) ->
+                    nc in 0 until GRID_COLS && nr in 0 until GRID_ROWS &&
+                    (nr * GRID_COLS + nc) in waterCells
                 }
             }.toSet()
 

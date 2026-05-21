@@ -313,13 +313,16 @@ fun tick(
     val finalState = weatherStep(eventedState, random)
     return finalState.copy(
         tribes = finalState.tribes.mapValues { (id, tribe) ->
-            val prevPop       = prevPopulations[id] ?: tribe.population
-            val prevTileCount = prevTileCounts[id]  ?: 0
-            val newTileCount  = finalState.tiles.count { it.occupantTribeId == id }
-            tribe.copy(
-                populationDelta = tribe.population - prevPop,
-                territoryDelta  = newTileCount - prevTileCount,
-            )
+            if (id !in prevPopulations) {
+                // Tribe born this tick (e.g. from splitStep) — deltas are undefined, report zero
+                tribe.copy(populationDelta = 0, territoryDelta = 0)
+            } else {
+                val newTileCount = finalState.tiles.count { it.occupantTribeId == id }
+                tribe.copy(
+                    populationDelta = tribe.population - prevPopulations[id]!!,
+                    territoryDelta  = newTileCount - prevTileCounts[id]!!,
+                )
+            }
         }
     )
 }

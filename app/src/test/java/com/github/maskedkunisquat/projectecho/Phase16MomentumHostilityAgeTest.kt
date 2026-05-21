@@ -137,8 +137,8 @@ class Phase16MomentumHostilityAgeTest {
 
         val alphaTowardBeta = result.tribes["alpha"]!!.hostility["beta"] ?: 0f
         val betaTowardAlpha = result.tribes["beta"]!!.hostility["alpha"] ?: 0f
-        assertTrue("aggressor should gain hostility toward defender after raid", alphaTowardBeta > 0f)
-        assertTrue("defender should gain hostility toward aggressor after raid", betaTowardAlpha > 0f)
+        assertEquals("aggressor gains 0.10 hostility toward defender", 0.10f, alphaTowardBeta, 0.001f)
+        assertEquals("defender gains 0.15 hostility toward aggressor", 0.15f, betaTowardAlpha, 0.001f)
         assertTrue(
             "defender remembers harder (0.15) than aggressor gains (0.10)",
             betaTowardAlpha > alphaTowardBeta,
