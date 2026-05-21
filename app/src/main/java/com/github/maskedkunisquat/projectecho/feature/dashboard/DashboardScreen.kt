@@ -1,6 +1,12 @@
 package com.github.maskedkunisquat.projectecho.feature.dashboard
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -94,6 +100,10 @@ fun DashboardScreen(
     isChronicleVisible: Boolean,
     onShowChronicle: () -> Unit,
     onDismissChronicle: () -> Unit,
+    rlDebugLog: List<String> = emptyList(),
+    isDebugLogVisible: Boolean = false,
+    onShowDebugLog: () -> Unit = {},
+    onDismissDebugLog: () -> Unit = {},
     mapOverlay: MapOverlay = MapOverlay.Default,
     onOverlaySelected: (MapOverlay) -> Unit,
     modifier: Modifier = Modifier,
@@ -125,6 +135,45 @@ fun DashboardScreen(
                     .height(360.dp)
                     .padding(horizontal = 16.dp),
             )
+        }
+    }
+
+    if (isDebugLogVisible) {
+        val clipboardManager = LocalClipboardManager.current
+        val csvText = rlDebugLog.joinToString("\n")
+        ModalBottomSheet(
+            onDismissRequest = onDismissDebugLog,
+            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+            containerColor = MaterialTheme.colorScheme.surface,
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(text = "Policy Log (CSV)", style = MaterialTheme.typography.titleMedium)
+                OutlinedButton(
+                    onClick = { clipboardManager.setText(AnnotatedString(csvText)) },
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+                ) {
+                    Text("Copy All")
+                }
+            }
+            SelectionContainer(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(360.dp)
+                    .padding(horizontal = 16.dp),
+            ) {
+                Box(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                    Text(
+                        text = csvText.ifEmpty { "No data yet." },
+                        style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
+                    )
+                }
+            }
         }
     }
 
@@ -270,6 +319,13 @@ fun DashboardScreen(
                 border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
             ) {
                 Text("Chronicle")
+            }
+            OutlinedButton(
+                onClick = onShowDebugLog,
+                modifier = Modifier.weight(1f),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+            ) {
+                Text("Policy Log")
             }
             Button(
                 onClick = onTickPressed,

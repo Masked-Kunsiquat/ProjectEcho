@@ -130,6 +130,12 @@ data class WorldState(
             )
         }
 
+        /**
+         * Starting state for the live Android game — 3 tribes spread across the map.
+         * Uses a fixed seed so the world layout is the same every fresh install.
+         */
+        fun initialGame(): WorldState = initialForTraining(numTribes = 3, seed = 7_700L)
+
         fun initial(): WorldState {
             val tribeId = "iron-wrought"
             val tribeName = TribeNameGenerator.generate(tribeId.hashCode())

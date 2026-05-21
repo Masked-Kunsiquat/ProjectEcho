@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -36,14 +37,16 @@ internal fun HistoryLedger(
         }
     }
 
-    LazyColumn(
-        state = listState,
-        modifier = modifier,
-        verticalArrangement = Arrangement.spacedBy(0.dp),
-    ) {
-        itemsIndexed(reversed, key = { index, _ -> entries.size - 1 - index }) { index, entry ->
-            LedgerEntry(text = entry, appear = index != 0)
-            HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
+    SelectionContainer {
+        LazyColumn(
+            state = listState,
+            modifier = modifier,
+            verticalArrangement = Arrangement.spacedBy(0.dp),
+        ) {
+            itemsIndexed(reversed, key = { index, _ -> entries.size - 1 - index }) { index, entry ->
+                LedgerEntry(text = entry, appear = index != 0)
+                HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
+            }
         }
     }
 }

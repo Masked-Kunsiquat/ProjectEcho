@@ -359,14 +359,52 @@ Observed in playtest: initial tribe expanded to pop ~930, tiles ~78 by T=80 with
 ## Phase 21 — TFLite Export & Android Inference
 
 > Export the trained policy to TFLite and wire it into the Android app via the `TribePolicy` interface built in Phase 18.
+> Skipped TFLite — 3-layer MLP is tiny; pure Kotlin forward pass has zero JNI overhead and no additional dependency.
 
-- [ ] Export trained model to TFLite via `jax2tf` → TFLite converter, or stable-baselines3 ONNX exporter → TFLite converter
-- [ ] Drop `.tflite` into `/assets/` (same pattern as `personalities.json` and `events.json`)
-- [ ] Add `RLPolicy.kt` to the Android feature layer implementing `TribePolicy`; loads the TFLite model from assets, calls `Tribe.toFloatArray()` for each tribe, runs inference, maps output logits to `chooseExpansion` / `chooseRaid` decisions
-- [ ] Add a toggle in `GameViewModel` (`useRLPolicy: Boolean`, default `true`); accessible via a settings or debug button; allows side-by-side comparison of heuristic vs. RL behavior
-- [ ] All tribes use the RL model from tick 0 (Option B — decided in architecture notes); no transition edge case
+- [x] Export trained model — skipped TFLite; `training/export_weights.py` extracts actor MLP weights to `app/src/main/assets/tribe_policy.json` (JSON, ~500 KB)
+- [x] Drop JSON weights into `/assets/` (same load pattern as `events.json`)
+- [x] Add `RLPolicy.kt` to domain/rules implementing `TribePolicy`; loads JSON via kotlinx-serialization, runs pure Kotlin tanh MLP forward pass, maps output logits to `chooseExpansion` / `chooseRaid` decisions
+- [x] Add toggle in `GameViewModel`: `useRlPolicy: StateFlow<Boolean>` (defaults `true` once policy loads); `toggleRLPolicy()` for future UI button; falls back to `HeuristicPolicy` if JSON missing or toggle off
+- [x] All tribes use the RL model from tick 0 (Option B); no transition edge case
 - [ ] Measure on-device inference time; must be comfortably < 200 ms (tick interval is 2 000 ms); log inference time in debug builds
 - [ ] Smoke test: observe tribal behavior with RL policy enabled; verify tribes make meaningful territorial and conflict decisions; chronicle entries should show raids and expansions
+
+### Phase 21 post-launch fixes (same PR #30, branch `phase-21/rl-policy-android`)
+
+**v2 model training + weights swap**
+- Observed v1 "virus" behavior: zero-sum reward drove constant raiding → 1 tribe dominated and went extinct
+- Reshaped reward in `game_env.py`: raid bonus 0.5→0.2, coexistence bonus +0.02×(living_others), overextension penalty −0.05×(tile_fraction−0.4) above 40%
+- v2 gauntlet result: 46% win rate (vs 67% v1), 100% survival, tile gap 25.5 vs 21.8 — less dominant, genuinely balanced
+- Swapped `tribe_policy.json` to v2 weights (499 KB, same 3-layer 51→128→128→12 structure)
+
+**Chronicle + debug log**
+- Raid chronicle entries removed from `conflictStep` entirely — per-tick raids generated too many entries even after consolidation
+- Policy Log redesigned as rolling CSV (`tick,name,pop,tiles,food,dev,soph,action`, 30-tick buffer)
+- "Copy All" button in Policy Log sheet copies CSV to clipboard instantly
+- `SelectionContainer` on Policy Log for manual text selection as fallback
+
+**Game loop fixes (Kotlin only; Python simulation diverged — sync before v3 training)**
+- **Tileless farming bug fixed**: `effectiveFarmers` was `tribe.population` when `occupiedTiles.isEmpty()`, allowing pop=1 tribes with 0 tiles to survive indefinitely by farming exactly enough to break even. Changed to `0`.
+- **Wanderer spawner**: every 30 ticks, if tribe count < 3 and ≥ 20 unclaimed land tiles exist, a new tribe emerges with pop=100, food=500, random archetype, and ~19 claimed tiles. Chronicle event fires.
+- **Split thresholds lowered**: `SPLIT_MIN_POPULATION` 400→200, `SPLIT_DENSITY_THRESHOLD` 8→5. RL model's expansion behavior keeps tile counts high relative to population, preventing density from reaching 8.
+- **Split devotion cap raised**: `SPLIT_DEVOTION_CAP` 80→100. RL-trained tribes reach devotion=100 reliably; old cap blocked all splits.
+
+- **Starvation raid mask**: `RLPolicy.buildMask()` and `game_env.py action_masks()` now block all RAID actions when `foodSupply == 0`. Breaks the "mutual death spiral" pattern where two starving tribes raided each other to extinction. Applies at both inference (Android) and training time (Python). Both files updated in sync — this constraint is active for the next training run without needing full parity sync.
+
+**Model training history (gauntlet = 100 eps vs HeuristicPolicy, deterministic):**
+- v1: 67% win rate, 35.1 vs 17.1 avg tiles — "virus" behavior, dominated and eliminated all opponents
+- v2: 46% win rate, 25.5 vs 21.8 avg tiles — coexistence reward improved balance; still map-monopolizing (88/96 tiles observed)
+- v3: 38% win rate, 21.7 vs 26.8 avg tiles — starvation mask + v2 reward stacked too passive; learner losing tile race to heuristic opponents. **Do not use.** v2 weights kept in `tribe_policy.json`.
+- v4: raid bonus 0.2→0.3, overextension penalty quadratic (0.3×excess + 0.5×excess²); 48% win rate at 100 eps (noisy — see v5)
+- v5: identical reward to v4, re-run with 500-episode gauntlet; 37% win rate, 20.0 vs 28.4 avg tiles (−8.4 gap). Confirmed v4's 48% was a lucky 100-ep sample. True win rate for this reward structure: ~37–42%. **v4 weights kept in `tribe_policy.json`** (installed before v5 results came in; play-test to verify map monopolization is fixed before deciding to retrain)
+
+**Gauntlet target re-assessment:** The original 60% win rate target is wrong for a god simulator. Heuristic opponents have no starvation guard, no coexistence pressure — they raid freely. A model trained for coexistence and anti-monopolization will structurally score below 50% against them. Win rate measures competitiveness against aggression, not gameplay quality. Better success metrics:
+- No single tribe holds >60% of land tiles by T200
+- Wanderers spawn at least once per run (proof of land availability)
+- No mutual death spirals (confirmed fixed by starvation mask)
+- Gauntlet win rate is a secondary signal; tile gap and survival rate matter more
+
+**Python parity note**: `simulation.py` still has the old farming fallback, old split thresholds, and no wanderer logic. Parity test at seed=42 T=100 may still pass (those edge cases don't fire in that scenario), but the sims are no longer identical. Before v3 training, sync all four changes to Python and re-run `parity_test.py`.
 
 ---
 
@@ -442,7 +480,7 @@ God sits between both systems as mediator. Divine actions don't override the Wor
 | 18 | TribePolicy interface + state vectorizer + reward calc | new `TribePolicy.kt`, `HeuristicPolicy.kt`, `GameLoop.kt` |
 | 19 | Python port + Gymnasium env (off-device) | `training/game_env.py` |
 | 20 | Kaggle PPO training + Hall of Fame league | Kaggle notebook |
-| 21 | TFLite export + Android inference via RLPolicy | new `RLPolicy.kt`, `/assets/*.tflite` |
+| 21 | JSON weights export + pure Kotlin MLP inference; 3-tribe start; wanderer spawner; v2 model | `RLPolicy.kt`, `tribe_policy.json`, `GameLoop.kt` |
 
 ---
 

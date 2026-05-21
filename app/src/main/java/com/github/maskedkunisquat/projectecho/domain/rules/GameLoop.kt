@@ -22,8 +22,8 @@ private const val DELUGE_CASUALTY_RATE = 0.97
 internal const val TILE_CAPACITY = 10
 internal const val HIGH_VOLATILITY_THRESHOLD = 70
 
-internal const val SPLIT_DENSITY_THRESHOLD = 8
-internal const val SPLIT_MIN_POPULATION    = 400
+internal const val SPLIT_DENSITY_THRESHOLD = 5
+internal const val SPLIT_MIN_POPULATION    = 200
 internal const val SPLIT_COOLDOWN_TICKS    = 100L
 private  const val SPLIT_PARENT_SHARE      = 0.60
 
@@ -36,13 +36,20 @@ internal const val PRAYER_PRESSURE_CAP = 200f
 internal const val SKEPTICISM_DECAY_BASE = 10f
 
 internal const val RAID_DEVOTION_SUPPRESSION_DIVISOR = 200f
-internal const val SPLIT_DEVOTION_CAP = 80
+internal const val SPLIT_DEVOTION_CAP = 100
 internal const val ATTACK_SOPHISTICATION_BONUS  = 0.04f
 internal const val DEFENSE_SOPHISTICATION_BONUS = 0.03f
 private const val FAITH_DRIFT_SCALE             = 0.05f
 private const val SKEPTICISM_RATE_CLAMP_MAX     = 2f
 internal const val SOPH_MOISTURE_CEILING        = 50
 internal const val SPLIT_MIN_FOOD_TICKS         = 1
+internal const val MAX_CHRONICLE_ENTRIES        = 150
+
+internal const val WANDERER_TARGET_TRIBES    = 3
+internal const val WANDERER_CHECK_INTERVAL   = 30L
+internal const val WANDERER_MIN_FREE_TILES   = 20
+internal const val WANDERER_START_POP        = 100
+internal const val WANDERER_START_FOOD       = 500
 
 fun tick(
     currentState: WorldState,
@@ -144,7 +151,7 @@ fun tick(
             envMult * sophMult
         }.average()
 
-        val effectiveFarmers = if (occupiedTiles.isEmpty()) tribe.population
+        val effectiveFarmers = if (occupiedTiles.isEmpty()) 0
                                else minOf(tribe.population, occupiedTiles.size * TILE_CAPACITY)
         val farmed = (effectiveFarmers * 0.70 * effectiveMultiplier).roundToInt()
         val newFoodSupply = tribe.foodSupply + farmed - tribe.population
@@ -282,7 +289,8 @@ fun tick(
             if (t.divineShieldTicks > 0) t.copy(divineShieldTicks = t.divineShieldTicks - 1) else t
         }
     )
-    val postTickState = splitStep(postShieldDecay, random)
+    val postSplitState    = splitStep(postShieldDecay, random)
+    val postTickState     = wandererStep(postSplitState, random)
 
     val currentTick = postTickState.worldTimeTick
     val eligibleEvents = events.filter { event ->
@@ -309,6 +317,7 @@ fun tick(
 
     val finalState = weatherStep(eventedState, random)
     return finalState.copy(
+        eventHistory = finalState.eventHistory.takeLast(MAX_CHRONICLE_ENTRIES),
         tribes = finalState.tribes.mapValues { (id, tribe) ->
             if (id !in prevPopulations) {
                 // Tribe born this tick (e.g. from splitStep) — deltas are undefined, report zero
@@ -519,7 +528,6 @@ internal fun conflictStep(
     if (state.tribes.size < 2) return state
 
     val tribeIds = state.tribes.keys.toList()
-    val chronicleEntries = mutableListOf<String>()
     val raidedTribeIds = mutableSetOf<String>()
     val hostilityChanges = mutableMapOf<String, MutableMap<String, Float>>()
     var tiles = state.tiles
@@ -549,12 +557,11 @@ internal fun conflictStep(
                     .merge(defenderId, 0.1f, Float::plus)
                 hostilityChanges.getOrPut(defenderId) { mutableMapOf() }
                     .merge(aggressorId, 0.15f, Float::plus)
-                chronicleEntries += "The ${aggressor.name} raid the ${defender.name} frontier."
             }
         }
     }
 
-    return if (chronicleEntries.isEmpty() && raidedTribeIds.isEmpty()) state
+    return if (hostilityChanges.isEmpty()) state
     else state.copy(
         tiles = tiles,
         tribes = state.tribes.mapValues { (id, tribe) ->
@@ -572,7 +579,45 @@ internal fun conflictStep(
                 hostility = newHostility,
             )
         },
-        eventHistory = state.eventHistory + chronicleEntries,
+    )
+}
+
+internal fun wandererStep(state: WorldState, random: Random): WorldState {
+    if (state.tribes.size >= WANDERER_TARGET_TRIBES) return state
+    if (state.worldTimeTick % WANDERER_CHECK_INTERVAL != 0L) return state
+
+    val unclaimedLand = state.tiles.filter { it.occupantTribeId == null && it.biome != BiomeType.Water }
+    if (unclaimedLand.size < WANDERER_MIN_FREE_TILES) return state
+
+    val unclaimedIds = unclaimedLand.map { it.id }.toHashSet()
+    val seed = unclaimedLand[random.nextInt(unclaimedLand.size)]
+    val claimedIds = mutableSetOf(seed.id)
+    val frontier = ArrayDeque(getNeighbors(seed.id).filter { it in unclaimedIds })
+    val claimTarget = WANDERER_START_POP * GRID_SIZE / 500
+    while (claimedIds.size < claimTarget && frontier.isNotEmpty()) {
+        val next = frontier.removeFirst()
+        if (next in claimedIds || next !in unclaimedIds) continue
+        claimedIds += next
+        getNeighbors(next).filter { it in unclaimedIds && it !in claimedIds }.forEach { frontier.addLast(it) }
+    }
+
+    val wandId   = "wanderer-${state.worldTimeTick}"
+    val wandName = TribeNameGenerator.generate(wandId.hashCode())
+    val personality = TribePersonality.ALL_ARCHETYPES[random.nextInt(TribePersonality.ALL_ARCHETYPES.size)]
+    val newTribe = Tribe(
+        tribeId      = wandId,
+        name         = wandName,
+        population   = WANDERER_START_POP,
+        foodSupply   = WANDERER_START_FOOD,
+        devotion     = 50,
+        personality  = personality,
+        foundedTick  = state.worldTimeTick,
+    )
+    return state.copy(
+        tiles  = state.tiles.map { if (it.id in claimedIds) it.copy(occupantTribeId = wandId) else it },
+        tribes = state.tribes + (wandId to newTribe),
+        eventHistory = state.eventHistory +
+            "Wanderers emerge from the wilds, calling themselves the $wandName.",
     )
 }
 

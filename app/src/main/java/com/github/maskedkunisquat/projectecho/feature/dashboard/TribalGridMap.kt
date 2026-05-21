@@ -141,10 +141,7 @@ private fun tileDisplayColor(
     occupiedFallback: Color,
 ): Color = when (overlay) {
     MapOverlay.Default -> when (val owner = tile.occupantTribeId) {
-        null -> {
-            val tint = biomeTerrainTint(tile.biome)
-            if (tint != null) lerp(emptyColor, tint, 0.40f) else emptyColor
-        }
+        null -> emptyColor
         else -> tribeColors[owner] ?: occupiedFallback
     }
     MapOverlay.Biome      -> biomeColor(tile.biome, emptyColor)
