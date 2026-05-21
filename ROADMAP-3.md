@@ -203,16 +203,16 @@ Observed in playtest: initial tribe expanded to pop ~930, tiles ~78 by T=80 with
 
 > `GameLoop.tick()` is already a pure function. This phase wraps it in a standalone Kotlin entry point that runs without any Android lifecycle, ViewModel, or Room dependency — enabling batch runs, stress tests, and ground-truth output for validating the Python port.
 
-- [ ] Add a new Kotlin module (or `main/headless/` package in the domain layer) with a `main()` entry point that:
+- [x] Add a new Kotlin module (or `main/headless/` package in the domain layer) with a `main()` entry point that:
   - Creates a `WorldState` via `WorldState.initial()` with a given seed
   - Loads `SimEvent` list from a bundled JSON string (or file path argument)
   - Loads `TribePersonality` list from a bundled JSON string
   - Runs N ticks via `GameLoop.tick()` in a loop using seeded `Random`
   - Optionally serializes each post-tick `WorldState` to JSON (one file per tick or a single JSONL)
-- [ ] Zero Android imports in this module — if any Android import appears, the build must fail
-- [ ] Accept command-line args: `--ticks 1000 --seed 42 --output states.jsonl`
-- [ ] Write a "parity test": run 100 ticks headless with seed 42; assert final `worldTimeTick`, total population, and tile count match a known-good snapshot (prevents silent drift)
-- [ ] Verify: headless run of 1 000 ticks completes in < 10 seconds on a developer machine
+- [x] Zero Android imports in this module — if any Android import appears, the build must fail
+- [x] Accept command-line args: `--ticks 1000 --seed 42 --output states.jsonl`
+- [x] Write a "parity test": run 100 ticks headless with seed 42; assert final `worldTimeTick`, total population, and tile count match a known-good snapshot (prevents silent drift)
+- [x] Verify: headless run of 1 000 ticks completes in < 10 seconds on a developer machine
 
 ### Phase 17b — Cross-Device Save Sync (pluggable backend)
 
