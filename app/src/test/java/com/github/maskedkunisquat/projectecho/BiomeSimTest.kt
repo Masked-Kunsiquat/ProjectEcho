@@ -83,11 +83,10 @@ class BiomeSimTest {
         moisture: Int = 35,
         volatility: Int = 0,
     ): List<MapTile> = (0 until GRID_SIZE).map { id ->
-        val cellIdx = id / 2
         MapTile(
             id = id,
-            col = cellIdx % GRID_COLS,
-            row = cellIdx / GRID_COLS,
+            col = id % GRID_COLS,
+            row = id / GRID_COLS,
             soilMoisture = moisture,
             biome = biome,
             volatility = volatility,
@@ -219,9 +218,9 @@ class BiomeSimTest {
         )
         val tribe = tick(state).tribes["t"]!!
         // effectiveFarmers = min(5, 1*10) = 5; Fertile multiplier = 1.5
-        // farmed = (5*0.8*1.5).roundToInt() + 1*COAST_FISHING_BONUS = 6 + 5 = 11
-        // newFoodSupply = 100 + 11 - 5 = 106
-        assertEquals(106, tribe.foodSupply)
+        // farmed = (5*0.70*1.5).roundToInt() + 1*COAST_FISHING_BONUS = 5 + 5 = 10
+        // newFoodSupply = 100 + 10 - 5 = 105
+        assertEquals(105, tribe.foodSupply)
     }
 
     @Test
@@ -236,8 +235,8 @@ class BiomeSimTest {
                                         population = 5, devotion = 50, foodSupply = 100)),
         )
         val tribe = tick(state).tribes["t"]!!
-        // farmed = (5*0.8*1.5).roundToInt() = 6; no bonus
-        // newFoodSupply = 100 + 6 - 5 = 101
-        assertEquals(101, tribe.foodSupply)
+        // farmed = (5*0.70*1.5).roundToInt() = 5; no bonus
+        // newFoodSupply = 100 + 5 - 5 = 100
+        assertEquals(100, tribe.foodSupply)
     }
 }

@@ -13,6 +13,7 @@ fun getBorderTiles(tileId: Int, tiles: List<MapTile>): List<Int> {
     }
 }
 
+// Flat-top hexagons, even-q offset (even columns are not shifted vertically).
 fun getNeighbors(
     tileId: Int,
     cols: Int = GRID_COLS,
@@ -20,16 +21,27 @@ fun getNeighbors(
 ): List<Int> {
     require(cols > 0) { "cols must be positive, was $cols" }
     require(rows > 0) { "rows must be positive, was $rows" }
-    require(tileId in 0 until cols * rows * 2) { "tileId $tileId out of range [0, ${cols * rows * 2})" }
-    val cellIdx = tileId / 2
-    val row = cellIdx / cols
-    val col = cellIdx % cols
+    require(tileId in 0 until cols * rows) { "tileId $tileId out of range [0, ${cols * rows})" }
+    val col = tileId % cols
+    val row = tileId / cols
 
-    return buildList {
-        add(tileId xor 1)  // partner triangle in the same cell
-        if (row > 0)        { val c = (row - 1) * cols + col; add(c * 2); add(c * 2 + 1) }
-        if (row < rows - 1) { val c = (row + 1) * cols + col; add(c * 2); add(c * 2 + 1) }
-        if (col > 0)        { val c = row * cols + (col - 1); add(c * 2); add(c * 2 + 1) }
-        if (col < cols - 1) { val c = row * cols + (col + 1); add(c * 2); add(c * 2 + 1) }
-    }
+    val dirs = if (col % 2 == 0) listOf(
+        col     to row - 1,  // N
+        col + 1 to row - 1,  // NE
+        col + 1 to row,      // SE
+        col     to row + 1,  // S
+        col - 1 to row,      // SW
+        col - 1 to row - 1,  // NW
+    ) else listOf(
+        col     to row - 1,  // N
+        col + 1 to row,      // NE
+        col + 1 to row + 1,  // SE
+        col     to row + 1,  // S
+        col - 1 to row + 1,  // SW
+        col - 1 to row,      // NW
+    )
+
+    return dirs
+        .filter { (c, r) -> c in 0 until cols && r in 0 until rows }
+        .map { (c, r) -> r * cols + c }
 }

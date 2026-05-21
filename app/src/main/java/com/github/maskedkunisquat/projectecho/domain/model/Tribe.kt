@@ -24,6 +24,10 @@ data class Tribe(
     val skepticismDecayBuffer: Float = 0f,
     val divineShieldTicks: Int = 0,
     val lastRaidTick: Long = -1L,
+    val populationDelta: Int = 0,
+    val territoryDelta: Int = 0,
+    val hostility: Map<String, Float> = emptyMap(),
+    val foundedTick: Long = 0L,
 ) {
     fun needs(ownedTiles: List<MapTile>, currentTick: Long): Set<TribeNeed> {
         val result = mutableSetOf<TribeNeed>()

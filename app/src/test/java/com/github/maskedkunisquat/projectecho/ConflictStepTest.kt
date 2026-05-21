@@ -12,7 +12,8 @@ import org.junit.Test
 
 class ConflictStepTest {
 
-    // Tile helper: col/row derived from id (same convention as GameLoopTest)
+    // Hex tile layout: id = row * 16 + col.
+    // tile(0, col=0, row=0) and tile(1, col=1, row=0) are adjacent hex neighbors.
     private fun tile(id: Int, col: Int, row: Int, owner: String? = null) =
         MapTile(id = id, col = col, row = row, occupantTribeId = owner)
 
@@ -45,7 +46,7 @@ class ConflictStepTest {
 
     @Test
     fun `conflictStep returns unchanged state with fewer than 2 tribes`() {
-        val tiles = listOf(tile(0, 0, 0, "alpha"), tile(1, 0, 0, "alpha"))
+        val tiles = listOf(tile(0, 0, 0, "alpha"))
         val state = worldWith(tiles, mapOf("alpha" to tribe("alpha", "Alpha")))
 
         val result = conflictStep(state)
@@ -55,12 +56,10 @@ class ConflictStepTest {
 
     @Test
     fun `conflictStep returns unchanged state when tribes are not adjacent`() {
-        // alpha owns col=0; beta owns col=15 — 15 columns apart, never adjacent
+        // alpha owns col=0 (id=0); beta owns col=15 (id=15) — 15 columns apart, never adjacent
         val tiles = listOf(
-            tile(0, col = 0, row = 0, owner = "alpha"),
-            tile(1, col = 0, row = 0, owner = "alpha"),
-            tile(30, col = 15, row = 0, owner = "beta"),
-            tile(31, col = 15, row = 0, owner = "beta"),
+            tile(0,  col = 0,  row = 0, owner = "alpha"),
+            tile(15, col = 15, row = 0, owner = "beta"),
         )
         val state = worldWith(tiles, mapOf(
             "alpha" to tribe("alpha", "Alpha"),
@@ -75,34 +74,29 @@ class ConflictStepTest {
 
     @Test
     fun `conflictStep transfers border tile on successful raid`() {
-        // alpha (col=0) adjacent to beta (col=1); aggression=1.0, defender caution=0.0 → always raids
+        // alpha (col=0) adjacent to beta (col=1); aggression=1.0, caution=0.0 → always raids
         val tiles = listOf(
             tile(0, col = 0, row = 0, owner = "alpha"),
-            tile(1, col = 0, row = 0, owner = "alpha"),
-            tile(2, col = 1, row = 0, owner = "beta"),
-            tile(3, col = 1, row = 0, owner = "beta"),
+            tile(1, col = 1, row = 0, owner = "beta"),
         )
         val state = worldWith(tiles, mapOf(
             "alpha" to tribe("alpha", "Alpha", aggression = 1.0f, caution = 0.5f),
             "beta"  to tribe("beta",  "Beta",  aggression = 0.0f, caution = 0.0f),
         ))
 
-        // threshold = 1.0 * (1 - 0.0) = 1.0; nextFloat always < 1.0 → raid always succeeds
         val result = conflictStep(state, Random(seed = 0L))
 
         val alphaTiles = result.tiles.count { it.occupantTribeId == "alpha" }
         val betaTiles  = result.tiles.count { it.occupantTribeId == "beta" }
-        assertTrue("alpha should have gained a tile", alphaTiles > 2)
-        assertTrue("beta should have lost a tile",   betaTiles < 2)
+        assertTrue("alpha should have gained a tile", alphaTiles > 1)
+        assertTrue("beta should have lost a tile",   betaTiles < 1)
     }
 
     @Test
     fun `conflictStep appends Chronicle entry on successful raid`() {
         val tiles = listOf(
             tile(0, col = 0, row = 0, owner = "alpha"),
-            tile(1, col = 0, row = 0, owner = "alpha"),
-            tile(2, col = 1, row = 0, owner = "beta"),
-            tile(3, col = 1, row = 0, owner = "beta"),
+            tile(1, col = 1, row = 0, owner = "beta"),
         )
         val state = worldWith(tiles, mapOf(
             "alpha" to tribe("alpha", "The Iron", aggression = 1.0f, caution = 0.5f),
@@ -119,9 +113,7 @@ class ConflictStepTest {
         // aggression=0.0 → threshold=0.0; nextFloat >= 0.0 always → never raids
         val tiles = listOf(
             tile(0, col = 0, row = 0, owner = "alpha"),
-            tile(1, col = 0, row = 0, owner = "alpha"),
-            tile(2, col = 1, row = 0, owner = "beta"),
-            tile(3, col = 1, row = 0, owner = "beta"),
+            tile(1, col = 1, row = 0, owner = "beta"),
         )
         val state = worldWith(tiles, mapOf(
             "alpha" to tribe("alpha", "Alpha", aggression = 0.0f, caution = 0.5f),
@@ -136,13 +128,9 @@ class ConflictStepTest {
 
     @Test
     fun `high-devotion aggressor raids less frequently than zero-devotion aggressor`() {
-        // devotion=0 → suppression=1.0 → threshold=1.0 → random.nextFloat() always < 1.0 → every trial raids
-        // devotion=100 → suppression=0.5 → threshold=0.5 → ~50% of trials raid
         val tiles = listOf(
             tile(0, col = 0, row = 0, owner = "alpha"),
-            tile(1, col = 0, row = 0, owner = "alpha"),
-            tile(2, col = 1, row = 0, owner = "beta"),
-            tile(3, col = 1, row = 0, owner = "beta"),
+            tile(1, col = 1, row = 0, owner = "beta"),
         )
         fun raidCount(devotion: Int, trials: Int): Int {
             val state = worldWith(tiles, mapOf(
@@ -152,22 +140,20 @@ class ConflictStepTest {
             val rng = Random(seed = 42L)
             var count = 0
             repeat(trials) {
-                if (conflictStep(state, rng).tiles.count { it.occupantTribeId == "alpha" } > 2) count++
+                if (conflictStep(state, rng).tiles.count { it.occupantTribeId == "alpha" } > 1) count++
             }
             return count
         }
         val devout  = raidCount(devotion = 100, trials = 20)
         val warlike = raidCount(devotion = 0,   trials = 20)
-        assertTrue("devout aggressor (devotion=100) should raid less often than zero-devotion aggressor", devout < warlike)
+        assertTrue("devout aggressor should raid less often than zero-devotion aggressor", devout < warlike)
     }
 
     @Test
     fun `conflictStep updated tile has correct new owner`() {
         val tiles = listOf(
             tile(0, col = 0, row = 0, owner = "alpha"),
-            tile(1, col = 0, row = 0, owner = "alpha"),
-            tile(2, col = 1, row = 0, owner = "beta"),
-            tile(3, col = 1, row = 0, owner = "beta"),
+            tile(1, col = 1, row = 0, owner = "beta"),
         )
         val state = worldWith(tiles, mapOf(
             "alpha" to tribe("alpha", "Alpha", aggression = 1.0f, caution = 0.5f),
@@ -176,19 +162,15 @@ class ConflictStepTest {
 
         val result = conflictStep(state, Random(seed = 0L))
 
-        val capturedTiles = result.tiles.filter { it.id in listOf(2, 3) && it.occupantTribeId == "alpha" }
-        assertTrue("at least one beta tile should be owned by alpha", capturedTiles.isNotEmpty())
+        val capturedTiles = result.tiles.filter { it.id == 1 && it.occupantTribeId == "alpha" }
+        assertTrue("beta's tile should be owned by alpha after raid", capturedTiles.isNotEmpty())
     }
 
     @Test
     fun `high-sophistication aggressor raids more often than low-sophistication aggressor`() {
-        // soph 0: threshold = 0.5 * 1.0 * 1.0 = 0.5
-        // soph 10: threshold = 0.5 * 1.0 * 1.4 = 0.7 → higher → more raids
         val baseTiles = listOf(
             tile(0, col = 0, row = 0, owner = "alpha"),
-            tile(1, col = 0, row = 0, owner = "alpha"),
-            tile(2, col = 1, row = 0, owner = "beta"),
-            tile(3, col = 1, row = 0, owner = "beta"),
+            tile(1, col = 1, row = 0, owner = "beta"),
         )
         fun raidCount(aggressorSoph: Int): Int {
             val aggressor = tribe("alpha", "Alpha", aggression = 0.5f, caution = 0.0f)
@@ -196,7 +178,7 @@ class ConflictStepTest {
             val defender = tribe("beta", "Beta", aggression = 0.0f, caution = 0.0f).copy(devotion = 0)
             val state = worldWith(baseTiles, mapOf("alpha" to aggressor, "beta" to defender))
             return (0 until 100).count { i ->
-                conflictStep(state, Random(i.toLong())).tiles.count { it.occupantTribeId == "alpha" } > 2
+                conflictStep(state, Random(i.toLong())).tiles.count { it.occupantTribeId == "alpha" } > 1
             }
         }
         val lowSoph  = raidCount(0)
@@ -206,13 +188,9 @@ class ConflictStepTest {
 
     @Test
     fun `high-sophistication defender is raided less often than low-sophistication defender`() {
-        // soph 0: threshold = 0.7 * 1.0 * 1.0 = 0.7
-        // soph 10: threshold = 0.7 * 1.0 * 0.7 = 0.49 → lower → fewer raids succeed
         val baseTiles = listOf(
             tile(0, col = 0, row = 0, owner = "alpha"),
-            tile(1, col = 0, row = 0, owner = "alpha"),
-            tile(2, col = 1, row = 0, owner = "beta"),
-            tile(3, col = 1, row = 0, owner = "beta"),
+            tile(1, col = 1, row = 0, owner = "beta"),
         )
         fun raidCount(defenderSoph: Int): Int {
             val aggressor = tribe("alpha", "Alpha", aggression = 0.7f, caution = 0.0f).copy(devotion = 0)
@@ -220,7 +198,7 @@ class ConflictStepTest {
                 .let { t -> t.copy(devotion = 0, personality = t.personality.copy(sophistication = defenderSoph)) }
             val state = worldWith(baseTiles, mapOf("alpha" to aggressor, "beta" to defender))
             return (0 until 100).count { i ->
-                conflictStep(state, Random(i.toLong())).tiles.count { it.occupantTribeId == "alpha" } > 2
+                conflictStep(state, Random(i.toLong())).tiles.count { it.occupantTribeId == "alpha" } > 1
             }
         }
         val lowDefSoph  = raidCount(0)

@@ -1,11 +1,13 @@
 package com.github.maskedkunisquat.projectecho.feature.dashboard
 
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -19,13 +21,14 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.github.maskedkunisquat.projectecho.domain.model.BiomeType
 import com.github.maskedkunisquat.projectecho.domain.model.GRID_COLS
-import com.github.maskedkunisquat.projectecho.domain.model.GRID_ROWS
+import com.github.maskedkunisquat.projectecho.domain.model.GRID_SIZE
 import com.github.maskedkunisquat.projectecho.domain.model.MapTile
 import com.github.maskedkunisquat.projectecho.domain.model.WeatherFront
 import com.github.maskedkunisquat.projectecho.domain.model.WeatherType
 import com.github.maskedkunisquat.projectecho.domain.model.WorldState
 import com.github.maskedkunisquat.projectecho.domain.rules.getNeighbors
 import com.github.maskedkunisquat.projectecho.ui.theme.ProjectEchoTheme
+import kotlin.math.sqrt
 
 internal val biomeColorWater   = Color(0xFF1A4D8F)
 internal val biomeColorDesert  = Color(0xFFD4A96A)
@@ -49,100 +52,112 @@ internal fun TribalGridMap(
     val emptyColor       = MaterialTheme.colorScheme.surfaceVariant
     val occupiedFallback = MaterialTheme.colorScheme.primary
     val separatorColor   = MaterialTheme.colorScheme.background
-    val rainOutline    = Color(0xFF4499FF)
-    val heatOutline    = Color(0xFFFF6600)
-    val haloFill       = MaterialTheme.colorScheme.primary.copy(alpha = 0.40f)
-    val haloOutline    = Color.White.copy(alpha = 0.85f)
+    val haloFill    = MaterialTheme.colorScheme.primary.copy(alpha = 0.40f)
+    val haloOutline = Color.White.copy(alpha = 0.85f)
+    val rainFill    = Color(0x554499FF)
+    val heatFill    = Color(0x55FF6600)
 
     val tileMap = remember(tiles) { tiles.associateBy { it.id } }
     val hoveredCluster = remember(hoveredTileId) {
-        hoveredTileId?.let { id -> (listOf(id) + getNeighbors(id)).toHashSet() } ?: emptySet()
+        hoveredTileId?.let { id -> (listOf(id) + getNeighbors(id)).toHashSet() } ?: emptySet<Int>()
     }
+
+    val frontCol = activeFront?.column?.toFloat() ?: -2f
+    val animatedFrontCol by animateFloatAsState(targetValue = frontCol, label = "weatherFront")
 
     Canvas(
         modifier = modifier.pointerInput(onTilePressed) {
             detectTapGestures { offset ->
                 onTilePressed(
-                    hitTestTile(offset.x, offset.y, size.width.toFloat(), size.height.toFloat())
+                    hitTestHex(offset.x, offset.y, size.width.toFloat(), size.height.toFloat())
                 )
             }
         }
     ) {
-        val cellW  = size.width  / GRID_COLS
-        val cellH  = size.height / GRID_ROWS
+        val R    = size.width / (2f + 1.5f * (GRID_COLS - 1))
+        val hexH = R * sqrt(3f)
         val stroke = Stroke(width = 1.dp.toPx())
 
-        // Pass 1: draw all tiles
-        for (row in 0 until GRID_ROWS) {
-            for (col in 0 until GRID_COLS) {
-                val x0 = col * cellW
-                val x1 = (col + 1) * cellW
-                val y0 = row * cellH
-                val y1 = (row + 1) * cellH
-
-                val idxA = 2 * (row * GRID_COLS + col)
-                val idxB = idxA + 1
-
-                val pathA = trianglePath(idxA, x0, x1, y0, y1, row, col)
-                val pathB = trianglePath(idxB, x0, x1, y0, y1, row, col)
-
-                val colorA = tileDisplayColor(tileMap[idxA], overlay, tribeColors, emptyColor, occupiedFallback)
-                val colorB = tileDisplayColor(tileMap[idxB], overlay, tribeColors, emptyColor, occupiedFallback)
-
-                drawPath(pathA, colorA)
-                drawPath(pathB, colorB)
-                drawPath(pathA, separatorColor, style = stroke)
-                drawPath(pathB, separatorColor, style = stroke)
-            }
+        // Pass 1: draw all hex tiles
+        for (tile in tiles) {
+            val (cx, cy) = hexCenter(tile.col, tile.row, R, hexH)
+            val path  = hexPath(cx, cy, R, hexH)
+            val color = tileDisplayColor(tile, overlay, tribeColors, emptyColor, occupiedFallback)
+            drawPath(path, color)
+            drawPath(path, separatorColor, style = stroke)
         }
 
-        // Pass 2: amber halo overlay for touched cluster
+        // Pass 2: halo overlay for touched cluster
         if (hoveredCluster.isNotEmpty()) {
             val haloStroke = Stroke(width = 1.5.dp.toPx())
             for (tileId in hoveredCluster) {
-                val cellIdx = tileId / 2
-                val tileRow = cellIdx / GRID_COLS
-                val tileCol = cellIdx % GRID_COLS
-                val x0 = tileCol * cellW
-                val x1 = (tileCol + 1) * cellW
-                val y0 = tileRow * cellH
-                val y1 = (tileRow + 1) * cellH
-                val path = trianglePath(tileId, x0, x1, y0, y1, tileRow, tileCol)
+                val t = tileMap[tileId] ?: continue
+                val (cx, cy) = hexCenter(t.col, t.row, R, hexH)
+                val path = hexPath(cx, cy, R, hexH)
                 drawPath(path, haloFill)
                 drawPath(path, haloOutline, style = haloStroke)
             }
         }
 
-        // Pass 3: weather front column outline — persists across all overlay modes
-        if (activeFront != null) {
-            val outlineColor = if (activeFront.type == WeatherType.RainCloud) rainOutline else heatOutline
+        // Pass 3: animated weather front glow column
+        if (activeFront != null && animatedFrontCol >= -1f) {
+            val fillColor = if (activeFront.type == WeatherType.RainCloud) rainFill else heatFill
+            val cx       = R + animatedFrontCol * 1.5f * R
+            val bandHalf = R * 1.5f
+            val left     = (cx - bandHalf).coerceAtLeast(0f)
+            val right    = (cx + bandHalf).coerceAtMost(size.width)
             drawRect(
-                color = outlineColor,
-                topLeft = Offset(activeFront.column * cellW, 0f),
-                size = Size(cellW, size.height),
-                style = Stroke(width = 2.dp.toPx()),
+                color    = fillColor,
+                topLeft  = Offset(left, 0f),
+                size     = Size(right - left, size.height),
             )
         }
     }
 }
 
+private fun hexCenter(col: Int, row: Int, R: Float, hexH: Float): Pair<Float, Float> {
+    val cx = R + col * 1.5f * R
+    val cy = if (col % 2 == 0) hexH * 0.5f + row * hexH else hexH + row * hexH
+    return cx to cy
+}
+
+private fun hexPath(cx: Float, cy: Float, R: Float, hexH: Float): Path = Path().apply {
+    val hR = R * 0.5f
+    val hH = hexH * 0.5f
+    moveTo(cx + hR, cy - hH)  // top-right
+    lineTo(cx + R,  cy)        // right
+    lineTo(cx + hR, cy + hH)  // bottom-right
+    lineTo(cx - hR, cy + hH)  // bottom-left
+    lineTo(cx - R,  cy)        // left
+    lineTo(cx - hR, cy - hH)  // top-left
+    close()
+}
+
 private fun tileDisplayColor(
-    tile: MapTile?,
+    tile: MapTile,
     overlay: MapOverlay,
     tribeColors: Map<String, Color>,
     emptyColor: Color,
     occupiedFallback: Color,
-): Color {
-    if (tile == null) return emptyColor
-    return when (overlay) {
-        MapOverlay.Default    -> when (val owner = tile.occupantTribeId) {
-            null -> emptyColor
-            else -> tribeColors[owner] ?: occupiedFallback
+): Color = when (overlay) {
+    MapOverlay.Default -> when (val owner = tile.occupantTribeId) {
+        null -> {
+            val tint = biomeTerrainTint(tile.biome)
+            if (tint != null) lerp(emptyColor, tint, 0.40f) else emptyColor
         }
-        MapOverlay.Biome      -> biomeColor(tile.biome, emptyColor)
-        MapOverlay.Climate    -> climateColor(tile.soilMoisture)
-        MapOverlay.Volatility -> volatilityColor(tile.volatility)
+        else -> tribeColors[owner] ?: occupiedFallback
     }
+    MapOverlay.Biome      -> biomeColor(tile.biome, emptyColor)
+    MapOverlay.Climate    -> climateColor(tile.soilMoisture)
+    MapOverlay.Volatility -> volatilityColor(tile.volatility)
+}
+
+private fun biomeTerrainTint(biome: BiomeType): Color? = when (biome) {
+    BiomeType.Grassland -> null
+    BiomeType.Forest    -> biomeColorForest
+    BiomeType.Desert    -> biomeColorDesert
+    BiomeType.Coast     -> biomeColorCoast
+    BiomeType.Water     -> biomeColorWater
 }
 
 private fun biomeColor(biome: BiomeType, emptyColor: Color): Color = when (biome) {
@@ -166,37 +181,25 @@ private fun volatilityColor(volatility: Int): Color {
     return Color(brightness, brightness, brightness)
 }
 
-private fun trianglePath(
-    tileId: Int,
-    x0: Float, x1: Float,
-    y0: Float, y1: Float,
-    row: Int, col: Int,
-): Path = Path().apply {
-    val isA = tileId % 2 == 0
-    if ((row + col) % 2 == 0) {
-        if (isA) { moveTo(x0, y0); lineTo(x1, y0); lineTo(x0, y1) }
-        else     { moveTo(x1, y0); lineTo(x1, y1); lineTo(x0, y1) }
-    } else {
-        if (isA) { moveTo(x0, y0); lineTo(x1, y0); lineTo(x1, y1) }
-        else     { moveTo(x0, y0); lineTo(x1, y1); lineTo(x0, y1) }
+private fun hitTestHex(x: Float, y: Float, canvasWidth: Float, canvasHeight: Float): Int {
+    val R    = canvasWidth / (2f + 1.5f * (GRID_COLS - 1))
+    val hexH = R * sqrt(3f)
+    var bestId     = 0
+    var bestDistSq = Float.MAX_VALUE
+    for (id in 0 until GRID_SIZE) {
+        val col = id % GRID_COLS
+        val row = id / GRID_COLS
+        val cx = R + col * 1.5f * R
+        val cy = if (col % 2 == 0) hexH * 0.5f + row * hexH else hexH + row * hexH
+        val dx = x - cx
+        val dy = y - cy
+        val distSq = dx * dx + dy * dy
+        if (distSq < bestDistSq) {
+            bestDistSq = distSq
+            bestId = id
+        }
     }
-    close()
-}
-
-private fun hitTestTile(x: Float, y: Float, canvasWidth: Float, canvasHeight: Float): Int {
-    val cellW  = canvasWidth  / GRID_COLS
-    val cellH  = canvasHeight / GRID_ROWS
-    val col    = (x / cellW).toInt().coerceIn(0, GRID_COLS - 1)
-    val row    = (y / cellH).toInt().coerceIn(0, GRID_ROWS - 1)
-    val localX = (x - col * cellW) / cellW
-    val localY = (y - row * cellH) / cellH
-    val idxA   = 2 * (row * GRID_COLS + col)
-    val idxB   = idxA + 1
-    return if ((row + col) % 2 == 0) {
-        if (localX + localY <= 1f) idxA else idxB
-    } else {
-        if (localX >= localY) idxA else idxB
-    }
+    return bestId
 }
 
 @Preview(showBackground = true, backgroundColor = 0xFF0F0F0F, name = "TribalGridMap - Initial State")

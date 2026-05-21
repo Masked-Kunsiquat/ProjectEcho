@@ -19,8 +19,7 @@ class WeatherFrontTest {
 
     private fun makeTiles(moisture: Int = 35): List<MapTile> =
         (0 until GRID_SIZE).map { id ->
-            val cellIdx = id / 2
-            MapTile(id = id, col = cellIdx % GRID_COLS, row = cellIdx / GRID_COLS, soilMoisture = moisture)
+            MapTile(id = id, col = id % GRID_COLS, row = id / GRID_COLS, soilMoisture = moisture)
         }
 
     private fun stateWithFront(

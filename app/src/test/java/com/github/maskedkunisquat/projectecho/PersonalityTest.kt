@@ -22,13 +22,11 @@ class PersonalityTest {
 
     // --- Helpers ---
 
-    private fun makeTile(id: Int, tribeId: String?, biome: BiomeType = BiomeType.Grassland, moisture: Int = 50): MapTile {
-        val cellIdx = id / 2
-        return MapTile(
-            id = id, col = cellIdx % GRID_COLS, row = cellIdx / GRID_COLS,
+    private fun makeTile(id: Int, tribeId: String?, biome: BiomeType = BiomeType.Grassland, moisture: Int = 50): MapTile =
+        MapTile(
+            id = id, col = id % GRID_COLS, row = id / GRID_COLS,
             biome = biome, soilMoisture = moisture, occupantTribeId = tribeId,
         )
-    }
 
     private fun stateWithPersonality(
         personality: TribePersonality,
@@ -108,29 +106,20 @@ class PersonalityTest {
         // Maritime tribe with Coast affinity 2.0 vs Grassland 1.0
         // Two adjacent frontier tiles: one Coast, one Grassland — same moisture
         val maritime = TribePersonality.maritime()
-        val tribe = Tribe("m", "Maritime", population = 10, devotion = 50, foodSupply = 100, personality = maritime)
-        // Tile 0 owned; tile 1 = Grassland adjacent, tile 2 = Coast adjacent, tile 3 = non-adjacent
+        val tribe = Tribe("m", "Maritime", population = 16, devotion = 50, foodSupply = 100, personality = maritime)
+        // Hex tile IDs: id=row*16+col. Neighbors of id=0 (col=0,row=0, even col): id=1 (SE) and id=16 (S).
+        // id=85 (col=5,row=5) is far from id=0 and not adjacent.
         val tiles = listOf(
-            makeTile(0, "m", BiomeType.Grassland, moisture = 50),
-            makeTile(1, null, BiomeType.Grassland, moisture = 50),
-            makeTile(2, null, BiomeType.Coast,     moisture = 50),
-            makeTile(3, null, BiomeType.Grassland, moisture = 50),
-        ).map { t ->
-            // force col/row so tiles 0-2 are adjacent (same row, cols 0-2) and tile 3 is far away
-            when (t.id) {
-                0 -> t.copy(col = 0, row = 0)
-                1 -> t.copy(col = 1, row = 0)
-                2 -> t.copy(col = 0, row = 1)
-                3 -> t.copy(col = 5, row = 5)
-                else -> t
-            }
-        }
+            MapTile(id = 0,  col = 0, row = 0, biome = BiomeType.Grassland, soilMoisture = 50, occupantTribeId = "m"),
+            MapTile(id = 1,  col = 1, row = 0, biome = BiomeType.Grassland, soilMoisture = 50),  // SE neighbor
+            MapTile(id = 16, col = 0, row = 1, biome = BiomeType.Coast,     soilMoisture = 50),  // S neighbor
+            MapTile(id = 85, col = 5, row = 5, biome = BiomeType.Grassland, soilMoisture = 50),  // not adjacent
+        )
         val result = territoryStep(tiles, mapOf("m" to tribe))
-        // pop=10 → expected = 10*192/500 = 3. Owns 1, deficit=2. Claims tiles 1 and 2.
-        // Coast (affinity 2.0) should be claimed; Grassland (affinity 1.0) also claimed.
-        // The Coast tile should definitely be among the claimed tiles.
+        // pop=16 → expected = 16*96/500 = 3. Owns 1, deficit=2. Claims tiles 1 and 16.
+        // Coast (affinity 2.0) should be claimed over Grassland (affinity 1.0).
         val claimed = result.filter { it.occupantTribeId == "m" }.map { it.id }.toSet()
-        assertTrue(2 in claimed) // Coast tile must be claimed (highest score)
+        assertTrue(16 in claimed) // Coast tile must be claimed (highest score)
     }
 
     // --- Child personality mutation ---

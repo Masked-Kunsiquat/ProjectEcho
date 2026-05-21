@@ -49,7 +49,7 @@ class GameLoopTest {
 
         assertEquals(1L, result.worldTimeTick)
         assertEquals(11, result.divineFavor)                               // 10 + 1 regen (devotion 51 ≥ 40)
-        assertEquals(180, result.tribes["echosi"]!!.foodSupply)            // 200 + (100*0.8=80) - 100
+        assertEquals(170, result.tribes["echosi"]!!.foodSupply)            // 200 + (100*0.70=70) - 100
         assertEquals(102, result.tribes["echosi"]!!.population)            // (100 * 1.02).roundToInt()
         assertEquals(51, result.tribes["echosi"]!!.devotion)              // 50 + 1
     }
@@ -64,7 +64,7 @@ class GameLoopTest {
         assertEquals(1L, result.worldTimeTick)
         assertEquals(10, result.divineFavor)                               // no regen: devotion 17 < 40
         assertEquals(0, result.tribes["echosi"]!!.foodSupply)             // clamped to 0
-        assertEquals(95, result.tribes["echosi"]!!.population)            // (100 * 0.95).roundToInt()
+        assertEquals(90, result.tribes["echosi"]!!.population)            // (100 * 0.90).roundToInt()
         assertEquals(17, result.tribes["echosi"]!!.devotion)              // 20 - 3
     }
 
@@ -78,7 +78,7 @@ class GameLoopTest {
 
         assertEquals(1L, result.worldTimeTick)
         assertEquals(11, result.divineFavor)                               // 20 - 10 (CastRain) + 1 regen
-        assertEquals(90, result.tribes["echosi"]!!.foodSupply)            // 100 + (50*0.8=40) - 50, no rain bonus
+        assertEquals(85, result.tribes["echosi"]!!.foodSupply)            // 100 + (50*0.70=35) - 50, no rain bonus
         assertEquals(51, result.tribes["echosi"]!!.population)            // grew since fed
     }
 
@@ -115,7 +115,7 @@ class GameLoopTest {
         assertEquals(1L, result.worldTimeTick)
         assertEquals(6, result.divineFavor)                                // 20 - 15 (SendPlague) + 1 regen (devotion 51 ≥ 40)
         assertEquals(82, result.tribes["echosi"]!!.population)            // (80 * 1.02).roundToInt()
-        assertEquals(284, result.tribes["echosi"]!!.foodSupply)           // 300 + (80*0.8=64) - 80
+        assertEquals(276, result.tribes["echosi"]!!.foodSupply)           // 300 + (80*0.70=56) - 80
     }
 
     @Test
@@ -147,7 +147,7 @@ class GameLoopTest {
 
         assertEquals(1L, result.worldTimeTick)
         assertEquals(16, result.divineFavor)                               // 20 - 5 (CauseFamine) + 1 regen (devotion 51 ≥ 40)
-        assertEquals(110, result.tribes["echosi"]!!.foodSupply)           // (200-80) + (50*0.8=40) - 50
+        assertEquals(105, result.tribes["echosi"]!!.foodSupply)           // (200-80) + (50*0.70=35) - 50
     }
 
     @Test
@@ -168,7 +168,7 @@ class GameLoopTest {
 
         assertEquals(1L, result.worldTimeTick)
         assertEquals(11, result.divineFavor)                               // 30 - 20 (BlessHarvest) + 1 regen (devotion 51 ≥ 40)
-        assertEquals(290, result.tribes["echosi"]!!.foodSupply)           // (100+200) + (50*0.8=40) - 50
+        assertEquals(285, result.tribes["echosi"]!!.foodSupply)           // (100+200) + (50*0.70=35) - 50
     }
 
     @Test
@@ -179,7 +179,7 @@ class GameLoopTest {
 
         assertEquals(1L, result.worldTimeTick)
         assertEquals(4, result.divineFavor)                                // action skipped + 1 regen (devotion 51 ≥ 40)
-        assertEquals(290, result.tribes["echosi"]!!.foodSupply)           // 300 + (50*0.8=40) - 50, no +50 from CastRain
+        assertEquals(285, result.tribes["echosi"]!!.foodSupply)           // 300 + (50*0.70=35) - 50, no +50 from CastRain
     }
 
     @Test
@@ -201,16 +201,14 @@ class GameLoopTest {
 
     // --- Phase 12A: Tribal Splitting ---
 
-    private fun makeTile(id: Int, tribeId: String?, biome: BiomeType = BiomeType.Grassland): MapTile {
-        val cellIdx = id / 2
-        return MapTile(
+    private fun makeTile(id: Int, tribeId: String?, biome: BiomeType = BiomeType.Grassland): MapTile =
+        MapTile(
             id = id,
-            col = cellIdx % GRID_COLS,
-            row = cellIdx / GRID_COLS,
+            col = id % GRID_COLS,
+            row = id / GRID_COLS,
             biome = biome,
             occupantTribeId = tribeId,
         )
-    }
 
     private fun splitReadyState(
         tribeId: String = "alpha",
@@ -346,9 +344,9 @@ class GameLoopTest {
 
     @Test
     fun `territoryStep - release branch runs in single-tribe world`() {
-        // pop=10 → expected = 10 * 192 / 500 = 3; tribe has 20 tiles → 17 released
+        // pop=16 → expected = 16 * 96 / 500 = 3; tribe has 20 tiles → 17 released
         val tiles  = (0 until 20).map { i -> makeTile(i, "alpha") }
-        val tribes = mapOf("alpha" to Tribe("alpha", "Alpha", population = 10, devotion = 50, foodSupply = 100))
+        val tribes = mapOf("alpha" to Tribe("alpha", "Alpha", population = 16, devotion = 50, foodSupply = 100))
 
         val result = territoryStep(tiles, tribes)
 
@@ -361,8 +359,8 @@ class GameLoopTest {
         val tilesA = (0 until 20).map { i -> makeTile(i,  "alpha") }
         val tilesB = (20 until 30).map { i -> makeTile(i, "beta") }
         val tribes = mapOf(
-            "alpha" to Tribe("alpha", "Alpha", population = 10, devotion = 50, foodSupply = 100),
-            "beta"  to Tribe("beta",  "Beta",  population = 10, devotion = 50, foodSupply = 100),
+            "alpha" to Tribe("alpha", "Alpha", population = 16, devotion = 50, foodSupply = 100),
+            "beta"  to Tribe("beta",  "Beta",  population = 16, devotion = 50, foodSupply = 100),
         )
 
         val result = territoryStep(tilesA + tilesB, tribes)

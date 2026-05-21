@@ -13,7 +13,6 @@ import com.github.maskedkunisquat.projectecho.domain.model.WorldState
 import com.github.maskedkunisquat.projectecho.domain.model.GRID_COLS
 import com.github.maskedkunisquat.projectecho.domain.model.GRID_SIZE
 import com.github.maskedkunisquat.projectecho.domain.model.TribeNameGenerator
-import kotlin.math.abs
 import kotlin.math.roundToInt
 import kotlin.random.Random
 
@@ -44,7 +43,7 @@ internal const val DEFENSE_SOPHISTICATION_BONUS = 0.03f
 private const val FAITH_DRIFT_SCALE             = 0.05f
 private const val SKEPTICISM_RATE_CLAMP_MAX     = 2f
 internal const val SOPH_MOISTURE_CEILING        = 50
-internal const val SPLIT_MIN_FOOD_TICKS         = 5
+internal const val SPLIT_MIN_FOOD_TICKS         = 1
 
 fun tick(
     currentState: WorldState,
@@ -54,6 +53,11 @@ fun tick(
     targetTribeId: String? = null,
     random: Random = Random.Default,
 ): WorldState {
+    val prevPopulations = currentState.tribes.mapValues { (_, t) -> t.population }
+    val prevTileCounts  = currentState.tribes.mapValues { (id, _) ->
+        currentState.tiles.count { it.occupantTribeId == id }
+    }
+
     var state = currentState.copy(tiles = decayStep(currentState.tiles, currentState.tribes))
 
     val inspireDevoutEntries = mutableListOf<String>()
@@ -145,13 +149,13 @@ fun tick(
         val effectiveFarmers = if (occupiedTiles.isEmpty()) tribe.population
                                else minOf(tribe.population, occupiedTiles.size * TILE_CAPACITY)
         val coastBonus = occupiedTiles.count { it.biome == BiomeType.Coast } * COAST_FISHING_BONUS
-        val farmed = (effectiveFarmers * 0.8 * effectiveMultiplier).roundToInt() + coastBonus
+        val farmed = (effectiveFarmers * 0.70 * effectiveMultiplier).roundToInt() + coastBonus
         val newFoodSupply = tribe.foodSupply + farmed - tribe.population
 
         val afterSurvival = when {
             newFoodSupply < 0 -> tribe.copy(
                 foodSupply = 0,
-                population = minOf(tribe.population - 1, (tribe.population * 0.95).roundToInt()).coerceAtLeast(0),
+                population = minOf(tribe.population - 1, (tribe.population * 0.90).roundToInt()).coerceAtLeast(0),
                 devotion = maxOf(0, tribe.devotion - 3),
             )
             newFoodSupply > 0 -> tribe.copy(
@@ -201,9 +205,19 @@ fun tick(
         })
     }
 
+    // Hostility: decay all values and remove extinct tribe IDs
+    val livingTribesDecayed = livingTribes.mapValues { (_, tribe) ->
+        val decayFactor = if (tribe.devotion > 70) 0.96f else 0.98f
+        val newHostility = tribe.hostility
+            .filterKeys { it !in extinctIds }
+            .mapValues { (_, v) -> v * decayFactor }
+            .filterValues { it >= 0.01f }
+        tribe.copy(hostility = newHostility)
+    }
+
     // Sophistication milestones
     val sophisticationEntries = mutableListOf<String>()
-    val withSophistication = livingTribes.mapValues { (_, tribe) ->
+    val withSophistication = livingTribesDecayed.mapValues { (_, tribe) ->
         val popMet = SOPHISTICATION_POP_MILESTONES.count { it <= tribe.population }
         val devMet = SOPHISTICATION_DEVOTION_MILESTONES.count { it <= tribe.devotion }
         val expectedSoph = popMet + devMet
@@ -296,7 +310,21 @@ fun tick(
         )
     }
 
-    return weatherStep(eventedState, random)
+    val finalState = weatherStep(eventedState, random)
+    return finalState.copy(
+        tribes = finalState.tribes.mapValues { (id, tribe) ->
+            if (id !in prevPopulations) {
+                // Tribe born this tick (e.g. from splitStep) — deltas are undefined, report zero
+                tribe.copy(populationDelta = 0, territoryDelta = 0)
+            } else {
+                val newTileCount = finalState.tiles.count { it.occupantTribeId == id }
+                tribe.copy(
+                    populationDelta = tribe.population - prevPopulations[id]!!,
+                    territoryDelta  = newTileCount - prevTileCounts[id]!!,
+                )
+            }
+        }
+    )
 }
 
 fun weatherStep(state: WorldState, random: Random = Random.Default): WorldState {
@@ -360,16 +388,13 @@ internal fun territoryStep(tiles: List<MapTile>, tribes: Map<String, Tribe>): Li
             }
         } else if (excess < 0) {
             val deficit = -excess
+            val occupiedIds = occupiedIndices.map { working[it].id }.toHashSet()
+            val neighborIds = occupiedIds.flatMap { getNeighbors(it) }.toHashSet()
             val frontier = working.indices.filter { idx ->
                 val t = working[idx]
                 if (t.occupantTribeId != null) return@filter false
                 if (t.biome == BiomeType.Water) return@filter false
-                occupiedIndices.any { ownedIdx ->
-                    val o = working[ownedIdx]
-                    val dCol = abs(t.col - o.col)
-                    val dRow = abs(t.row - o.row)
-                    (dCol == 0 && dRow == 0) || (dCol + dRow == 1)
-                }
+                t.id in neighborIds
             }
             // Prefer tiles matching the tribe's top biome affinity
             val scoredFrontier = frontier.sortedByDescending { idx ->
@@ -471,6 +496,7 @@ internal fun splitStep(
                 foodSupply     = childFood,
                 personality    = childPersonality,
                 generationDeaths = 0,
+                foundedTick    = state.worldTimeTick,
             )
         }
         return state.copy(
@@ -490,6 +516,7 @@ internal fun conflictStep(state: WorldState, random: Random = Random.Default): W
     val tribeIds = state.tribes.keys.toList()
     val chronicleEntries = mutableListOf<String>()
     val raidedTribeIds = mutableSetOf<String>()
+    val hostilityChanges = mutableMapOf<String, MutableMap<String, Float>>()
     var tiles = state.tiles
 
     for (aggressorId in tribeIds) {
@@ -519,6 +546,10 @@ internal fun conflictStep(state: WorldState, random: Random = Random.Default): W
                     if (t.id == target.id) t.copy(occupantTribeId = aggressorId) else t
                 }
                 raidedTribeIds += defenderId
+                hostilityChanges.getOrPut(aggressorId) { mutableMapOf() }
+                    .merge(defenderId, 0.1f, Float::plus)
+                hostilityChanges.getOrPut(defenderId) { mutableMapOf() }
+                    .merge(aggressorId, 0.15f, Float::plus)
                 chronicleEntries += "The ${aggressor.name} raid the ${defender.name} frontier."
             }
         }
@@ -527,8 +558,20 @@ internal fun conflictStep(state: WorldState, random: Random = Random.Default): W
     return if (chronicleEntries.isEmpty() && raidedTribeIds.isEmpty()) state
     else state.copy(
         tiles = tiles,
-        tribes = if (raidedTribeIds.isEmpty()) state.tribes else state.tribes.mapValues { (id, tribe) ->
-            if (id in raidedTribeIds) tribe.copy(lastRaidTick = state.worldTimeTick) else tribe
+        tribes = state.tribes.mapValues { (id, tribe) ->
+            val wasRaided = id in raidedTribeIds
+            val changes = hostilityChanges[id]
+            val newHostility = if (changes == null) tribe.hostility else {
+                val map = tribe.hostility.toMutableMap()
+                for ((otherId, delta) in changes) {
+                    map[otherId] = (map.getOrDefault(otherId, 0f) + delta).coerceAtMost(1f)
+                }
+                map.toMap()
+            }
+            tribe.copy(
+                lastRaidTick = if (wasRaided) state.worldTimeTick else tribe.lastRaidTick,
+                hostility = newHostility,
+            )
         },
         eventHistory = state.eventHistory + chronicleEntries,
     )
