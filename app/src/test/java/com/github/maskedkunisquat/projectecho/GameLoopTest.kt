@@ -201,16 +201,14 @@ class GameLoopTest {
 
     // --- Phase 12A: Tribal Splitting ---
 
-    private fun makeTile(id: Int, tribeId: String?, biome: BiomeType = BiomeType.Grassland): MapTile {
-        val cellIdx = id / 2
-        return MapTile(
+    private fun makeTile(id: Int, tribeId: String?, biome: BiomeType = BiomeType.Grassland): MapTile =
+        MapTile(
             id = id,
-            col = cellIdx % GRID_COLS,
-            row = cellIdx / GRID_COLS,
+            col = id % GRID_COLS,
+            row = id / GRID_COLS,
             biome = biome,
             occupantTribeId = tribeId,
         )
-    }
 
     private fun splitReadyState(
         tribeId: String = "alpha",
@@ -346,9 +344,9 @@ class GameLoopTest {
 
     @Test
     fun `territoryStep - release branch runs in single-tribe world`() {
-        // pop=10 → expected = 10 * 192 / 500 = 3; tribe has 20 tiles → 17 released
+        // pop=16 → expected = 16 * 96 / 500 = 3; tribe has 20 tiles → 17 released
         val tiles  = (0 until 20).map { i -> makeTile(i, "alpha") }
-        val tribes = mapOf("alpha" to Tribe("alpha", "Alpha", population = 10, devotion = 50, foodSupply = 100))
+        val tribes = mapOf("alpha" to Tribe("alpha", "Alpha", population = 16, devotion = 50, foodSupply = 100))
 
         val result = territoryStep(tiles, tribes)
 
@@ -361,8 +359,8 @@ class GameLoopTest {
         val tilesA = (0 until 20).map { i -> makeTile(i,  "alpha") }
         val tilesB = (20 until 30).map { i -> makeTile(i, "beta") }
         val tribes = mapOf(
-            "alpha" to Tribe("alpha", "Alpha", population = 10, devotion = 50, foodSupply = 100),
-            "beta"  to Tribe("beta",  "Beta",  population = 10, devotion = 50, foodSupply = 100),
+            "alpha" to Tribe("alpha", "Alpha", population = 16, devotion = 50, foodSupply = 100),
+            "beta"  to Tribe("beta",  "Beta",  population = 16, devotion = 50, foodSupply = 100),
         )
 
         val result = territoryStep(tilesA + tilesB, tribes)

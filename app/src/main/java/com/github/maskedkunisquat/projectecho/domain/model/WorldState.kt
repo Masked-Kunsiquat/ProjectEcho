@@ -24,7 +24,7 @@ data class WorldState(
             val population = 100
 
             val rng = Random(tribeId.hashCode())
-            val cellCount = GRID_COLS * GRID_ROWS  // 96 cells, each with 2 triangle tiles
+            val cellCount = GRID_COLS * GRID_ROWS  // 96 hex cells
 
             // --- Biome generation (cell-level, shared by both triangles in each cell) ---
 
@@ -77,29 +77,27 @@ data class WorldState(
             val startCol = rng.nextInt(GRID_COLS)
             val claimedCount = (population * GRID_SIZE) / 500
 
-            // Precompute one score per triangle; Water tiles are pushed to the end.
-            val orderedIds = (0 until GRID_SIZE).map { idx ->
-                val cellIdx = idx / 2
-                val row = cellIdx / GRID_COLS
-                val col = cellIdx % GRID_COLS
-                val score = if (biomeMap[cellIdx] == BiomeType.Water) {
+            // Score each hex tile; Water tiles are pushed to the end.
+            val orderedIds = (0 until GRID_SIZE).map { id ->
+                val row = id / GRID_COLS
+                val col = id % GRID_COLS
+                val score = if (biomeMap[id] == BiomeType.Water) {
                     Float.MAX_VALUE
                 } else {
                     val dRow = (row - startRow).toFloat()
                     val dCol = (col - startCol).toFloat()
                     sqrt((dRow * dRow + dCol * dCol).toDouble()).toFloat() + rng.nextFloat() * 1.5f
                 }
-                idx to score
-            }.sortedBy { (_, score) -> score }.map { (idx, _) -> idx }
+                id to score
+            }.sortedBy { (_, score) -> score }.map { (id, _) -> id }
             val occupiedIds = orderedIds.take(claimedCount).toHashSet()
 
             val tiles = (0 until GRID_SIZE).map { id ->
-                val cellIdx = id / 2
-                val biome = biomeMap[cellIdx] ?: BiomeType.Grassland
+                val biome = biomeMap[id] ?: BiomeType.Grassland
                 MapTile(
                     id = id,
-                    col = cellIdx % GRID_COLS,
-                    row = cellIdx / GRID_COLS,
+                    col = id % GRID_COLS,
+                    row = id / GRID_COLS,
                     biome = biome,
                     occupantTribeId = if (id in occupiedIds && biome != BiomeType.Water) tribeId else null,
                 )

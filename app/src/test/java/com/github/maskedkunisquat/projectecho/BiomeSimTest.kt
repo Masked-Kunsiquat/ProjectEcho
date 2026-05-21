@@ -83,11 +83,10 @@ class BiomeSimTest {
         moisture: Int = 35,
         volatility: Int = 0,
     ): List<MapTile> = (0 until GRID_SIZE).map { id ->
-        val cellIdx = id / 2
         MapTile(
             id = id,
-            col = cellIdx % GRID_COLS,
-            row = cellIdx / GRID_COLS,
+            col = id % GRID_COLS,
+            row = id / GRID_COLS,
             soilMoisture = moisture,
             biome = biome,
             volatility = volatility,

@@ -53,8 +53,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.github.maskedkunisquat.projectecho.domain.model.DivineAction
 import com.github.maskedkunisquat.projectecho.domain.model.EnvironmentalPhase
-import com.github.maskedkunisquat.projectecho.domain.model.GRID_COLS
-import com.github.maskedkunisquat.projectecho.domain.model.GRID_ROWS
 import com.github.maskedkunisquat.projectecho.domain.model.Tribe
 import com.github.maskedkunisquat.projectecho.domain.model.TribeNeed
 import com.github.maskedkunisquat.projectecho.domain.model.WorldState
@@ -197,7 +195,7 @@ fun DashboardScreen(
                 .padding(horizontal = 16.dp, vertical = 4.dp),
         )
 
-        // Aspect-ratio constrained so cells stay square (16×6 grid)
+        // Aspect-ratio for flat-top hex grid: (2 + 1.5*(cols-1)) / (sqrt(3) * (rows+0.5)) ≈ 2.18
         TribalGridMap(
             tiles = worldState.tiles,
             activeFront = worldState.activeFront,
@@ -207,7 +205,7 @@ fun DashboardScreen(
             onTilePressed = { hoveredTileId = it },
             modifier = Modifier
                 .fillMaxWidth()
-                .aspectRatio(GRID_COLS.toFloat() / GRID_ROWS.toFloat()),
+                .aspectRatio(2.18f),
         )
 
         // Tribe legend strip — scrollable for future multi-tribe support
@@ -424,11 +422,10 @@ private fun ActionChip(
     val borderColor = if (enabled) MaterialTheme.colorScheme.primary
                       else MaterialTheme.colorScheme.surfaceVariant
 
-    // Outer Box owns the layout — weight(1f).aspectRatio(1f) unchanged from pre-tooltip code.
-    // TooltipBox sits inside as a pure interaction layer and never touches the size constraints.
+    // Outer Box owns the layout — TooltipBox sits inside as a pure interaction layer.
     Box(
         modifier = modifier
-            .aspectRatio(1f),
+            .aspectRatio(1.6f),
     ) {
         TooltipBox(
             positionProvider = TooltipDefaults.rememberTooltipPositionProvider(),

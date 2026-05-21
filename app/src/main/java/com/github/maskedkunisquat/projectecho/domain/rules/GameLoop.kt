@@ -13,7 +13,6 @@ import com.github.maskedkunisquat.projectecho.domain.model.WorldState
 import com.github.maskedkunisquat.projectecho.domain.model.GRID_COLS
 import com.github.maskedkunisquat.projectecho.domain.model.GRID_SIZE
 import com.github.maskedkunisquat.projectecho.domain.model.TribeNameGenerator
-import kotlin.math.abs
 import kotlin.math.roundToInt
 import kotlin.random.Random
 
@@ -386,16 +385,13 @@ internal fun territoryStep(tiles: List<MapTile>, tribes: Map<String, Tribe>): Li
             }
         } else if (excess < 0) {
             val deficit = -excess
+            val occupiedIds = occupiedIndices.map { working[it].id }.toHashSet()
+            val neighborIds = occupiedIds.flatMap { getNeighbors(it) }.toHashSet()
             val frontier = working.indices.filter { idx ->
                 val t = working[idx]
                 if (t.occupantTribeId != null) return@filter false
                 if (t.biome == BiomeType.Water) return@filter false
-                occupiedIndices.any { ownedIdx ->
-                    val o = working[ownedIdx]
-                    val dCol = abs(t.col - o.col)
-                    val dRow = abs(t.row - o.row)
-                    (dCol == 0 && dRow == 0) || (dCol + dRow == 1)
-                }
+                t.id in neighborIds
             }
             // Prefer tiles matching the tribe's top biome affinity
             val scoredFrontier = frontier.sortedByDescending { idx ->

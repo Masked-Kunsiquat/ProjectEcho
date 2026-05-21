@@ -101,10 +101,10 @@ class Phase16MomentumHostilityAgeTest {
 
     @Test
     fun `territoryDelta is positive when tribe expands onto new tiles`() {
-        // Tile 0 is owned; tile 2 (adjacent cell) is empty — large pop drives expansion
+        // Tile 0 (col=0,row=0) is owned; tile 1 (col=1,row=0) is adjacent SE hex neighbor
         val tiles = listOf(
             tile(0, col = 0, row = 0, owner = "alpha"),
-            tile(2, col = 1, row = 0),
+            tile(1, col = 1, row = 0),
         )
         val state = worldWith(
             tiles  = tiles,
@@ -123,12 +123,10 @@ class Phase16MomentumHostilityAgeTest {
 
     @Test
     fun `hostility increments for both aggressor and defender on successful raid`() {
-        // alpha (tiles 0,1) adjacent to beta (tiles 2,3); aggression=1.0, caution=0.0 → always raids
+        // alpha (tile 0, col=0) adjacent to beta (tile 1, col=1) — hex neighbors
         val tiles = listOf(
             tile(0, col = 0, row = 0, owner = "alpha"),
-            tile(1, col = 0, row = 0, owner = "alpha"),
-            tile(2, col = 1, row = 0, owner = "beta"),
-            tile(3, col = 1, row = 0, owner = "beta"),
+            tile(1, col = 1, row = 0, owner = "beta"),
         )
         val state = worldWith(tiles, mapOf(
             "alpha" to tribe("alpha", aggression = 1.0f, caution = 0.5f, devotion = 0),
@@ -211,9 +209,9 @@ class Phase16MomentumHostilityAgeTest {
 
     private fun splitState(worldTick: Long): WorldState {
         val pop = SPLIT_MIN_POPULATION + 100  // 600 — safely above split threshold
-        // 4 tiles → pop/tiles = 600/4 = 150 > SPLIT_DENSITY_THRESHOLD (8) → triggers split
+        // 4 hex tiles → pop/tiles = 600/4 = 150 > SPLIT_DENSITY_THRESHOLD (8) → triggers split
         val tiles = (0 until 4).map { i ->
-            MapTile(id = i * 2, col = i, row = 0, occupantTribeId = "alpha")
+            MapTile(id = i, col = i, row = 0, occupantTribeId = "alpha")
         }
         return WorldState(
             worldTimeTick = worldTick,
