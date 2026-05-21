@@ -7,7 +7,7 @@ Kotlin snapshot (HeadlessParityTest.kt):
   snapshotOccupiedTiles = 78
 
 If this test passes, the Python simulation is tick-for-tick identical to
-the Kotlin headless runner (same JavaRandom LCG, same game logic).
+the Kotlin headless runner (same Kotlin 2.x XorWowRandom behaviour, same game logic).
 
 To recapture: set both constants to -1, run the test, copy printed values.
 """
@@ -24,6 +24,9 @@ from simulation import run_headless
 # ---------------------------------------------------------------------------
 SNAPSHOT_TOTAL_POP      = 713
 SNAPSHOT_OCCUPIED_TILES = 78
+# Per-tribe snapshots (sorted lists; T100 seed=42 leaves 1 surviving tribe)
+SNAPSHOT_TRIBE_POPS  = [713]
+SNAPSHOT_TRIBE_TILES = [78]
 
 
 def test_parity_seed42_tick100():
@@ -46,6 +49,19 @@ def test_parity_seed42_tick100():
     if SNAPSHOT_OCCUPIED_TILES >= 0:
         assert occupied == SNAPSHOT_OCCUPIED_TILES, (
             f"occupiedTiles drift: expected {SNAPSHOT_OCCUPIED_TILES}, got {occupied}")
+
+    # Per-tribe checks
+    tribe_pops  = sorted(t.population for t in state.tribes.values())
+    tribe_tiles = sorted(
+        sum(1 for tile in state.tiles if tile.occupant_tribe_id == tid)
+        for tid in state.tribes
+    )
+    if SNAPSHOT_TRIBE_POPS[0] >= 0:
+        assert tribe_pops == SNAPSHOT_TRIBE_POPS, (
+            f"per-tribe pop drift: expected {SNAPSHOT_TRIBE_POPS}, got {tribe_pops}")
+    if SNAPSHOT_TRIBE_TILES[0] >= 0:
+        assert tribe_tiles == SNAPSHOT_TRIBE_TILES, (
+            f"per-tribe tile drift: expected {SNAPSHOT_TRIBE_TILES}, got {tribe_tiles}")
 
     print(">>> Parity test PASSED")
 

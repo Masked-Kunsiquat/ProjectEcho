@@ -1,9 +1,9 @@
 from simulation import initial, JavaRandom, HeuristicPolicy, tick, java_hashcode
 from collections import Counter
 
-# Verify LCG: Java Random(42), first nextInt() should be -1155484576
+# Verify XorWow: JavaRandom(42), first nextInt() should be 972016666
 rng = JavaRandom(42)
-print("LCG check - Java Random(42) first nextInt():", rng.next_int())
+print("XorWow check - JavaRandom(42) first nextInt():", rng.next_int())
 
 print("\nhashcode('iron-wrought') =", java_hashcode("iron-wrought"))
 
@@ -11,8 +11,8 @@ state = initial()
 rng2  = JavaRandom(42)
 pol   = HeuristicPolicy(rng2)
 
-tribe = list(state.tribes.values())[0]
-occ0  = [t for t in state.tiles if t.occupant_tribe_id]
+tribe = next(iter(state.tribes.values()))
+occ0  = [t for t in state.tiles if t.occupant_tribe_id == tribe.tribe_id]
 print(f"T0: pop={tribe.population}, food={tribe.food_supply}, tiles={len(occ0)}")
 print(f"  personality={tribe.personality.archetype_id}")
 print(f"  world biomes: {dict(Counter(t.biome.value for t in state.tiles))}")

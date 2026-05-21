@@ -5,10 +5,12 @@ import com.github.maskedkunisquat.projectecho.domain.model.GRID_COLS
 import com.github.maskedkunisquat.projectecho.domain.model.GRID_ROWS
 import com.github.maskedkunisquat.projectecho.domain.model.WorldState
 import com.github.maskedkunisquat.projectecho.domain.rules.tick
+import org.junit.Ignore
 import org.junit.Test
 import kotlin.math.sqrt
 import kotlin.random.Random
 
+@Ignore("Diagnostic-only: prints to stdout, no assertions; run manually, not in CI")
 class DiagnosticTraceTest {
 
     @Test

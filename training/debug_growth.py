@@ -6,9 +6,10 @@ pol   = HeuristicPolicy(rng)
 
 for i in range(50):
     state = tick(state, rng, pol)
-    tribe = list(state.tribes.values())[0] if state.tribes else None
+    tribe = next(iter(state.tribes.values()), None)
     if not tribe:
-        print(f"T{i+1}: EXTINCT"); break
+        print(f"T{i+1}: EXTINCT")
+        break
     occ = [t for t in state.tiles if t.occupant_tribe_id == tribe.tribe_id]
     avg_m = sum(t.soil_moisture for t in occ) // len(occ) if occ else 0
 

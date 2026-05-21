@@ -58,14 +58,20 @@ class RLPolicy(TribePolicy):
         self._rng      = rng
 
     def choose_expansion(self, tribe: Tribe, candidates: list) -> Optional[MapTile]:
-        if not candidates: return None
+        if not candidates:
+            return None
         action = self._actions.get(tribe.tribe_id, ACTION_REST)
-        if action not in _EXPAND_ACTIONS: return None
+        if action not in _EXPAND_ACTIONS:
+            return None
 
-        if   action == ACTION_EXPAND_N: key = lambda t: (t.row,  t.col)
-        elif action == ACTION_EXPAND_S: key = lambda t: (-t.row, t.col)
-        elif action == ACTION_EXPAND_E: key = lambda t: (-t.col, t.row)
-        else:                           key = lambda t: (t.col,  t.row)   # EXPAND_W
+        if action == ACTION_EXPAND_N:
+            def key(t): return (t.row, t.col)
+        elif action == ACTION_EXPAND_S:
+            def key(t): return (-t.row, t.col)
+        elif action == ACTION_EXPAND_E:
+            def key(t): return (-t.col, t.row)
+        else:  # EXPAND_W
+            def key(t): return (t.col, t.row)
         return min(candidates, key=key)
 
     def choose_raid(self, tribe: Tribe, targets: list) -> Optional[RaidCandidate]:
@@ -129,7 +135,8 @@ class ProjectEchoEnv(gym.Env):
         domain_randomize: bool = True,
     ):
         super().__init__()
-        assert 1 <= num_tribes <= MAX_TRIBES
+        if not (1 <= num_tribes <= MAX_TRIBES):
+            raise ValueError(f"num_tribes must be in [1, {MAX_TRIBES}], got {num_tribes}")
         self.num_tribes        = num_tribes
         self.max_ticks         = max_ticks
         self.domain_randomize  = domain_randomize
@@ -165,7 +172,8 @@ class ProjectEchoEnv(gym.Env):
         return self._observations(), {}
 
     def step(self, action_dict: dict):
-        assert self._state is not None, "Call reset() first"
+        if self._state is None:
+            raise RuntimeError("Call reset() first")
 
         # Build sorted other-tribe list (for RLPolicy raid indexing)
         living_ids      = sorted(self._state.tribes.keys())
@@ -228,6 +236,8 @@ class ProjectEchoEnv(gym.Env):
         Returns {tribe_id: np.ndarray(bool, shape=(NUM_ACTIONS,))} for valid actions.
         Hook into MaskablePPO / CleanRL action-masking utilities.
         """
+        if self._state is None:
+            raise RuntimeError("Call reset() first")
         masks = {}
         for tid in self._agent_ids:
             m = np.zeros(NUM_ACTIONS, dtype=bool)

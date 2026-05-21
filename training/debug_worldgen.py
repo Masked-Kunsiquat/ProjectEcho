@@ -10,7 +10,6 @@ seed = java_hashcode(tribe_id)
 print(f"Seed = {seed} (hex: {hex(seed & 0xFFFFFFFF)})")
 
 rng = JavaRandom(seed)
-print(f"Initial internal seed: {rng._seed} (hex: {hex(rng._seed)})")
 print()
 
 cell_count = GRID_COLS * GRID_ROWS
@@ -40,10 +39,13 @@ print(f"Total water cells: {len(water_cells)}")
 # Step 2: Coast cells (no RNG)
 coast_cells = set()
 for ci in range(cell_count):
-    if ci in water_cells: continue
+    if ci in water_cells:
+        continue
     c, r = ci % GRID_COLS, ci // GRID_COLS
-    if c % 2 == 0: nbrs = [(c,r-1),(c+1,r-1),(c+1,r),(c,r+1),(c-1,r),(c-1,r-1)]
-    else:           nbrs = [(c,r-1),(c+1,r),(c+1,r+1),(c,r+1),(c-1,r+1),(c-1,r)]
+    if c % 2 == 0:
+        nbrs = [(c,r-1),(c+1,r-1),(c+1,r),(c,r+1),(c-1,r),(c-1,r-1)]
+    else:
+        nbrs = [(c,r-1),(c+1,r),(c+1,r+1),(c,r+1),(c-1,r+1),(c-1,r)]
     if any(0<=nc<GRID_COLS and 0<=nr<GRID_ROWS and nr*GRID_COLS+nc in water_cells for nc,nr in nbrs):
         coast_cells.add(ci)
 print(f"Coast cells: {len(coast_cells)}")
@@ -51,11 +53,18 @@ print(f"Coast cells: {len(coast_cells)}")
 # Step 3: Biomes
 biome_map = {}
 for ci in range(cell_count):
-    if ci in water_cells: biome_map[ci] = BiomeType.Water
-    elif ci in coast_cells: biome_map[ci] = BiomeType.Coast
+    if ci in water_cells:
+        biome_map[ci] = BiomeType.Water
+    elif ci in coast_cells:
+        biome_map[ci] = BiomeType.Coast
     else:
         v = rng.next_int(10)
-        biome_map[ci] = BiomeType.Grassland if v <= 4 else (BiomeType.Forest if v <= 7 else BiomeType.Desert)
+        if v <= 4:
+            biome_map[ci] = BiomeType.Grassland
+        elif v <= 7:
+            biome_map[ci] = BiomeType.Forest
+        else:
+            biome_map[ci] = BiomeType.Desert
 
 desert_count = sum(1 for b in biome_map.values() if b == BiomeType.Desert)
 print(f"Desert tiles: {desert_count}")

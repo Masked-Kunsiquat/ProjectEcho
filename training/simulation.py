@@ -768,45 +768,6 @@ def tick(state: WorldState, rng: JavaRandom, policy: Optional[TribePolicy] = Non
 # World initialisation  (mirrors WorldState.kt)
 # ---------------------------------------------------------------------------
 
-def _build_world(rng: JavaRandom, tribe_id: str, tribe_name: str, population: int,
-                 personality: TribePersonality, training_mode: bool = False,
-                 all_start_cells: list = None, tribe_idx: int = 0,
-                 tiles_working: list = None) -> tuple:
-    """Shared biome-generation logic used by initial() and initial_for_training()."""
-    cell_count = GRID_COLS * GRID_ROWS
-
-    water_cells = set()
-    for _ in range(rng.next_int_range(1, 3)):
-        centre     = rng.next_int(cell_count)
-        crow, ccol = centre//GRID_COLS, centre%GRID_COLS
-        blob_size  = rng.next_int_range(8, 13)
-        scores     = []
-        for ci in range(cell_count):
-            r,c   = ci//GRID_COLS, ci%GRID_COLS
-            score = math.sqrt(float(r-crow)**2+float(c-ccol)**2) + rng.next_float()*0.8
-            scores.append((ci, score))
-        scores.sort(key=lambda x: x[1])
-        water_cells.update(ci for ci,_ in scores[:blob_size])
-
-    coast_cells = set()
-    for ci in range(cell_count):
-        if ci in water_cells: continue
-        c,r = ci%GRID_COLS, ci//GRID_COLS
-        if c%2==0: nbrs=[(c,r-1),(c+1,r-1),(c+1,r),(c,r+1),(c-1,r),(c-1,r-1)]
-        else:       nbrs=[(c,r-1),(c+1,r),(c+1,r+1),(c,r+1),(c-1,r+1),(c-1,r)]
-        if any(0<=nc<GRID_COLS and 0<=nr<GRID_ROWS and nr*GRID_COLS+nc in water_cells for nc,nr in nbrs):
-            coast_cells.add(ci)
-
-    biome_map = {}
-    for ci in range(cell_count):
-        if   ci in water_cells: biome_map[ci] = BiomeType.Water
-        elif ci in coast_cells: biome_map[ci] = BiomeType.Coast
-        else:
-            v = rng.next_int(10)
-            biome_map[ci] = BiomeType.Grassland if v<=4 else (BiomeType.Forest if v<=7 else BiomeType.Desert)
-
-    return biome_map, water_cells
-
 
 def initial() -> WorldState:
     """Single starting tribe — matches Kotlin WorldState.initial() exactly."""
@@ -854,19 +815,20 @@ def initial() -> WorldState:
     start_col    = rng.next_int(GRID_COLS)
     claimed_count = population * GRID_SIZE // 500
     scores = []
-    for id in range(GRID_SIZE):
-        row,col = id//GRID_COLS, id%GRID_COLS
-        if biome_map.get(id)==BiomeType.Water:
-            scores.append((id, float('inf')))
+    for tile_id in range(GRID_SIZE):
+        row,col = tile_id//GRID_COLS, tile_id%GRID_COLS
+        if biome_map.get(tile_id)==BiomeType.Water:
+            scores.append((tile_id, float('inf')))
         else:
             dr,dc = float(row-start_row), float(col-start_col)
-            scores.append((id, math.sqrt(dr*dr+dc*dc)+rng.next_float()*1.5))
+            scores.append((tile_id, math.sqrt(dr*dr+dc*dc)+rng.next_float()*1.5))
     scores.sort(key=lambda x: x[1])
-    occupied_ids = {id for id,_ in scores[:claimed_count]}
+    occupied_ids = {tile_id for tile_id,_ in scores[:claimed_count]}
 
-    tiles = [MapTile(id=id, col=id%GRID_COLS, row=id//GRID_COLS, biome=biome_map.get(id,BiomeType.Grassland),
-                     occupant_tribe_id=tribe_id if id in occupied_ids and biome_map.get(id)!=BiomeType.Water else None)
-             for id in range(GRID_SIZE)]
+    tiles = [MapTile(id=tile_id, col=tile_id%GRID_COLS, row=tile_id//GRID_COLS,
+                     biome=biome_map.get(tile_id,BiomeType.Grassland),
+                     occupant_tribe_id=tribe_id if tile_id in occupied_ids and biome_map.get(tile_id)!=BiomeType.Water else None)
+             for tile_id in range(GRID_SIZE)]
 
     personality = ALL_ARCHETYPES[rng.next_int(len(ALL_ARCHETYPES))]()
     tribe = Tribe(tribe_id=tribe_id, name=tribe_name, population=population,
@@ -876,7 +838,8 @@ def initial() -> WorldState:
 
 def initial_for_training(num_tribes: int, seed: int) -> WorldState:
     """Randomised multi-tribe starting state for RL training."""
-    assert 1 <= num_tribes <= MAX_TRIBES
+    if not (1 <= num_tribes <= MAX_TRIBES):
+        raise ValueError(f"num_tribes must be in [1, {MAX_TRIBES}], got {num_tribes}")
     rng        = JavaRandom(seed)
     cell_count = GRID_COLS * GRID_ROWS
 
@@ -911,8 +874,9 @@ def initial_for_training(num_tribes: int, seed: int) -> WorldState:
             v=rng.next_int(10)
             biome_map[ci]=BiomeType.Grassland if v<=4 else (BiomeType.Forest if v<=7 else BiomeType.Desert)
 
-    tiles_w = [MapTile(id=id, col=id%GRID_COLS, row=id//GRID_COLS, biome=biome_map.get(id,BiomeType.Grassland))
-               for id in range(cell_count)]
+    tiles_w = [MapTile(id=tile_id, col=tile_id%GRID_COLS, row=tile_id//GRID_COLS,
+                       biome=biome_map.get(tile_id, BiomeType.Grassland))
+               for tile_id in range(cell_count)]
 
     land_cells  = [ci for ci in range(cell_count) if biome_map[ci]!=BiomeType.Water]
     start_cells = []

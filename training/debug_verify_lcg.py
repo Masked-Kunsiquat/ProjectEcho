@@ -13,7 +13,7 @@ from simulation import JavaRandom
 rng0 = JavaRandom(0)
 v0 = rng0.next_int()
 print(f"Random(0).nextInt() = {v0}")
-print(f"Expected (Java spec) = -1155484576")
+print("Expected (Java spec) = -1155484576")
 print(f"Match: {v0 == -1155484576}")
 print()
 
