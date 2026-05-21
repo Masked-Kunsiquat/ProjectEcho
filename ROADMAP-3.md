@@ -330,7 +330,7 @@ Observed in playtest: initial tribe expanded to pop ~930, tiles ~78 by T=80 with
 - [ ] **Reward normalization** — clip rewards to [−1, 1] before gradient update; raw population deltas vary 0–50/tick and will destabilize training if passed raw
 - [ ] **Domain randomization** — 5% chance per tick of injecting a divine-action-magnitude shock to a random tribe (plague-scale pop drop, harvest-scale food spike, inspire-scale devotion boost, famine-scale food drop); the policy learns robustness to sudden large state changes
 - [ ] **Map diversity** — randomize `WorldState.initial()` seeds every episode; policy must learn general spatial reasoning, not "water is always bottom-left"
-- [ ] Parity test: run 100 ticks with seed 42 on both Kotlin headless and Python env; assert matching final population and tile counts per tribe
+- [x] Parity test: run 100 ticks with seed 42 on both Kotlin headless and Python env; assert matching final population and tile counts per tribe
 
 ---
 
